@@ -193,7 +193,7 @@ describe('i18n instance', () => {
     { language: 'ko-KR', locale: 'ko', strings: resources.ko.translation },
     { language: 'cs-CZ', locale: 'cs', strings: resources.cs.translation },
   ])(
-    'uses shared translations and English fallback for missing keys in $locale',
+    'resolves migrated shared keys from the $locale bundle or English',
     async ({ language, locale, strings }) => {
       vi.stubGlobal('navigator', { language, languages: [language, locale] });
       vi.resetModules();
@@ -214,12 +214,32 @@ describe('i18n instance', () => {
         'regional',
         'suggested',
         'bibleApp',
+        'clearSearch',
       ]) {
         expect(i18n.t(key)).toBe(
           i18n.getResource(locale, 'translation', key) ??
             i18n.getResource('en', 'translation', key),
         );
       }
+    },
+  );
+
+  it.each([
+    { language: 'ko-KR', locale: 'ko' },
+    { language: 'cs-CZ', locale: 'cs' },
+  ])(
+    'falls back to English for a key missing from the $locale bundle',
+    async ({ language, locale }) => {
+      vi.stubGlobal('navigator', { language, languages: [language, locale] });
+      vi.resetModules();
+
+      const i18n = await loadI18n();
+      const key = 'testOnlyFallbackKey';
+      i18n.addResource('en', 'translation', key, 'English fallback value');
+
+      expect(i18n.language).toBe(locale);
+      expect(i18n.getResource(locale, 'translation', key)).toBeUndefined();
+      expect(i18n.t(key)).toBe('English fallback value');
     },
   );
 

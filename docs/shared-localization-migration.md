@@ -23,10 +23,13 @@ The direct migration accepts this fallback rather than retaining React-specific 
 | `regional` | `regionalHeading` | Regional language headings |
 | `suggested` | `suggestedTab` | Suggested languages tab |
 | `bibleApp` | `bibleAppTitle` | Bible App logo title |
+| `clearSearch` | `bibleSearchClearAriaLabel` | Bible search clear button |
 
-The previous `versionSearchAriaLabel` was also missing in Korean and Czech, so version search already used English.
-The other eleven replacements newly fall back to English.
-This changes text for eleven keys in Korean and ten in Czech, where the previous Bible App title was already English.
+The previous `versionSearchAriaLabel` and `bibleSearchClearAriaLabel` were also missing in Korean and Czech, so those controls already used English.
+The clear button text does not change.
+Version search still changes from "Search Bible versions" to "Search Versions".
+The other eleven replacements newly fall back to English in Korean, and ten do in Czech, where the previous Bible App title was already English.
+Counting the version search change, this changes text for twelve keys in Korean and eleven in Czech.
 The shared `share` key is present in both locales and replaces `shareAriaLabel` without that gap.
 
 The shared wording also changes some translations in other locales.
@@ -39,7 +42,7 @@ The missing entries belong to the shared keys in `platform-localization/sources/
 Translation approval and distribution follow [the i18n workflow](./i18n-guidelines.md).
 This migration does not establish why those translations are missing upstream.
 
-Run `node scripts/migrate-shared-i18n-keys.mjs` to check for remaining legacy callers and print the current Korean and Czech gaps.
+Run `node scripts/migrate-shared-i18n-keys.mjs` to check production `t()` calls for legacy keys and print the current Korean and Czech gaps.
 The optional `--write` argument applies the key substitutions to production TypeScript files.
 
 Remaining React-specific strings and their matches in sibling SDKs are listed in the [cross-SDK comparison](./react-string-cross-sdk-comparison.md).

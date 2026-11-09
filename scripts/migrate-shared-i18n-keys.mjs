@@ -12,7 +12,6 @@ const replacements = {
   fontLabel: 'font',
   closeAriaLabel: 'close',
   searchPlaceholder: 'search',
-  selectLanguageHeading: 'selectLanguage',
   selectLanguageAriaLabel: 'selectLanguage',
   regionalHeading: 'regional',
   suggestedTab: 'suggested',
@@ -20,6 +19,7 @@ const replacements = {
   bibleAppTitle: 'bibleApp',
   passageNotFoundError: 'passageUnavailable',
   genericCancel: 'cancel',
+  bibleSearchClearAriaLabel: 'clearSearch',
 };
 const english = JSON.parse(readFileSync(resolve(sourceDir, 'i18n/locales/en.json'), 'utf8'));
 const files = readdirSync(sourceDir, { recursive: true })

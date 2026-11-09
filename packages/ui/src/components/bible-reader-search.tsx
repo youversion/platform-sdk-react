@@ -232,7 +232,7 @@ function SearchPanel({
                 size="icon"
                 variant="ghost"
                 className="yv:size-9 yv:rounded-full yv:transition-none"
-                aria-label={t('bibleSearchClearAriaLabel', 'Clear search')}
+                aria-label={t('clearSearch', 'Clear search')}
                 onClick={resetSearch}
               >
                 <XIcon className="yv:size-4" />
