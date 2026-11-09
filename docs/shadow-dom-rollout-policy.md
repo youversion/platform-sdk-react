@@ -2,12 +2,11 @@
 
 ## Status and intent
 
-YPE-5356 defines the coordinated package-wide rollout for compatible public UI
-components. Every included implementation group is present on the coordinated
-release branch, but this document does not claim that the major release has
-shipped. Publishing remains gated by the YPE-5952 package, browser, and
-assistive-technology validation below. The final release-candidate actual-Safari
-completion decision is recorded in the
+YPE-5356 defined the coordinated package-wide rollout for compatible public UI
+components. The complete boundary shipped in `@youversion/platform-react-ui`
+3.0.0. This document preserves the rollout decisions and the package, browser,
+and assistive-technology evidence used for that release. The final
+release-candidate actual-Safari completion decision is recorded in the
 [validation plan](shadow-dom-isolation-plan.md#ype-6214-final-release-candidate-safari-validation);
 the bounded Safari/VoiceOver validation is complete, while Windows with NVDA
 was not run because no test environment was available and remains explicitly
@@ -22,10 +21,11 @@ boundaries. Compound members and composed leaf components remain in their
 owning component tree and reuse its boundary when present rather than creating
 independent boundaries.
 
-The rollout is coordinated at release time, not implemented in one change.
-Focused component or component-group tickets may land independently on the
-Shadow DOM integration branch, but the package must not release a partial public
-boundary. Runtime feature flags and a phased-release framework are unnecessary.
+The rollout was coordinated at release time rather than implemented in one
+change. Focused component and component-group tickets landed independently on
+the Shadow DOM integration branch before the complete public boundary shipped
+together in 3.0.0. Runtime feature flags and a phased-release framework were
+unnecessary.
 
 ## Decisions
 
@@ -43,7 +43,7 @@ boundary. Runtime feature flags and a phased-release framework are unnecessary.
   release. React props need not change, but document queries, native event
   targets, ref timing, global styling, and cross-tree relationships can change.
 - Automated keyboard and DOM semantics remain required but do not substitute
-  for real assistive-technology validation. YPE-5952 requires a bounded release-
+  for real assistive-technology validation. YPE-5952 included a bounded release-
   candidate smoke pass with Safari and VoiceOver. The planned Chrome-or-Edge
   and NVDA pass was not run because no Windows test environment was available,
   so that combination must remain explicitly unvalidated. Claims must name only
@@ -141,11 +141,11 @@ exported function. Each completed ticket links to YPE-5356 and this policy.
    - Roll out standalone `BibleThemeSettingsContent` with the smallest internal
      layout strategy that preserves constrained Popover scrolling.
    - Preserve Expo DOM callbacks and reuse the owning `BibleReader` boundary.
-   - Implemented on the integration branch: the standalone component owns one
-   client-only open root. Its private host is a shrinkable block-size grid
-   item while generic shadow hosts keep `display: contents`; reader-owned
-   settings suppress the nested boundary and reuse the completed YPE-5951
-   reader root.
+   - Shipped in 3.0.0: the standalone component owns one client-only open root.
+     Its host uses `display: flex`, a column direction, and zero minimum block
+     size while ordinary shadow hosts keep `display: contents`; reader-owned
+     settings suppress the nested boundary and reuse the completed YPE-5951
+     reader root.
 4. **YPE-5949: Compound pickers**
    - Roll out `BibleChapterPicker.Root` and `BibleVersionPicker.Root` as the
      only boundaries for their compound exports.
@@ -170,9 +170,8 @@ exported function. Each completed ticket links to YPE-5356 and this policy.
 
 YPE-5947 added no public Shadow DOM configuration. Its independently releasable
 runtime effect was a patch-level resilience fix for stylesheet installation;
-the additional automatic component boundaries now implemented by the later
-groups remain one coordinated major-release contract and must not publish
-partially.
+the automatic component boundaries implemented by the later groups shipped
+together as the 3.0.0 major-release contract.
 
 Excluded components are not hidden work in these groups. `Textarea` needs a
 separately approved form contract, and standalone `VerseActionPopover` needs an
@@ -181,7 +180,7 @@ boundary.
 
 The dependency-ordered component groups, YPE-5994, and YPE-6040 are complete.
 YPE-5889 and YPE-5946 provide reusable focus-restoration and cross-browser
-evidence. YPE-5952 owns the bounded human assistive-technology validation,
+evidence. YPE-5952 completed the bounded human assistive-technology validation,
 consumer documentation, and major-release gate. Its final actual-Safari decision
 and Safari/VoiceOver results, plus the explicit Windows/NVDA validation gap, are
 recorded in the validation plan: the [final actual-Safari decision](shadow-dom-isolation-plan.md#ype-6214-final-release-candidate-safari-validation)
@@ -233,10 +232,9 @@ them; it does not repeat shared infrastructure proofs without a changed seam.
   YPE-5437 diagnostic is not treated as a universal budget.
 - The focused component journeys pass the package browser matrix.
 
-## Consumer documentation and release requirements
+## 3.0 consumer documentation and release record
 
-The coordinated release must update the package README, root README where
-applicable, Storybook guidance, changelog, and release notes to explain:
+The coordinated 3.0 release documentation explains:
 
 - the new light-DOM host and open shadow root;
 - client-only rendering, first-paint behavior, and ref timing;
@@ -251,12 +249,12 @@ applicable, Storybook guidance, changelog, and release notes to explain:
   accepted limitations, exact assistive-technology combinations and journey
   results, and every material unvalidated combination.
 
-Release notes must identify the rollout as a breaking rendered-DOM change even
+The release notes identify the rollout as a breaking rendered-DOM change even
 when a component's TypeScript props are unchanged.
 
-YPE-5994 adds no independently releasable public configuration or package
-version. YPE-5952 must include standalone theme settings in that coordinated
-consumer handoff: open-root traversal replaces document-only queries, server
+YPE-5994 added no independently releasable public configuration or package
+version. The coordinated 3.0 consumer handoff includes standalone theme
+settings: open-root traversal replaces document-only queries, server
 markup is a childless host with declarative display until the passive-effect
 client mount, native events retarget at the host, global CSS no longer reaches
 the five internal controls, and the explicit `theme`, interface direction, and

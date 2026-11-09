@@ -3,10 +3,10 @@
 ## Purpose
 
 This contract records cross-browser evidence for consumer-facing behavior at
-the SDK's Shadow DOM boundary. YPE-5356 incorporates it into the
+the SDK's Shadow DOM boundary shipped in `@youversion/platform-react-ui` 3.0.0.
+YPE-5356 incorporates it into the
 [production rollout policy](shadow-dom-rollout-policy.md), which maintains the
-stable-package and coordinated-release-branch boundary inventory and release
-status.
+shipped public boundary inventory and historical release evidence.
 
 The executable evidence is grouped by rollout surface:
 
@@ -60,7 +60,7 @@ exercise. They do not establish compatibility for every SDK component.
 | A standalone `VerseActionPopover` receives an anchor from another DOM tree | Unsupported | The public popover accepts a live anchor element and does not create an automatic boundary. Keep the anchor and standalone popover in the same document or shadow root. |
 | Shadow-local picker relationships | Supported in current browser evidence | The chapter and version picker stories verify that each trigger and controlled panel remain in one root and resolve their `aria-controls` relationship. This does not make cross-scope ID references supported. |
 | Consumer-supplied picker triggers | Supported within the explicit styling contract | The supplied element remains the interactive trigger. Inline style, ordinary attributes, and SDK-embedded utility classes are preserved. Document/global class rules and document-level token overrides do not cross the root. The SDK does not promise CSS Parts, arbitrary stylesheet injection, or styling of picker internals. |
-| Arbitrary `BibleReader.Root` children | Supported inside the reader root; breaking DOM/CSS placement change | Children render in the reader's open shadow root. Their React context and callbacks remain intact, but document-root selectors, global CSS, and document queries no longer reach them. A child that is itself an automatically isolated public component may intentionally create a nested root; reader-owned SDK composition suppresses accidental nesting. YPE-5952 owns the coordinated release documentation. |
+| Arbitrary `BibleReader.Root` children | Supported inside the reader root; breaking DOM/CSS placement change | Children render in the reader's open shadow root. Their React context and callbacks remain intact, but document-root selectors, global CSS, and document queries no longer reach them. A child that is itself an automatically isolated public component may intentionally create a nested root; reader-owned SDK composition suppresses accidental nesting. The 3.0 consumer documentation records this coordinated breaking change. |
 | An ancestor uses `visibility` or `pointer-events` to hide or disable an isolated descendant | Unsupported as a control mechanism | The internal shadow reset can restore those properties, leaving descendants visible, clickable, or focusable. Ancestor geometry can still clip, transform, size, or otherwise constrain the light-DOM host. To hide an isolated component, apply `display: none` to a consumer-owned light-DOM wrapper or do not render the component. To disable one, use a supported component API instead of ancestor `pointer-events`. |
 
 ## Consumer risks
@@ -96,6 +96,6 @@ browser and assistive-technology combination validated.
 
 If a rollout component must participate in an outer native form or consume
 external labeling relationships, it needs an explicit public contract rather
-than cross-scope browser behavior. Bounded assistive-technology validation,
-release documentation, and the coordinated stable release remain assigned by the
+than cross-scope browser behavior. The bounded assistive-technology validation
+and 3.0 release record remain in the
 [production rollout policy](shadow-dom-rollout-policy.md).
