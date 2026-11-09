@@ -1,10 +1,11 @@
-import { http, HttpResponse } from 'msw';
+import { http, HttpResponse, passthrough } from 'msw';
 import { mockBooks } from '../mock-data/books';
 import { mockChapters } from '../mock-data/chapters';
 import mockPassages from '../mock-data/passages.json';
 import mockBibles from '../mock-data/bibles.json';
 import mockLanguages from '../mock-data/languages.json';
 import mockOrganizations from '../mock-data/organizations.json';
+import { shadowRecoveryHandlers } from '../shadow-recovery-mocks';
 
 function pathParam(value: string | readonly string[] | undefined): string | undefined {
   if (value === undefined) return undefined;
@@ -20,6 +21,7 @@ function mockAvatar() {
 }
 
 export const globalHandlers = [
+  ...shadowRecoveryHandlers,
   // React's hoisted stylesheet promise rejects when a story's mock app key
   // reaches the real Fonts API. Keep browser tests independent of that service.
   http.get(
@@ -28,6 +30,14 @@ export const globalHandlers = [
       new HttpResponse('', {
         headers: { 'Content-Type': 'text/css' },
       }),
+  ),
+  // Keep automated browser journeys off the public internet without changing
+  // font loading in manual Storybook sessions.
+  http.get('https://fonts.googleapis.com/*', () =>
+    '__vitest_worker__' in globalThis ? new HttpResponse(null, { status: 204 }) : passthrough(),
+  ),
+  http.get('https://fonts.gstatic.com/*', () =>
+    '__vitest_worker__' in globalThis ? new HttpResponse(null, { status: 204 }) : passthrough(),
   ),
   http.get('https://notion-avatar.app/*', mockAvatar),
   http.get('https://example.com/avatar/*', mockAvatar),

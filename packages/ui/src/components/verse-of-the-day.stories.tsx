@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within, userEvent, spyOn } from 'storybook/test';
-import { http, HttpResponse } from 'msw';
 
 import { VerseOfTheDay } from './verse-of-the-day';
 import {
@@ -9,30 +8,19 @@ import {
   waitForShadowContent,
   waitForShadowRoot,
 } from '@/test/storybook-dom';
-import { globalHandlers } from '@/test/mocks/handlers';
-import mockPassages from '@/test/mock-data/passages.json';
 import { ScriptureStoryDataProvider } from '@/test/scripture-story-data';
+import {
+  getVotdRequestGate,
+  resetVotdRequestGate,
+  VOTD_RECOVERY_API_HOST,
+} from '@/test/shadow-recovery-mocks';
+import { ShadowRecoveryStoryProvider } from '@/test/shadow-recovery-provider';
 
-interface PassageRequestGate {
-  waiting: boolean;
-  release: () => void;
-  released: Promise<void>;
-}
-
-function createPassageRequestGate(): PassageRequestGate {
-  let resolveRelease: (() => void) | undefined;
-  const released = new Promise<void>((resolve) => {
-    resolveRelease = resolve;
-  });
-  return { waiting: false, release: () => resolveRelease?.(), released };
-}
-
-let recoveryRequestGate = createPassageRequestGate();
-let recoveryRequestSignal: AbortSignal | undefined;
-let shouldFailPassageRequest = true;
-const storybookApiOrigin = new URL(
-  `https://${import.meta.env.STORYBOOK_YOUVERSION_API_HOST || 'api.youversion.com'}`,
-).origin;
+const withShadowRecoveryProvider = (Story: React.ComponentType) => (
+  <ShadowRecoveryStoryProvider apiHost={VOTD_RECOVERY_API_HOST}>
+    <Story />
+  </ShadowRecoveryStoryProvider>
+);
 
 const withScriptureStoryData = (Story: React.ComponentType) => (
   <ScriptureStoryDataProvider>
@@ -135,34 +123,13 @@ export const OfflineRecovery: Story = {
     highlights: [],
   },
   tags: ['integration', 'shadow-dom', 'cross-browser'],
+  decorators: [withShadowRecoveryProvider],
   loaders: [
     ({ abortSignal }) => {
-      if (recoveryRequestSignal === abortSignal) return {};
-      recoveryRequestSignal = abortSignal;
-      recoveryRequestGate.release();
-      recoveryRequestGate = createPassageRequestGate();
-      shouldFailPassageRequest = true;
+      resetVotdRequestGate(abortSignal);
       return {};
     },
   ],
-  parameters: {
-    msw: {
-      handlers: [
-        http.get('https://fonts.gstatic.com/*', () => new HttpResponse(null, { status: 204 })),
-        http.get(`${storybookApiOrigin}/v1/bibles/111/passages/ISA.43.19`, async () => {
-          if (shouldFailPassageRequest) {
-            shouldFailPassageRequest = false;
-            return HttpResponse.error();
-          }
-          const requestGate = recoveryRequestGate;
-          requestGate.waiting = true;
-          await requestGate.released;
-          return HttpResponse.json(mockPassages['ISA.43.19']);
-        }),
-        ...globalHandlers,
-      ],
-    },
-  },
   render: (args) => (
     <>
       <button type="button">Before Verse of the Day</button>
@@ -173,7 +140,7 @@ export const OfflineRecovery: Story = {
     </>
   ),
   play: async ({ canvasElement }) => {
-    const requestGate = recoveryRequestGate;
+    const requestGate = getVotdRequestGate();
     const root = await waitForShadowRoot(canvasElement);
     const canvas = within(await waitForShadowContent(root));
     const alert = await canvas.findByRole('alert');

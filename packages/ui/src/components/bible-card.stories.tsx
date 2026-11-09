@@ -1,9 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { within, expect, fn, userEvent, waitFor } from 'storybook/test';
-import { http, HttpResponse } from 'msw';
 import { useState } from 'react';
 import { BibleCard, type BibleCardProps } from './bible-card';
-import { globalHandlers } from '../test/mocks/handlers';
 import {
   pressNativeBrowserKey,
   requireShadowContent,
@@ -11,6 +9,8 @@ import {
   waitForShadowRoot,
 } from '../test/storybook-dom';
 import { ScriptureStoryDataProvider } from '../test/scripture-story-data';
+import { BIBLE_CARD_RECOVERY_API_HOST } from '../test/shadow-recovery-mocks';
+import { ShadowRecoveryStoryProvider } from '../test/shadow-recovery-provider';
 
 const withScriptureStoryData = (Story: React.ComponentType) => (
   <ScriptureStoryDataProvider>
@@ -90,9 +90,11 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const storybookApiOrigin = new URL(
-  `https://${import.meta.env.STORYBOOK_YOUVERSION_API_HOST || 'api.youversion.com'}`,
-).origin;
+const withShadowRecoveryProvider = (Story: React.ComponentType) => (
+  <ShadowRecoveryStoryProvider apiHost={BIBLE_CARD_RECOVERY_API_HOST}>
+    <Story />
+  </ShadowRecoveryStoryProvider>
+);
 
 export const Default: Story = {
   args: {
@@ -360,6 +362,7 @@ export const Error: Story = {
     showVersionPicker: true,
   },
   tags: ['integration', 'shadow-dom', 'cross-browser'],
+  decorators: [withShadowRecoveryProvider],
   render: (args) => (
     <>
       <div className="yv:w-full">
@@ -368,28 +371,6 @@ export const Error: Story = {
       <button type="button">After card</button>
     </>
   ),
-  parameters: {
-    msw: {
-      /*
-        A story-level `handlers` array replaces the preview-level `globalHandlers`
-        rather than merging with it, so `globalHandlers` is spread back in.
-        Without it the version picker's `useLanguages`/`useVersions` calls fall
-        through to the live API, because `onUnhandledRequest` is 'warn'.
-
-        The 500 override comes first: MSW takes the first matching handler, so it
-        wins over the successful NIV passage handler in `globalHandlers`. Version
-        1588 (AMP) is left on `globalHandlers` and still resolves, which is what
-        makes the recovery path below testable.
-      */
-      handlers: [
-        http.get('https://fonts.gstatic.com/*', () => new HttpResponse(null, { status: 204 })),
-        http.get(`${storybookApiOrigin}/v1/bibles/111/passages/LUK.1.39-45`, () => {
-          return new HttpResponse(null, { status: 500 });
-        }),
-        ...globalHandlers,
-      ],
-    },
-  },
   play: async ({ canvasElement }) => {
     const root = await waitForShadowRoot(canvasElement);
     const canvas = within(await waitForShadowContent(root));

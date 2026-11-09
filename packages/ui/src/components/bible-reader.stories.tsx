@@ -24,6 +24,8 @@ import {
   waitForShadowContent,
   waitForShadowRoot,
 } from '@/test/storybook-dom';
+import { armReaderRequestGate, BIBLE_READER_RECOVERY_API_HOST } from '@/test/shadow-recovery-mocks';
+import { ShadowRecoveryStoryProvider } from '@/test/shadow-recovery-provider';
 
 async function getReaderStory(canvasElement: HTMLElement) {
   const root = await waitForShadowRoot(canvasElement);
@@ -69,13 +71,6 @@ type PathParams = {
   usfm?: string | readonly string[];
 };
 
-const READER_PASSAGE_RELEASE_EVENT = 'yv-storybook-release-reader-passage';
-const READER_PASSAGE_WAITING_EVENT = 'yv-storybook-reader-passage-waiting';
-const storybookApiOrigin = new URL(
-  `https://${import.meta.env.STORYBOOK_YOUVERSION_API_HOST || 'api.youversion.com'}`,
-).origin;
-let shouldHoldReaderPassage = false;
-
 function isPathParamText(value: string | readonly string[] | undefined): value is string {
   return Object.prototype.toString.call(value) === '[object String]';
 }
@@ -87,6 +82,11 @@ function firstPathParam(value: string | readonly string[] | undefined): string |
 }
 
 let signInMock: ReturnType<typeof fn>;
+const withShadowRecoveryProvider = (Story: React.ComponentType) => (
+  <ShadowRecoveryStoryProvider apiHost={BIBLE_READER_RECOVERY_API_HOST}>
+    <Story />
+  </ShadowRecoveryStoryProvider>
+);
 
 const meta: Meta<typeof BibleReader.Root> = {
   title: 'Components/BibleReader',
@@ -1768,39 +1768,11 @@ export const ControlledFakeHost: Story = {
 
 export const ChapterChangeLoadingOverlay: Story = {
   tags: ['integration', 'shadow-dom', 'cross-browser'],
+  decorators: [withShadowRecoveryProvider],
   args: {
     defaultVersionId: 111,
     defaultBook: 'JHN',
     defaultChapter: '1',
-  },
-  parameters: {
-    msw: {
-      handlers: [
-        http.get('https://fonts.gstatic.com/*', () => new HttpResponse(null, { status: 204 })),
-        http.get(
-          `${storybookApiOrigin}/v1/bibles/111/passages/:usfm`,
-          async ({ params }: { params: PathParams }) => {
-            const usfm = firstPathParam(params.usfm);
-            if (!usfm) return new HttpResponse(null, { status: 404 });
-            if (usfm === 'JHN.2' && shouldHoldReaderPassage) {
-              shouldHoldReaderPassage = false;
-              await new Promise<void>((resolve) => {
-                window.addEventListener(READER_PASSAGE_RELEASE_EVENT, () => resolve(), {
-                  once: true,
-                });
-                window.dispatchEvent(new Event(READER_PASSAGE_WAITING_EVENT));
-              });
-            }
-            return HttpResponse.json({
-              id: usfm,
-              content: `<div class="p"><span class="verse">Passage text for ${usfm}.</span></div>`,
-              reference: usfm,
-            });
-          },
-        ),
-        ...globalHandlers,
-      ],
-    },
   },
   render: (args) => (
     <>
@@ -1831,17 +1803,12 @@ export const ChapterChangeLoadingOverlay: Story = {
     await waitFor(async () => {
       await expect(getComputedStyle(nextButton).pointerEvents).not.toBe('none');
     });
-    let requestIsWaiting = false;
-    const markRequestWaiting = () => {
-      requestIsWaiting = true;
-    };
-    window.addEventListener(READER_PASSAGE_WAITING_EVENT, markRequestWaiting, { once: true });
-    shouldHoldReaderPassage = true;
+    const requestGate = armReaderRequestGate();
 
     try {
       await userEvent.click(nextButton);
       await waitFor(async () => {
-        await expect(requestIsWaiting).toBe(true);
+        await expect(requestGate.waiting).toBe(true);
       });
 
       const rendererAfterClick = root.querySelector('[data-slot="yv-bible-renderer"]');
@@ -1875,9 +1842,7 @@ export const ChapterChangeLoadingOverlay: Story = {
       if (!(await pressNativeBrowserKey('{Tab}'))) afterReader.focus();
       await expect(document.activeElement).toBe(afterReader);
     } finally {
-      shouldHoldReaderPassage = false;
-      window.removeEventListener(READER_PASSAGE_WAITING_EVENT, markRequestWaiting);
-      window.dispatchEvent(new Event(READER_PASSAGE_RELEASE_EVENT));
+      requestGate.release();
     }
 
     await waitFor(
