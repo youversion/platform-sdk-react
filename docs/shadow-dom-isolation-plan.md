@@ -305,7 +305,7 @@ consumer documentation records the childless, declaratively styled host
 contract, open-root automation, native event retargeting, loss of global-CSS
 access, and the supported explicit theme, direction, and callback inputs as part
 of the coordinated major release.
-YPE-5994 has an empty changeset and must not publish an independent partial
+YPE-5994 had an empty changeset and did not publish an independent partial
 rollout.
 
 ## YPE-5950 scripture presentation evidence
@@ -335,7 +335,7 @@ client-only first-paint contract is accepted for these reviewed layouts; without
 JavaScript the component content remains absent, and nearby layout can move
 after the passive-effect mount. This evidence does not establish actual-Safari
 or assistive-technology support. The 3.0 documentation records the coordinated
-public behavior, and YPE-5950 carries an empty changeset so it cannot publish a
+public behavior, and YPE-5950 carried an empty changeset so it could not publish a
 partial rollout independently.
 
 Real Chromium validation also found that a consumer React handler on a

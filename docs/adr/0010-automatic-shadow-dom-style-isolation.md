@@ -113,9 +113,10 @@ roots, `Separator`, and `ProfileAvatar`) use a `span` host with the same
 attributes.
 
 The ordinary server host uses `display: contents`. Standalone
-`BibleThemeSettingsContent` is the intentional exception: its host uses
-`display: flex` with a column direction and zero minimum block size so it remains
-a shrinkable flex item in constrained settings layouts. Reader-owned settings
+`BibleThemeSettingsContent` is the intentional exception: its server host
+declares `display: flex`, and the client host reset adds a column direction and
+zero minimum block size so it remains a shrinkable flex item in constrained
+settings layouts. Reader-owned settings
 reuse the reader boundary and do not create that standalone host.
 
 The first client render matches that markup. A layout effect applies the

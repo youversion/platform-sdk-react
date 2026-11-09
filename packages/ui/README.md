@@ -70,9 +70,10 @@ Language tags are BCP 47 (`en`, `es`, `zh-Hans`). Version ids are YouVersion Bib
 
 All CSS is installed automatically when you wrap your app with
 `YouVersionProvider` — no extra imports or build steps are needed. The provider
-owns document-level styles and font registration. Light-DOM UI uses React 19's
+owns the document-level base styles and font registration. Light-DOM components
+add their own styles to the document as React 19
 [`<style precedence>`](https://react.dev/reference/react-dom/components/style)
-resources in the document, while automatically isolated components install the
+resources, while automatically isolated components install the
 component and Bible reader CSS inside their own shadow roots.
 
 The YPE-5356 component boundary renders automatically inside client-created open
