@@ -71,7 +71,9 @@ type PathParams = {
 
 const READER_PASSAGE_RELEASE_EVENT = 'yv-storybook-release-reader-passage';
 const READER_PASSAGE_WAITING_EVENT = 'yv-storybook-reader-passage-waiting';
-const storybookApiOrigin = `https://${import.meta.env.STORYBOOK_YOUVERSION_API_HOST || 'api.youversion.com'}`;
+const storybookApiOrigin = new URL(
+  `https://${import.meta.env.STORYBOOK_YOUVERSION_API_HOST || 'api.youversion.com'}`,
+).origin;
 let shouldHoldReaderPassage = false;
 
 function isPathParamText(value: string | readonly string[] | undefined): value is string {

@@ -29,7 +29,9 @@ function createPassageRequestGate(): PassageRequestGate {
 
 let recoveryRequestGate = createPassageRequestGate();
 let shouldFailPassageRequest = true;
-const storybookApiOrigin = `https://${import.meta.env.STORYBOOK_YOUVERSION_API_HOST || 'api.youversion.com'}`;
+const storybookApiOrigin = new URL(
+  `https://${import.meta.env.STORYBOOK_YOUVERSION_API_HOST || 'api.youversion.com'}`,
+).origin;
 
 const withScriptureStoryData = (Story: React.ComponentType) => (
   <ScriptureStoryDataProvider>

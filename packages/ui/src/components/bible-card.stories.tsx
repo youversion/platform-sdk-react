@@ -90,7 +90,9 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const storybookApiOrigin = `https://${import.meta.env.STORYBOOK_YOUVERSION_API_HOST || 'api.youversion.com'}`;
+const storybookApiOrigin = new URL(
+  `https://${import.meta.env.STORYBOOK_YOUVERSION_API_HOST || 'api.youversion.com'}`,
+).origin;
 
 export const Default: Story = {
   args: {
