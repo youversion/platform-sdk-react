@@ -28,6 +28,7 @@ function createPassageRequestGate(): PassageRequestGate {
 }
 
 let recoveryRequestGate = createPassageRequestGate();
+let recoveryRequestSignal: AbortSignal | undefined;
 let shouldFailPassageRequest = true;
 const storybookApiOrigin = new URL(
   `https://${import.meta.env.STORYBOOK_YOUVERSION_API_HOST || 'api.youversion.com'}`,
@@ -135,7 +136,10 @@ export const OfflineRecovery: Story = {
   },
   tags: ['integration', 'shadow-dom', 'cross-browser'],
   loaders: [
-    () => {
+    ({ abortSignal }) => {
+      if (recoveryRequestSignal === abortSignal) return {};
+      recoveryRequestSignal = abortSignal;
+      recoveryRequestGate.release();
       recoveryRequestGate = createPassageRequestGate();
       shouldFailPassageRequest = true;
       return {};
@@ -169,6 +173,7 @@ export const OfflineRecovery: Story = {
     </>
   ),
   play: async ({ canvasElement }) => {
+    const requestGate = recoveryRequestGate;
     const root = await waitForShadowRoot(canvasElement);
     const canvas = within(await waitForShadowContent(root));
     const alert = await canvas.findByRole('alert');
@@ -200,7 +205,7 @@ export const OfflineRecovery: Story = {
 
     try {
       await waitFor(async () => {
-        await expect(recoveryRequestGate.waiting).toBe(true);
+        await expect(requestGate.waiting).toBe(true);
       });
       await waitFor(async () => {
         const loading = canvas.getByRole('status', { name: /loading verse/i });
@@ -208,7 +213,7 @@ export const OfflineRecovery: Story = {
         await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
       });
     } finally {
-      recoveryRequestGate.release();
+      requestGate.release();
     }
 
     await waitFor(async () => {
