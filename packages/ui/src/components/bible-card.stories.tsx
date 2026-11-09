@@ -90,6 +90,8 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+const storybookApiOrigin = `https://${import.meta.env.STORYBOOK_YOUVERSION_API_HOST || 'api.youversion.com'}`;
+
 export const Default: Story = {
   args: {
     reference: 'LUK.1.39-45',
@@ -379,7 +381,7 @@ export const Error: Story = {
       */
       handlers: [
         http.get('https://fonts.gstatic.com/*', () => new HttpResponse(null, { status: 204 })),
-        http.get('*/v1/bibles/111/passages/LUK.1.39-45', () => {
+        http.get(`${storybookApiOrigin}/v1/bibles/111/passages/LUK.1.39-45`, () => {
           return new HttpResponse(null, { status: 500 });
         }),
         ...globalHandlers,

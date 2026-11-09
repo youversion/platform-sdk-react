@@ -71,6 +71,7 @@ type PathParams = {
 
 const READER_PASSAGE_RELEASE_EVENT = 'yv-storybook-release-reader-passage';
 const READER_PASSAGE_WAITING_EVENT = 'yv-storybook-reader-passage-waiting';
+const storybookApiOrigin = `https://${import.meta.env.STORYBOOK_YOUVERSION_API_HOST || 'api.youversion.com'}`;
 let shouldHoldReaderPassage = false;
 
 function isPathParamText(value: string | readonly string[] | undefined): value is string {
@@ -1774,24 +1775,27 @@ export const ChapterChangeLoadingOverlay: Story = {
     msw: {
       handlers: [
         http.get('https://fonts.gstatic.com/*', () => new HttpResponse(null, { status: 204 })),
-        http.get('*/v1/bibles/111/passages/:usfm', async ({ params }: { params: PathParams }) => {
-          const usfm = firstPathParam(params.usfm);
-          if (!usfm) return new HttpResponse(null, { status: 404 });
-          if (usfm === 'JHN.2' && shouldHoldReaderPassage) {
-            shouldHoldReaderPassage = false;
-            await new Promise<void>((resolve) => {
-              window.addEventListener(READER_PASSAGE_RELEASE_EVENT, () => resolve(), {
-                once: true,
+        http.get(
+          `${storybookApiOrigin}/v1/bibles/111/passages/:usfm`,
+          async ({ params }: { params: PathParams }) => {
+            const usfm = firstPathParam(params.usfm);
+            if (!usfm) return new HttpResponse(null, { status: 404 });
+            if (usfm === 'JHN.2' && shouldHoldReaderPassage) {
+              shouldHoldReaderPassage = false;
+              await new Promise<void>((resolve) => {
+                window.addEventListener(READER_PASSAGE_RELEASE_EVENT, () => resolve(), {
+                  once: true,
+                });
+                window.dispatchEvent(new Event(READER_PASSAGE_WAITING_EVENT));
               });
-              window.dispatchEvent(new Event(READER_PASSAGE_WAITING_EVENT));
+            }
+            return HttpResponse.json({
+              id: usfm,
+              content: `<div class="p"><span class="verse">Passage text for ${usfm}.</span></div>`,
+              reference: usfm,
             });
-          }
-          return HttpResponse.json({
-            id: usfm,
-            content: `<div class="p"><span class="verse">Passage text for ${usfm}.</span></div>`,
-            reference: usfm,
-          });
-        }),
+          },
+        ),
         ...globalHandlers,
       ],
     },

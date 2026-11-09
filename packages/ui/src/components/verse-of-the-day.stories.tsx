@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within, userEvent, spyOn } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
-import { getWorker } from 'msw-storybook-addon';
 
 import { VerseOfTheDay } from './verse-of-the-day';
 import {
@@ -14,8 +13,23 @@ import { globalHandlers } from '@/test/mocks/handlers';
 import mockPassages from '@/test/mock-data/passages.json';
 import { ScriptureStoryDataProvider } from '@/test/scripture-story-data';
 
-const VOTD_PASSAGE_RELEASE_EVENT = 'yv-storybook-release-votd-passage';
-const VOTD_PASSAGE_WAITING_EVENT = 'yv-storybook-votd-passage-waiting';
+interface PassageRequestGate {
+  waiting: boolean;
+  release: () => void;
+  released: Promise<void>;
+}
+
+function createPassageRequestGate(): PassageRequestGate {
+  let resolveRelease: (() => void) | undefined;
+  const released = new Promise<void>((resolve) => {
+    resolveRelease = resolve;
+  });
+  return { waiting: false, release: () => resolveRelease?.(), released };
+}
+
+let recoveryRequestGate = createPassageRequestGate();
+let shouldFailPassageRequest = true;
+const storybookApiOrigin = `https://${import.meta.env.STORYBOOK_YOUVERSION_API_HOST || 'api.youversion.com'}`;
 
 const withScriptureStoryData = (Story: React.ComponentType) => (
   <ScriptureStoryDataProvider>
@@ -120,24 +134,8 @@ export const OfflineRecovery: Story = {
   tags: ['integration', 'shadow-dom', 'cross-browser'],
   loaders: [
     () => {
-      getWorker().use(
-        http.get('*/v1/bibles/111/passages/ISA.43.19', () => HttpResponse.error(), {
-          once: true,
-        }),
-        http.get(
-          '*/v1/bibles/111/passages/ISA.43.19',
-          async () => {
-            await new Promise<void>((resolve) => {
-              window.addEventListener(VOTD_PASSAGE_RELEASE_EVENT, () => resolve(), {
-                once: true,
-              });
-              window.dispatchEvent(new Event(VOTD_PASSAGE_WAITING_EVENT));
-            });
-            return HttpResponse.json(mockPassages['ISA.43.19']);
-          },
-          { once: true },
-        ),
-      );
+      recoveryRequestGate = createPassageRequestGate();
+      shouldFailPassageRequest = true;
       return {};
     },
   ],
@@ -145,6 +143,16 @@ export const OfflineRecovery: Story = {
     msw: {
       handlers: [
         http.get('https://fonts.gstatic.com/*', () => new HttpResponse(null, { status: 204 })),
+        http.get(`${storybookApiOrigin}/v1/bibles/111/passages/ISA.43.19`, async () => {
+          if (shouldFailPassageRequest) {
+            shouldFailPassageRequest = false;
+            return HttpResponse.error();
+          }
+          const requestGate = recoveryRequestGate;
+          requestGate.waiting = true;
+          await requestGate.released;
+          return HttpResponse.json(mockPassages['ISA.43.19']);
+        }),
         ...globalHandlers,
       ],
     },
@@ -185,17 +193,12 @@ export const OfflineRecovery: Story = {
     if (!(await pressNativeBrowserKey('{Tab}'))) afterVerseOfTheDay.focus();
     await expect(document.activeElement).toBe(afterVerseOfTheDay);
 
-    let recoveryRequestIsWaiting = false;
-    const markRecoveryRequestWaiting = () => {
-      recoveryRequestIsWaiting = true;
-    };
-    window.addEventListener(VOTD_PASSAGE_WAITING_EVENT, markRecoveryRequestWaiting, { once: true });
     window.dispatchEvent(new Event('offline'));
     window.dispatchEvent(new Event('online'));
 
     try {
       await waitFor(async () => {
-        await expect(recoveryRequestIsWaiting).toBe(true);
+        await expect(recoveryRequestGate.waiting).toBe(true);
       });
       await waitFor(async () => {
         const loading = canvas.getByRole('status', { name: /loading verse/i });
@@ -203,8 +206,7 @@ export const OfflineRecovery: Story = {
         await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
       });
     } finally {
-      window.removeEventListener(VOTD_PASSAGE_WAITING_EVENT, markRecoveryRequestWaiting);
-      window.dispatchEvent(new Event(VOTD_PASSAGE_RELEASE_EVENT));
+      recoveryRequestGate.release();
     }
 
     await waitFor(async () => {
