@@ -33,7 +33,7 @@ it('keeps Firefox story isolation when forwarding option-only Vitest arguments',
       cwd: directory,
       env: {
         ...process.env,
-        PATH: `${directory}:${process.env.PATH ?? ''}`,
+        PATH: `${directory}:${dirname(process.execPath)}:/usr/bin:/bin`,
         VITEST_BROWSER: 'firefox',
         VITEST_LOG: logPath,
       },

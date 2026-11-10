@@ -22,10 +22,13 @@ if [ "${VITEST_BROWSER:-chromium}" = firefox ]; then
   # Firefox replaces preview clients between serialized files, which resets
   # runtime MSW handlers. Discover every isolated file so future tagged stories
   # cannot silently fall out of the Firefox matrix.
-  fresh_process_files=$(rg -l "['\"]shadow-fresh-process['\"]" src \
-    --glob '*.stories.ts' --glob '*.stories.tsx' | sort)
-  recovery_files=$(rg -l "['\"]shadow-recovery['\"]" src \
-    --glob '*.stories.ts' --glob '*.stories.tsx' | sort)
+  script_directory=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+  fresh_process_files=$(node "$script_directory/find-tagged-story-files.mjs" shadow-fresh-process)
+  recovery_files=$(node "$script_directory/find-tagged-story-files.mjs" shadow-recovery)
+  if [ -z "$fresh_process_files" ] || [ -z "$recovery_files" ]; then
+    echo "Firefox story discovery returned an empty partition" >&2
+    exit 1
+  fi
 
   VITEST_STORY_TAG=shadow-dom,cross-browser \
     VITEST_STORY_EXCLUDE_TAG=shadow-fresh-process,shadow-recovery \
