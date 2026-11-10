@@ -15,7 +15,7 @@ See [platform-localization README](https://github.com/youversion/platform-locali
 
 ## Adding or changing strings
 
-1. **Open a pull request on [platform-localization](https://github.com/youversion/platform-localization)** that edits `sources/common/en.json` under the `react.*` prefix.
+1. **Search `sources/common/en.json` in [platform-localization](https://github.com/youversion/platform-localization) for an existing shared key** outside the `react.*` prefix with the same meaning. If one exists, call it from the component and go to step 4. Otherwise **open a pull request on platform-localization** that adds the string under the `react.*` prefix.
 2. Run `npm run generate && npm run validate` in platform-localization before that pull request merges. CI validates the same commands.
 3. After that pull request merges, Crowdin upload runs automatically. **Distribute React Localization** (`distribute-react.yml`) then opens the sync pull request in this repo.
 4. **Do not hand-edit any file under `packages/ui/src/i18n/locales/`**, including `en.json`. The locale-ownership gate rejects those edits unless the pull request author is `platform-localization-pr-bot[bot]`.
@@ -47,7 +47,7 @@ Use `useTranslation` + `t()` for simple strings and `Trans` with `i18nKey` for r
 ```tsx
 const { t } = useTranslation(undefined, { i18n });
 
-<button aria-label={t('shareAriaLabel')}>{t('share')}</button>
+<button aria-label={t('share')}>{t('share')}</button>
 
 <Trans
   i18nKey="signInWithYouVersion"
@@ -74,6 +74,8 @@ This is app locale, not Bible translation language. Seed the version picker with
 
 ## Local checks
 
+Known translation gaps from the shared-key migration are listed in [Shared localization migration](./shared-localization-migration.md).
+
 ```bash
 # Hard fail: missing en keys, extra translation keys, interpolation tokens,
 #            stale resources.generated.ts (index.ts only imports that file)
@@ -96,6 +98,6 @@ pnpm test:ci-scripts
 
 ## Key naming
 
-- Flat camelCase keys in locale JSON (e.g. `shareAriaLabel`, `verseOfTheDay`).
-- In platform-localization source, prefix with `react.` (e.g. `react.shareAriaLabel`).
+- Flat camelCase keys in locale JSON (e.g. `share`, `verseOfTheDay`).
+- Prefer existing shared keys in platform-localization. Prefix React-only source keys with `react.` (e.g. `react.readerSettingsHeading`).
 - Interpolation tokens use `{{tokenName}}` and must match across every bundle once translations land.

@@ -29,7 +29,7 @@ export function MissingAppKey({
     >
       <ExclamationCircle className="yv:size-5 yv:shrink-0 yv:text-foreground" aria-hidden="true" />
       <div className="yv:flex yv:flex-col yv:gap-1">
-        <p className="yv:m-0 yv:text-sm yv:font-semibold yv:leading-tight">{t('errorHeading')}</p>
+        <p className="yv:m-0 yv:text-sm yv:font-semibold yv:leading-tight">{t('error')}</p>
         <p className="yv:m-0 yv:text-[13px] yv:font-medium yv:leading-snug yv:text-muted-foreground">
           {t('invalidAppKeyError')}
         </p>

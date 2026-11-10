@@ -122,10 +122,10 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
     const decreaseFontSizeButton = settings.getByTestId('decrease-font-size');
     void expect(controls[0]).toBe(decreaseFontSizeButton);
     const serifButton = settings.getByRole('button', {
-      name: `${i18n.t('fontLabel')} ${i18n.t('untitledSerifFontName')}`,
+      name: `${i18n.t('font')} ${i18n.t('untitledSerifFontName')}`,
     });
     void expect(controls[controls.length - 1]).toBe(serifButton);
-    const closeButton = within(dialog).getByRole('button', { name: i18n.t('closeAriaLabel') });
+    const closeButton = within(dialog).getByRole('button', { name: i18n.t('close') });
     void expect(ownerDocument.activeElement).toBe(closeButton);
     await userEvent.tab();
     void expect(settingsRoot.activeElement).toBe(decreaseFontSizeButton);
@@ -216,7 +216,7 @@ export const MixedAndPortaledControlsPreserveTabOrder: Story = {
     const ownerDocument = canvasElement.ownerDocument;
     const dialog = await within(ownerDocument.body).findByRole('dialog');
     const headerAction = within(dialog).getByTestId('header-action');
-    const closeButton = within(dialog).getByRole('button', { name: i18n.t('closeAriaLabel') });
+    const closeButton = within(dialog).getByRole('button', { name: i18n.t('close') });
     void expect(ownerDocument.activeElement).toBe(headerAction);
     await userEvent.tab();
     void expect(ownerDocument.activeElement).toBe(closeButton);
