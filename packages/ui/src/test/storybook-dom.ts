@@ -39,9 +39,18 @@ export function waitForShadowContent(root: ShadowRoot): Promise<HTMLElement> {
   return waitFor(() => requireShadowContent(root));
 }
 
-export async function pressNativeBrowserKey(keys: string): Promise<boolean> {
+async function pressNativeBrowserKey(keys: string): Promise<boolean> {
   if (!('__vitest_worker__' in globalThis)) return false;
   const { userEvent } = await import('vitest/browser');
   await userEvent.keyboard(keys);
+  return true;
+}
+
+export async function verifyNativeBrowserKey(
+  keys: string,
+  verify: () => void | Promise<void>,
+): Promise<boolean> {
+  if (!(await pressNativeBrowserKey(keys))) return false;
+  await verify();
   return true;
 }

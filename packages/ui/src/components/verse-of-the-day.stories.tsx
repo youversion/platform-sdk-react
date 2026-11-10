@@ -3,7 +3,7 @@ import { expect, within, userEvent, spyOn } from 'storybook/test';
 
 import { VerseOfTheDay } from './verse-of-the-day';
 import {
-  pressNativeBrowserKey,
+  verifyNativeBrowserKey,
   waitFor,
   waitForShadowContent,
   waitForShadowRoot,
@@ -164,8 +164,9 @@ export const OfflineRecovery: Story = {
       name: 'Before Verse of the Day',
     });
     beforeVerseOfTheDay.focus();
-    if (!(await pressNativeBrowserKey('{Tab}'))) afterVerseOfTheDay.focus();
-    await expect(document.activeElement).toBe(afterVerseOfTheDay);
+    await verifyNativeBrowserKey('{Tab}', async () => {
+      await expect(document.activeElement).toBe(afterVerseOfTheDay);
+    });
 
     window.dispatchEvent(new Event('offline'));
     window.dispatchEvent(new Event('online'));

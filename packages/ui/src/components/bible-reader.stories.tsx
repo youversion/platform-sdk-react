@@ -20,7 +20,7 @@ import {
 } from './bible-reader';
 import { VerseActionPopover } from './verse-action-popover';
 import {
-  pressNativeBrowserKey,
+  verifyNativeBrowserKey,
   waitForShadowContent,
   waitForShadowRoot,
 } from '@/test/storybook-dom';
@@ -1832,8 +1832,9 @@ export const ChapterChangeLoadingOverlay: Story = {
       lastReaderControl.focus();
       await expect(root.activeElement).toBe(lastReaderControl);
       const afterReader = within(canvasElement).getByRole('button', { name: 'After reader' });
-      if (!(await pressNativeBrowserKey('{Tab}'))) afterReader.focus();
-      await expect(document.activeElement).toBe(afterReader);
+      await verifyNativeBrowserKey('{Tab}', async () => {
+        await expect(document.activeElement).toBe(afterReader);
+      });
     } finally {
       requestGate.release();
     }

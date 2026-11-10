@@ -3,8 +3,8 @@ import { within, expect, fn, userEvent, waitFor } from 'storybook/test';
 import { useState } from 'react';
 import { BibleCard, type BibleCardProps } from './bible-card';
 import {
-  pressNativeBrowserKey,
   requireShadowContent,
+  verifyNativeBrowserKey,
   waitForShadowContent,
   waitForShadowRoot,
 } from '../test/storybook-dom';
@@ -410,8 +410,9 @@ export const Error: Story = {
     const afterCard = within(canvasElement).getByRole('button', { name: 'After card' });
     versionPickerButton.focus();
     await expect(root.activeElement).toBe(versionPickerButton);
-    if (!(await pressNativeBrowserKey('{Tab}'))) afterCard.focus();
-    await expect(document.activeElement).toBe(afterCard);
+    await verifyNativeBrowserKey('{Tab}', async () => {
+      await expect(document.activeElement).toBe(afterCard);
+    });
 
     // Walk the recovery path: switch to a version whose passage resolves.
     await userEvent.click(versionPickerButton);
