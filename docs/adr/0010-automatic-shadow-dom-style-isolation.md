@@ -114,10 +114,11 @@ attributes.
 
 The ordinary server host uses `display: contents`. Standalone
 `BibleThemeSettingsContent` is the intentional exception: its server host
-declares `display: flex`, and the client host reset adds a column direction and
-zero minimum block size so it remains a shrinkable flex item in constrained
-settings layouts. Reader-owned settings
-reuse the reader boundary and do not create that standalone host.
+declares `display: flex`, and the client host reset adds
+`flex-direction: column` and `min-block-size: 0` so the host can shrink inside a
+constrained block-size track (such as the SDK Popover's grid row) while it lays
+out its content as a column. Reader-owned settings reuse the reader boundary and
+do not create that standalone host.
 
 The first client render matches that markup. A layout effect applies the
 protected host reset before paint. After hydration, a passive effect attaches

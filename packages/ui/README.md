@@ -132,9 +132,21 @@ are unchanged:
   `visibility` and `pointer-events`. To hide an isolated component, apply
   `display: none` to a consumer-owned light-DOM wrapper or do not render the
   component. To disable one, use a supported component API instead of ancestor
-  `pointer-events`. In a same-origin iframe integration, load the provider-owned
-  document styles and fonts in the iframe document; loading fonts only in the
-  parent document does not register them in the iframe.
+  `pointer-events`. For a same-origin iframe, render `YouVersionProvider` in the
+  iframe document—either from a React root whose container is inside the iframe
+  or inside the subtree portaled into the iframe—so React installs its document
+  styles and font resources there. Portaling components from a provider that
+  remains outside the iframe does not move that provider's resources into the
+  iframe. Fonts loaded only in the parent document are unavailable in the iframe.
+- **Standalone `BibleThemeSettingsContent`:** Its server host declares
+  `display: flex`; the client reset adds `flex-direction: column` and
+  `min-block-size: 0` so the host can shrink inside a constrained block-size
+  track. Its controls are inside the open shadow root, so global CSS does not
+  reach them. Pass `theme`, `onFontSelected`, `onFontIncreased`,
+  `onFontDecreased`, and `onChangeLineSpacing` through the component API. For
+  Expo DOM, keep the four callbacks as top-level props rather than nesting them
+  in a `BibleThemeSettingsSnapshot`. Interface direction comes from
+  `YouVersionProvider`'s `direction` or resolved locale.
 - **Overlays:** Popovers and dialogs stay in their owning root and use the native
   top layer where needed. Opening a peer popover dismisses the current peer;
   simultaneous peer popovers are not supported. The native Popover API is
