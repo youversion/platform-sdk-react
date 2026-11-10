@@ -9,15 +9,14 @@ import {
   waitForShadowRoot,
 } from '@/test/storybook-dom';
 import { ScriptureStoryDataProvider } from '@/test/scripture-story-data';
-import {
-  getVotdRequestGate,
-  resetVotdRequestGate,
-  VOTD_RECOVERY_API_HOST,
-} from '@/test/shadow-recovery-mocks';
+import { createVotdRecovery } from '@/test/shadow-recovery-mocks';
 import { ShadowRecoveryStoryProvider } from '@/test/shadow-recovery-provider';
+import { globalHandlers } from '@/test/mocks/handlers';
+
+const votdRecovery = createVotdRecovery();
 
 const withShadowRecoveryProvider = (Story: React.ComponentType) => (
-  <ShadowRecoveryStoryProvider apiHost={VOTD_RECOVERY_API_HOST}>
+  <ShadowRecoveryStoryProvider apiHost={votdRecovery.apiHost}>
     <Story />
   </ShadowRecoveryStoryProvider>
 );
@@ -123,10 +122,15 @@ export const OfflineRecovery: Story = {
     highlights: [],
   },
   tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-recovery'],
+  parameters: {
+    msw: {
+      handlers: [...votdRecovery.handlers, ...globalHandlers],
+    },
+  },
   decorators: [withShadowRecoveryProvider],
   loaders: [
     ({ abortSignal }) => {
-      resetVotdRequestGate(abortSignal);
+      votdRecovery.resetRequestGate(abortSignal);
       return {};
     },
   ],
@@ -140,22 +144,27 @@ export const OfflineRecovery: Story = {
     </>
   ),
   play: async ({ canvasElement }) => {
-    const requestGate = getVotdRequestGate();
+    const requestGate = votdRecovery.getRequestGate();
     const root = await waitForShadowRoot(canvasElement);
     const canvas = within(await waitForShadowContent(root));
     const alert = await canvas.findByRole('alert');
-    const card = root.querySelector<HTMLElement>(
-      '[data-yv-shadow-content-wrapper] > section[data-yv-sdk]',
-    );
     const shareButton = canvas.getByRole('button', { name: /share/i });
+    const attribution = canvas.getByTitle(/Bible App/i);
+    const attributionLogo = attribution.closest('svg');
+    if (!attributionLogo) throw new Error('Bible App attribution not rendered');
 
     await expect(alert.getBoundingClientRect().height).toBeGreaterThan(0);
     await expect(alert).not.toBeEmptyDOMElement();
     await expect(alert.textContent?.trim().length ?? 0).toBeGreaterThan(0);
-    await expect(card ? getComputedStyle(card).display : '').toBe('flex');
-    await expect(card ? getComputedStyle(card).flexDirection : '').toBe('column');
     await expect(shareButton).toBeDisabled();
-    await expect(canvas.getByTitle(/Bible App/i)).toBeInTheDocument();
+    await expect(attribution).toBeInTheDocument();
+    const alertRect = alert.getBoundingClientRect();
+    await expect(alertRect.top).toBeGreaterThanOrEqual(
+      shareButton.getBoundingClientRect().bottom - 1,
+    );
+    await expect(alertRect.bottom).toBeLessThanOrEqual(
+      attributionLogo.getBoundingClientRect().top + 1,
+    );
 
     const afterVerseOfTheDay = within(canvasElement).getByRole('button', {
       name: 'After Verse of the Day',

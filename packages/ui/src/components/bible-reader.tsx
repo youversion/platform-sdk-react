@@ -1281,6 +1281,7 @@ function Content() {
       ) : (
         <div className="yv:relative yv:w-full">
           <div
+            aria-busy={showLoadingOverlay || undefined}
             className={cn(
               'yv:transition-opacity yv:duration-150 yv:motion-reduce:transition-none',
               showLoadingOverlay ? 'yv:opacity-40' : 'yv:opacity-100',

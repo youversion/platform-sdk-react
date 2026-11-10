@@ -24,8 +24,10 @@ import {
   waitForShadowContent,
   waitForShadowRoot,
 } from '@/test/storybook-dom';
-import { armReaderRequestGate, BIBLE_READER_RECOVERY_API_HOST } from '@/test/shadow-recovery-mocks';
+import { createBibleReaderRecovery } from '@/test/shadow-recovery-mocks';
 import { ShadowRecoveryStoryProvider } from '@/test/shadow-recovery-provider';
+
+const bibleReaderRecovery = createBibleReaderRecovery();
 
 async function getReaderStory(canvasElement: HTMLElement) {
   const root = await waitForShadowRoot(canvasElement);
@@ -83,7 +85,7 @@ function firstPathParam(value: string | readonly string[] | undefined): string |
 
 let signInMock: ReturnType<typeof fn>;
 const withShadowRecoveryProvider = (Story: React.ComponentType) => (
-  <ShadowRecoveryStoryProvider apiHost={BIBLE_READER_RECOVERY_API_HOST}>
+  <ShadowRecoveryStoryProvider apiHost={bibleReaderRecovery.apiHost}>
     <Story />
   </ShadowRecoveryStoryProvider>
 );
@@ -1762,6 +1764,11 @@ export const ControlledFakeHost: Story = {
 export const ChapterChangeLoadingOverlay: Story = {
   tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-recovery', 'shadow-fresh-process'],
   decorators: [withShadowRecoveryProvider],
+  parameters: {
+    msw: {
+      handlers: [...bibleReaderRecovery.handlers, ...globalHandlers],
+    },
+  },
   args: {
     defaultVersionId: 111,
     defaultBook: 'JHN',
@@ -1779,7 +1786,7 @@ export const ChapterChangeLoadingOverlay: Story = {
     </>
   ),
   play: async ({ canvasElement }) => {
-    const { root } = await getReaderStory(canvasElement);
+    const { root, reader } = await getReaderStory(canvasElement);
     await waitFor(
       async () => {
         const renderer = root.querySelector('[data-slot="yv-bible-renderer"]');
@@ -1796,7 +1803,7 @@ export const ChapterChangeLoadingOverlay: Story = {
     await waitFor(async () => {
       await expect(getComputedStyle(nextButton).pointerEvents).not.toBe('none');
     });
-    const requestGate = armReaderRequestGate();
+    const requestGate = bibleReaderRecovery.armRequestGate();
 
     try {
       await userEvent.click(nextButton);
@@ -1808,27 +1815,19 @@ export const ChapterChangeLoadingOverlay: Story = {
       await expect(rendererAfterClick?.textContent).toContain('JHN.1');
 
       await waitFor(async () => {
-        const overlay = root.querySelector('[aria-label="Loading passage"]');
-        const reader = root.querySelector<HTMLElement>(
-          '[data-yv-shadow-content-wrapper] > [data-yv-sdk]',
-        );
-        await expect(overlay).toBeInTheDocument();
-        await expect(overlay).toHaveAttribute('role', 'status');
+        const overlay = reader.getByRole('status', { name: /loading passage/i });
+        const renderer = root.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+        const loadingRegion = root.querySelector<HTMLElement>('[aria-busy="true"]');
+        if (!renderer || !loadingRegion) throw new Error('loading passage not rendered');
         await expect(overlay?.getBoundingClientRect().height ?? 0).toBeGreaterThan(0);
-        await expect(reader ? getComputedStyle(reader).display : '').toBe('flex');
-        await expect(reader ? getComputedStyle(reader).flexDirection : '').toBe('column');
-        await expect(reader?.getBoundingClientRect().height ?? 0).toBeGreaterThan(0);
-        await expect(root.querySelector('[class*="opacity-40"]')).toBeInTheDocument();
-        const renderer = root.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(Number.parseFloat(getComputedStyle(loadingRegion).opacity)).toBeLessThan(1);
         await expect(renderer?.textContent).toContain('JHN.1');
         await expect(nextButton).toBeInTheDocument();
         await expect(nextButton).toBeVisible();
       });
 
-      const focusableElements = root.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      );
-      const lastReaderControl = focusableElements.item(focusableElements.length - 1);
+      const lastReaderControl = reader.getAllByRole('button').at(-1);
+      if (!lastReaderControl) throw new Error('reader control not rendered');
       lastReaderControl.focus();
       await expect(root.activeElement).toBe(lastReaderControl);
       const afterReader = within(canvasElement).getByRole('button', { name: 'After reader' });
@@ -1841,10 +1840,11 @@ export const ChapterChangeLoadingOverlay: Story = {
 
     await waitFor(
       async () => {
-        const renderer = root.querySelector('[data-slot="yv-bible-renderer"]');
+        const renderer = root.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+        if (!renderer) throw new Error('passage renderer not rendered');
         await expect(renderer?.textContent).toContain('JHN.2');
-        await expect(root.querySelector('[aria-label="Loading passage"]')).not.toBeInTheDocument();
-        await expect(root.querySelector('[class*="opacity-40"]')).not.toBeInTheDocument();
+        await expect(reader.queryByRole('status', { name: /loading passage/i })).toBeNull();
+        await expect(root.querySelector('[aria-busy="true"]')).toBeNull();
       },
       { timeout: 5000 },
     );

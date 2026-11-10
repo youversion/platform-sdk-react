@@ -112,6 +112,11 @@ use a real app key when live API access is needed. Passing tests alone do not pr
 that all requests were mocked. Check the executed test count: a successful run with
 every test skipped does not verify the story.
 
+The shadow browser script discovers tagged story files instead of maintaining a file list.
+Use `shadow-recovery` for isolated recovery workflows and `shadow-fresh-process` when a
+Firefox journey needs a clean preview process. `VITEST_STORY_EXCLUDE_TAG` is the script's
+internal partition filter; new stories only need the appropriate tags.
+
 For coverage across all packages, run `pnpm build` followed by `pnpm test:coverage`;
 the coverage script calls package scripts directly.
 

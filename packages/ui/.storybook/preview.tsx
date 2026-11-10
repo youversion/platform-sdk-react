@@ -30,9 +30,7 @@ initialize(
   },
   // Firefox replaces browser preview clients between serialized Vitest files.
   // Keep stable handlers available when a story loader resets runtime handlers.
-  '__vitest_worker__' in globalThis && navigator.userAgent.includes('Firefox')
-    ? globalHandlers
-    : [],
+  __YV_STORYBOOK_VITEST__ && navigator.userAgent.includes('Firefox') ? globalHandlers : [],
 );
 
 const preview: Preview = {

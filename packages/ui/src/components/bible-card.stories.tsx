@@ -9,8 +9,11 @@ import {
   waitForShadowRoot,
 } from '../test/storybook-dom';
 import { ScriptureStoryDataProvider } from '../test/scripture-story-data';
-import { BIBLE_CARD_RECOVERY_API_HOST } from '../test/shadow-recovery-mocks';
+import { createBibleCardRecovery } from '../test/shadow-recovery-mocks';
 import { ShadowRecoveryStoryProvider } from '../test/shadow-recovery-provider';
+import { globalHandlers } from '../test/mocks/handlers';
+
+const bibleCardRecovery = createBibleCardRecovery();
 
 const withScriptureStoryData = (Story: React.ComponentType) => (
   <ScriptureStoryDataProvider>
@@ -91,7 +94,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const withShadowRecoveryProvider = (Story: React.ComponentType) => (
-  <ShadowRecoveryStoryProvider apiHost={BIBLE_CARD_RECOVERY_API_HOST}>
+  <ShadowRecoveryStoryProvider apiHost={bibleCardRecovery.apiHost}>
     <Story />
   </ShadowRecoveryStoryProvider>
 );
@@ -362,6 +365,11 @@ export const Error: Story = {
     showVersionPicker: true,
   },
   tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-recovery'],
+  parameters: {
+    msw: {
+      handlers: [...bibleCardRecovery.handlers, ...globalHandlers],
+    },
+  },
   decorators: [withShadowRecoveryProvider],
   render: (args) => (
     <>
@@ -381,20 +389,16 @@ export const Error: Story = {
     });
 
     const alerts = canvas.getAllByRole('alert');
-    const card = root.querySelector<HTMLElement>(
-      '[data-yv-shadow-content-wrapper] > section[data-yv-sdk]',
-    );
-
+    const alert = alerts[0];
+    if (!alert) throw new globalThis.Error('error alert not rendered');
     await expect(alerts).toHaveLength(1);
-    await expect(alerts[0]?.getBoundingClientRect().height ?? 0).toBeGreaterThan(0);
-    await expect(card ? getComputedStyle(card).display : '').toBe('flex');
-    await expect(card ? getComputedStyle(card).flexDirection : '').toBe('column');
-    await expect(alerts[0]).toHaveTextContent(
+    await expect(alert.getBoundingClientRect().height).toBeGreaterThan(0);
+    await expect(alert).toHaveTextContent(
       'The Bible service is having trouble right now. Please try again in a moment.',
     );
     // role="alert" implies assertive. The explicit polite value holds the
     // announcement down, so a failed load does not interrupt the reader.
-    await expect(alerts[0]).toHaveAttribute('aria-live', 'polite');
+    await expect(alert).toHaveAttribute('aria-live', 'polite');
 
     // The picker is the in-card recovery path: a 404 is fixed by switching versions.
     const { root: pickerRoot, trigger: versionPickerButton } = await getVersionPickerQueries(
@@ -406,6 +410,9 @@ export const Error: Story = {
       await expect(versionPickerButton).toBeEnabled();
       await expect(versionPickerButton).toHaveTextContent(/NIV/i);
     });
+    const alertRect = alert.getBoundingClientRect();
+    const pickerRect = versionPickerButton.getBoundingClientRect();
+    await expect(alertRect.top).toBeGreaterThanOrEqual(pickerRect.bottom - 1);
 
     const afterCard = within(canvasElement).getByRole('button', { name: 'After card' });
     versionPickerButton.focus();

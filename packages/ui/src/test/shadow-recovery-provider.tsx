@@ -1,5 +1,5 @@
 import { YouVersionContext } from '@youversion/platform-react-hooks';
-import { useContext, type ReactNode } from 'react';
+import { useContext, useMemo, type ReactNode } from 'react';
 
 export function ShadowRecoveryStoryProvider({
   apiHost,
@@ -9,9 +9,11 @@ export function ShadowRecoveryStoryProvider({
   children: ReactNode;
 }): ReactNode {
   const parentContext = useContext(YouVersionContext);
-  const value = parentContext
-    ? { ...parentContext, apiHost, appKey: 'test' }
-    : { apiHost, appKey: 'test' };
+  const value = useMemo(
+    () =>
+      parentContext ? { ...parentContext, apiHost, appKey: 'test' } : { apiHost, appKey: 'test' },
+    [apiHost, parentContext],
+  );
 
   return <YouVersionContext.Provider value={value}>{children}</YouVersionContext.Provider>;
 }

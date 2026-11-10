@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+declare const __YV_STORYBOOK_VITEST__: boolean;
+
 interface ImportMetaEnv {
   readonly STORYBOOK_YOUVERSION_APP_KEY?: string;
   readonly STORYBOOK_AUTH_REDIRECT_URL?: string;

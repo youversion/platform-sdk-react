@@ -40,7 +40,7 @@ export function waitForShadowContent(root: ShadowRoot): Promise<HTMLElement> {
 }
 
 async function pressNativeBrowserKey(keys: string): Promise<boolean> {
-  if (!('__vitest_worker__' in globalThis)) return false;
+  if (!__YV_STORYBOOK_VITEST__) return false;
   const { userEvent } = await import('vitest/browser');
   await userEvent.keyboard(keys);
   return true;
