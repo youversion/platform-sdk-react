@@ -344,10 +344,19 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     const touchUser = userEvent.setup({ document: ownerDocument });
     await touchUser.pointer({ keys: '[TouchA]', target: firstVerse });
     dialog = await reader.findByRole('dialog');
+    await waitFor(() => expect(dialog.style.animation).not.toBe('none'));
+    await Promise.all(dialog.getAnimations().map((animation) => animation.finished));
+    const touchDialogRect = dialog.getBoundingClientRect();
     await touchUser.pointer({ keys: '[TouchA]', target: secondSelectedVerseLabel });
     await expect(firstVerse).toHaveClass('yv-v-selected');
     await expect(secondSelectedVerse).toHaveClass('yv-v-selected');
     await expect(dialog).toHaveAttribute('data-state', 'open');
+    await waitFor(() => {
+      const reanchoredRect = dialog.getBoundingClientRect();
+      const movedInline = Math.abs(reanchoredRect.left - touchDialogRect.left) > 8;
+      const movedBlock = Math.abs(reanchoredRect.top - touchDialogRect.top) > 8;
+      void expect(movedInline || movedBlock).toBe(true);
+    });
     await touchUser.pointer({ keys: '[TouchA>]', target: outsideControl });
     await expect(dialog).toHaveAttribute('data-state', 'open');
     await touchUser.pointer({ keys: '[/TouchA]', target: outsideControl });
