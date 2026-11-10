@@ -266,12 +266,12 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
       },
       { timeout: 10000 },
     );
-    const secondVerse = root.querySelector<HTMLElement>('.yv-v[v="10"]');
-    const secondVerseLabel = secondVerse?.querySelector<HTMLElement>('.yv-vlbl');
+    const secondSelectedVerse = root.querySelector<HTMLElement>('.yv-v[v="10"]');
+    const secondSelectedVerseLabel = secondSelectedVerse?.querySelector<HTMLElement>('.yv-vlbl');
     const outsideControl = canvasElement.querySelector<HTMLButtonElement>(
       '[data-testid="outside-reader-control"]',
     );
-    if (!secondVerse || !secondVerseLabel || !outsideControl)
+    if (!secondSelectedVerse || !secondSelectedVerseLabel || !outsideControl)
       throw new Error('reader interaction controls not rendered');
 
     const ownerDocument = canvasElement.ownerDocument;
@@ -320,9 +320,9 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     await Promise.all(dialog.getAnimations().map((animation) => animation.finished));
     const firstDialogRect = dialog.getBoundingClientRect();
 
-    await userEvent.click(secondVerseLabel);
+    await userEvent.click(secondSelectedVerseLabel);
     await expect(firstVerse).toHaveClass('yv-v-selected');
-    await expect(secondVerse).toHaveClass('yv-v-selected');
+    await expect(secondSelectedVerse).toHaveClass('yv-v-selected');
     await expect(dialog).toBeInTheDocument();
     await waitFor(() => {
       const reanchoredRect = dialog.getBoundingClientRect();
@@ -334,7 +334,7 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     await userEvent.pointer({ keys: '[MouseLeft>]', target: outsideControl });
     await waitFor(() => expect(dialog).not.toBeInTheDocument(), { timeout: 10000 });
     await expect(firstVerse).not.toHaveClass('yv-v-selected');
-    await expect(secondVerse).not.toHaveClass('yv-v-selected');
+    await expect(secondSelectedVerse).not.toHaveClass('yv-v-selected');
     await userEvent.pointer({ keys: '[/MouseLeft]', target: outsideControl });
     await expect(ownerDocument.activeElement).toBe(outsideControl);
 
@@ -343,16 +343,16 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     const touchUser = userEvent.setup({ document: ownerDocument });
     await touchUser.pointer({ keys: '[TouchA]', target: firstVerse });
     dialog = await reader.findByRole('dialog');
-    await touchUser.pointer({ keys: '[TouchA]', target: secondVerseLabel });
+    await touchUser.pointer({ keys: '[TouchA]', target: secondSelectedVerseLabel });
     await expect(firstVerse).toHaveClass('yv-v-selected');
-    await expect(secondVerse).toHaveClass('yv-v-selected');
+    await expect(secondSelectedVerse).toHaveClass('yv-v-selected');
     await expect(dialog).toHaveAttribute('data-state', 'open');
     await touchUser.pointer({ keys: '[TouchA>]', target: outsideControl });
     await expect(dialog).toHaveAttribute('data-state', 'open');
     await touchUser.pointer({ keys: '[/TouchA]', target: outsideControl });
     await waitFor(() => expect(dialog).not.toBeInTheDocument(), { timeout: 10000 });
     await expect(firstVerse).not.toHaveClass('yv-v-selected');
-    await expect(secondVerse).not.toHaveClass('yv-v-selected');
+    await expect(secondSelectedVerse).not.toHaveClass('yv-v-selected');
     await expect(ownerDocument.activeElement).toBe(outsideControl);
   },
 };
