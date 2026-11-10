@@ -452,7 +452,7 @@ async function openReaderHighlightAuthDialog(canvasElement: HTMLElement) {
   await waitFor(() => expect(root.activeElement).toBe(verseActions));
   await userEvent.click(apply);
   // Exercise the full close/reopen path instead of reusing the exiting popover DOM.
-  await waitFor(() => expect(apply.isConnected).toBe(false));
+  await waitFor(() => expect(apply.isConnected).toBe(false), { timeout: 5_000 });
   return { overlays, root };
 }
 

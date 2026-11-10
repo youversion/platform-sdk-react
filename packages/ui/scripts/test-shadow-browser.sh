@@ -35,6 +35,7 @@ if [ "${VITEST_BROWSER:-chromium}" = firefox ]; then
     vitest run --project storybook "$@"
   for story_file in $fresh_process_files; do
     VITEST_STORY_TAG=shadow-fresh-process \
+      VITEST_STORY_EXCLUDE_TAG=shadow-recovery \
       vitest run "$story_file" --project storybook "$@"
   done
   for story_file in $recovery_files; do

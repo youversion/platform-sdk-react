@@ -42,7 +42,7 @@ it('keeps Firefox story isolation when forwarding option-only Vitest arguments',
     const invocations = readFileSync(logPath, 'utf8').trim().split('\n');
     expect(invocations).toEqual([
       'shadow-dom,cross-browser\tshadow-fresh-process,shadow-recovery\trun --project storybook --reporter=dot',
-      'shadow-fresh-process\t\trun src/components/reader.stories.tsx --project storybook --reporter=dot',
+      'shadow-fresh-process\tshadow-recovery\trun src/components/reader.stories.tsx --project storybook --reporter=dot',
       'shadow-recovery\t\trun src/components/card.stories.tsx --project storybook --reporter=dot',
       'shadow-recovery\t\trun src/components/future.stories.tsx --project storybook --reporter=dot',
       'shadow-recovery\t\trun src/components/reader.stories.tsx --project storybook --reporter=dot',
