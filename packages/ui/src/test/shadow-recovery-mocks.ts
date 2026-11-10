@@ -107,6 +107,9 @@ export function createVotdRecovery(): VotdRecovery {
       }),
     ],
     resetRequestGate: (abortSignal: AbortSignal): PassageRequestGate => {
+      // Storybook can invoke loaders more than once during one story load. Its
+      // abort signal is stable for that load and changes for the next one, so
+      // only a new signal resets this module-scoped recovery fixture.
       if (requestSignal === abortSignal) return requestGate;
       requestSignal = abortSignal;
       requestGate.release();

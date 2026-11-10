@@ -368,6 +368,8 @@ export const Error: Story = {
   tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-recovery'],
   parameters: {
     msw: {
+      // Story handlers replace preview handlers, so restore the global set.
+      // MSW uses the first match; keep the recovery 500 override first.
       handlers: [...bibleCardRecovery.handlers, ...globalHandlers],
     },
   },

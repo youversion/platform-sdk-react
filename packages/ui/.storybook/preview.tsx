@@ -28,9 +28,10 @@ initialize(
     onUnhandledRequest: 'warn',
     quiet: true,
   },
-  // Firefox replaces browser preview clients between serialized Vitest files.
-  // Keep stable handlers available when a story loader resets runtime handlers.
-  __YV_STORYBOOK_VITEST__ && navigator.userAgent.includes('Firefox') ? globalHandlers : [],
+  // Vitest may replace browser preview clients between serialized files. Keep
+  // the reset baseline identical across browsers; ordinary Storybook still
+  // receives handlers through preview and story parameters.
+  __YV_STORYBOOK_VITEST__ ? globalHandlers : [],
 );
 
 const preview: Preview = {
