@@ -196,7 +196,7 @@ const tabletJourney: Story = {
     await userEvent.click(overlay.getByRole('button', { name: /^back$/i }));
     await expect(overlay.getByRole('tab', { name: /suggested/i })).toBeVisible();
     await userEvent.click(overlay.getByRole('button', { name: /back to bible versions/i }));
-    await expect(overlay.getByRole('textbox', { name: /search bible versions/i })).toBeVisible();
+    await expect(overlay.getByRole('textbox', { name: i18n.t('searchVersions') })).toBeVisible();
     await userEvent.click(overlay.getByRole('button', { name: /^Language\b/ }));
     await userEvent.click(overlay.getByRole('tab', { name: /^All\b/ }));
     await userEvent.click(await overlay.findByRole('listitem', { name: /Spanish/ }));
@@ -522,7 +522,7 @@ export const InteractiveVersionSearch: Story = {
     const { overlay } = await openPicker(canvasElement, /select|111|1/i);
 
     // Type in search
-    const searchInput = overlay.getByRole('textbox', { name: /search bible versions/i });
+    const searchInput = overlay.getByRole('textbox', { name: i18n.t('searchVersions') });
     await userEvent.type(searchInput, 'NIV', { delay: 50 });
 
     // Verify search is working (versions should be filtered)
@@ -640,7 +640,7 @@ export const SearchResetsAfterSelection: Story = {
     const { picker, overlay } = await openPicker(canvasElement);
 
     // Type in search
-    const searchInput = overlay.getByRole('textbox', { name: /search bible versions/i });
+    const searchInput = overlay.getByRole('textbox', { name: i18n.t('searchVersions') });
     await userEvent.type(searchInput, 'Amplified', { delay: 50 });
     await expect(searchInput).toHaveValue('Amplified');
 
@@ -653,7 +653,7 @@ export const SearchResetsAfterSelection: Story = {
     await userEvent.click(updatedTrigger);
 
     // Verify search input is cleared
-    const resetSearchInput = overlay.getByRole('textbox', { name: /search bible versions/i });
+    const resetSearchInput = overlay.getByRole('textbox', { name: i18n.t('searchVersions') });
     await expect(resetSearchInput).toHaveValue('');
   },
 };
@@ -687,7 +687,7 @@ export const RecentVersionsSearchFilter: Story = {
     ).toBeInTheDocument();
 
     // Search for "ASV"
-    const searchInput = overlay.getByRole('textbox', { name: /search bible versions/i });
+    const searchInput = overlay.getByRole('textbox', { name: i18n.t('searchVersions') });
     await userEvent.type(searchInput, 'ASV', { delay: 50 });
 
     // Verify only ASV appears in recent versions after filtering

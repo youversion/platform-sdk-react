@@ -5,6 +5,7 @@ import { YouVersionContext, type HookOverrides } from '@youversion/platform-reac
 import { useContext, useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { expect, userEvent, within } from 'storybook/test';
+import i18n from '@/i18n';
 import { ReuseShadowBoundary } from '../lib/shadow-isolation';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import mockBibles from '../test/mock-data/bibles.json';
@@ -361,7 +362,7 @@ export const ForwardTabSkipsScrollableVersionList: Story = {
     const { userEvent: browserUserEvent } = await import('vitest/browser');
     const { root, panel } = await openPicker(canvasElement);
     const closeButton = within(panel).getByRole('button', { name: /close/i });
-    const versionSearch = within(panel).getByRole('textbox', { name: /search bible versions/i });
+    const versionSearch = within(panel).getByRole('textbox', { name: i18n.t('searchVersions') });
     const languageEntry = within(panel).getByRole('button', { name: /^language /i });
     const firstVersion = await waitForElement<HTMLButtonElement>(
       panel,

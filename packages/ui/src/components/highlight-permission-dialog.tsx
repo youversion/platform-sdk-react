@@ -47,7 +47,7 @@ export const HighlightPermissionDialog: FC<HighlightPermissionDialogProps> = ({
 
         <div className="yv:flex yv:justify-end yv:gap-2">
           <Button variant="secondary" onClick={onCancel}>
-            {t('genericCancel')}
+            {t('cancel')}
           </Button>
           <Button variant="default" onClick={onConfirm}>
             {t('dataExchangeContinue')}
