@@ -142,11 +142,13 @@ are unchanged:
   `display: flex`; the client reset adds `flex-direction: column` and
   `min-block-size: 0` so the host can shrink inside a constrained block-size
   track. Its controls are inside the open shadow root, so global CSS does not
-  reach them. Pass `theme`, `onFontSelected`, `onFontIncreased`,
-  `onFontDecreased`, and `onChangeLineSpacing` through the component API. For
-  Expo DOM, keep the four callbacks as top-level props rather than nesting them
-  in a `BibleThemeSettingsSnapshot`. Interface direction comes from
-  `YouVersionProvider`'s `direction` or resolved locale.
+  reach them. Pass `theme`, `fontSize`, `fontFamily`, `lineSpacing`,
+  `onFontSelected`, `onFontIncreased`, `onFontDecreased`, and
+  `onChangeLineSpacing` through the component API. For Expo DOM, use the exported
+  `createBibleThemeSettingsContentHandlers` helper and keep its four callbacks as
+  top-level props rather than nesting them in a `BibleThemeSettingsSnapshot`.
+  Interface direction comes from `YouVersionProvider`'s `direction` or resolved
+  locale.
 - **Overlays:** Popovers and dialogs stay in their owning root and use the native
   top layer where needed. Opening a peer popover dismisses the current peer;
   simultaneous peer popovers are not supported. The native Popover API is

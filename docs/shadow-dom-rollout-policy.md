@@ -144,10 +144,11 @@ exported function. Each completed ticket links to YPE-5356 and this policy.
    - Shipped in 3.0.0: the standalone component owns one client-only open root.
      Its server host declares `display: flex`, and the client host reset adds
      `flex-direction: column` and `min-block-size: 0` so the host can shrink
-     inside a constrained block-size track (such as the SDK Popover's grid row)
-     while it lays out its content as a column. Ordinary shadow hosts keep
-     `display: contents`; reader-owned settings suppress the nested boundary and
-     reuse the completed YPE-5951 reader root.
+     inside a constrained block-size track (such as a grid row with a bounded
+     height, as in the constrained-layout story) while it lays out its content as
+     a column. Ordinary shadow hosts keep `display: contents`; reader-owned
+     settings suppress the nested boundary and reuse the completed YPE-5951
+     reader root.
 4. **YPE-5949: Compound pickers**
    - Roll out `BibleChapterPicker.Root` and `BibleVersionPicker.Root` as the
      only boundaries for their compound exports.
