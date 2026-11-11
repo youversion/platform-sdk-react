@@ -38,3 +38,19 @@ export function requireShadowContent(root: ShadowRoot): HTMLElement {
 export function waitForShadowContent(root: ShadowRoot): Promise<HTMLElement> {
   return waitFor(() => requireShadowContent(root));
 }
+
+async function pressNativeBrowserKey(keys: string): Promise<boolean> {
+  if (!__YV_STORYBOOK_VITEST__) return false;
+  const { userEvent } = await import('vitest/browser');
+  await userEvent.keyboard(keys);
+  return true;
+}
+
+export async function verifyNativeBrowserKey(
+  keys: string,
+  verify: () => void | Promise<void>,
+): Promise<boolean> {
+  if (!(await pressNativeBrowserKey(keys))) return false;
+  await verify();
+  return true;
+}

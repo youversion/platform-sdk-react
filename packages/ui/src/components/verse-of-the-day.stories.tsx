@@ -2,8 +2,24 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within, userEvent, spyOn } from 'storybook/test';
 
 import { VerseOfTheDay } from './verse-of-the-day';
-import { waitFor, waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
+import {
+  verifyNativeBrowserKey,
+  waitFor,
+  waitForShadowContent,
+  waitForShadowRoot,
+} from '@/test/storybook-dom';
 import { ScriptureStoryDataProvider } from '@/test/scripture-story-data';
+import { createVotdRecovery } from '@/test/shadow-recovery-mocks';
+import { ShadowRecoveryStoryProvider } from '@/test/shadow-recovery-provider';
+import { globalHandlers } from '@/test/mocks/handlers';
+
+const votdRecovery = createVotdRecovery();
+
+const withShadowRecoveryProvider = (Story: React.ComponentType) => (
+  <ShadowRecoveryStoryProvider apiHost={votdRecovery.apiHost}>
+    <Story />
+  </ShadowRecoveryStoryProvider>
+);
 
 const withScriptureStoryData = (Story: React.ComponentType) => (
   <ScriptureStoryDataProvider>
@@ -93,6 +109,97 @@ export const Default: Story = {
     await expect(callArgs).toHaveProperty('text');
     await expect(callArgs?.text).toContain('For I am about to do something new');
     await expect(callArgs?.text).toContain('Isaiah 43:19 NIV');
+  },
+};
+
+export const OfflineRecovery: Story = {
+  args: {
+    versionId: 111,
+    showSunIcon: true,
+    showBibleAppAttribution: true,
+    showShareButton: true,
+    size: 'default',
+    highlights: [],
+  },
+  tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-recovery'],
+  parameters: {
+    msw: {
+      handlers: [...votdRecovery.handlers, ...globalHandlers],
+    },
+  },
+  decorators: [withShadowRecoveryProvider],
+  loaders: [
+    ({ abortSignal }) => {
+      votdRecovery.resetRequestGate(abortSignal);
+      return {};
+    },
+  ],
+  render: (args) => (
+    <>
+      <button type="button">Before Verse of the Day</button>
+      <div className="yv:w-full">
+        <VerseOfTheDay {...args} />
+      </div>
+      <button type="button">After Verse of the Day</button>
+    </>
+  ),
+  play: async ({ canvasElement }) => {
+    const requestGate = votdRecovery.getRequestGate();
+    const root = await waitForShadowRoot(canvasElement);
+    const canvas = within(await waitForShadowContent(root));
+    const alert = await canvas.findByRole('alert');
+    const shareButton = canvas.getByRole('button', { name: /share/i });
+    const attribution = canvas.getByTitle(/Bible App/i);
+    const attributionLogo = attribution.closest('svg');
+    if (!attributionLogo) throw new Error('Bible App attribution not rendered');
+
+    await expect(alert.getBoundingClientRect().height).toBeGreaterThan(0);
+    await expect(alert).not.toBeEmptyDOMElement();
+    await expect(alert.textContent?.trim().length ?? 0).toBeGreaterThan(0);
+    await expect(shareButton).toBeDisabled();
+    await expect(attribution).toBeInTheDocument();
+    const alertRect = alert.getBoundingClientRect();
+    await expect(alertRect.top).toBeGreaterThanOrEqual(
+      shareButton.getBoundingClientRect().bottom - 1,
+    );
+    await expect(alertRect.bottom).toBeLessThanOrEqual(
+      attributionLogo.getBoundingClientRect().top + 1,
+    );
+
+    const afterVerseOfTheDay = within(canvasElement).getByRole('button', {
+      name: 'After Verse of the Day',
+    });
+    const beforeVerseOfTheDay = within(canvasElement).getByRole('button', {
+      name: 'Before Verse of the Day',
+    });
+    beforeVerseOfTheDay.focus();
+    await verifyNativeBrowserKey('{Tab}', async () => {
+      await expect(document.activeElement).toBe(afterVerseOfTheDay);
+    });
+
+    window.dispatchEvent(new Event('offline'));
+    window.dispatchEvent(new Event('online'));
+
+    try {
+      await waitFor(async () => {
+        await expect(requestGate.waiting).toBe(true);
+      });
+      await waitFor(async () => {
+        const loading = canvas.getByRole('status', { name: /loading verse/i });
+        await expect(loading.getBoundingClientRect().height).toBeGreaterThan(0);
+        await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
+      });
+    } finally {
+      requestGate.release();
+    }
+
+    await waitFor(async () => {
+      await expect(canvas.getByText(/for I am about to do something new/i)).toBeInTheDocument();
+      await expect(canvas.getByText(/isaiah 43:19/i)).toBeInTheDocument();
+      await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
+      await expect(canvas.queryByRole('status')).not.toBeInTheDocument();
+      await expect(shareButton).toBeEnabled();
+    });
   },
 };
 

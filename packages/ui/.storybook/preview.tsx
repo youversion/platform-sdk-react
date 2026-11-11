@@ -23,10 +23,16 @@ const THEME_BACKGROUNDS = {
  * See https://github.com/mswjs/msw-storybook-addon#configuring-msw
  * to learn how to customize it
  */
-initialize({
-  onUnhandledRequest: 'warn',
-  quiet: true,
-});
+initialize(
+  {
+    onUnhandledRequest: 'warn',
+    quiet: true,
+  },
+  // Vitest may replace browser preview clients between serialized files. Keep
+  // the reset baseline identical across browsers; ordinary Storybook still
+  // receives handlers through preview and story parameters.
+  __YV_STORYBOOK_VITEST__ ? globalHandlers : [],
+);
 
 const preview: Preview = {
   globalTypes: {

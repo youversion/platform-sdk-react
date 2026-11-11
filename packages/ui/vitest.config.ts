@@ -16,6 +16,7 @@ const browserProvider = isSafari
   ? (await import('@vitest/browser-webdriverio')).webdriverio()
   : playwright();
 const storyTags = (process.env.VITEST_STORY_TAG ?? 'integration').split(',');
+const excludedStoryTags = (process.env.VITEST_STORY_EXCLUDE_TAG ?? '').split(',').filter(Boolean);
 const discoveryOnly = process.env.VITEST_STORY_DISCOVERY === '1';
 
 export default defineConfig({
@@ -37,6 +38,7 @@ export default defineConfig({
         // Tests run against source files directly, so we define it as empty here
         // to prevent ReferenceError when <YvStyles /> renders during tests.
         define: {
+          __YV_STORYBOOK_VITEST__: 'false',
           __YV_STYLES__: '""',
           __YV_COMPONENT_STYLES__: '""',
           __YV_READER_STYLES__: '""',
@@ -58,6 +60,9 @@ export default defineConfig({
       }),
       // Storybook integration tests project
       defineProject({
+        define: {
+          __YV_STORYBOOK_VITEST__: 'true',
+        },
         plugins: [
           storybookTest({
             // The location of your Storybook config, main.js|ts
@@ -65,11 +70,15 @@ export default defineConfig({
             // This should match your package.json script to run Storybook
             // The --ci flag will skip prompts and not open a browser
             storybookScript: 'pnpm storybook --no-open',
-            tags: { include: storyTags },
+            tags: {
+              include: storyTags,
+              ...(excludedStoryTags.length > 0 ? { exclude: excludedStoryTags } : {}),
+            },
           }),
         ],
         test: {
           name: 'storybook',
+          maxWorkers: browserName === 'firefox' ? 1 : undefined,
           sequence: { groupOrder: 1 },
           // Increase timeouts for CI stability
           testTimeout: 60000, // 60 seconds for test execution
