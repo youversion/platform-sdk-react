@@ -86,6 +86,7 @@ const config: StorybookConfig = {
       __YV_STYLES__: yvStyles,
       __YV_COMPONENT_STYLES__: yvComponentStyles,
       __YV_READER_STYLES__: yvReaderStyles,
+      __YV_STORYBOOK_VITEST__: config.define?.__YV_STORYBOOK_VITEST__ ?? 'false',
     };
     const existingAlias = config.resolve?.alias;
     const srcAlias = resolve(__dirname, '../src');

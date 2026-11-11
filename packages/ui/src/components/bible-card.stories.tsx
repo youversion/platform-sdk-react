@@ -1,16 +1,20 @@
 import i18n from '@/i18n';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { within, expect, fn, userEvent, waitFor } from 'storybook/test';
-import { http, HttpResponse } from 'msw';
 import { useState } from 'react';
 import { BibleCard, type BibleCardProps } from './bible-card';
-import { globalHandlers } from '../test/mocks/handlers';
 import {
   requireShadowContent,
+  verifyNativeBrowserKey,
   waitForShadowContent,
   waitForShadowRoot,
 } from '../test/storybook-dom';
 import { ScriptureStoryDataProvider } from '../test/scripture-story-data';
+import { createBibleCardRecovery } from '../test/shadow-recovery-mocks';
+import { ShadowRecoveryStoryProvider } from '../test/shadow-recovery-provider';
+import { globalHandlers } from '../test/mocks/handlers';
+
+const bibleCardRecovery = createBibleCardRecovery();
 
 const withScriptureStoryData = (Story: React.ComponentType) => (
   <ScriptureStoryDataProvider>
@@ -89,6 +93,12 @@ const meta = {
 export default meta;
 
 type Story = StoryObj<typeof meta>;
+
+const withShadowRecoveryProvider = (Story: React.ComponentType) => (
+  <ShadowRecoveryStoryProvider apiHost={bibleCardRecovery.apiHost}>
+    <Story />
+  </ShadowRecoveryStoryProvider>
+);
 
 export const Default: Story = {
   args: {
@@ -355,28 +365,23 @@ export const Error: Story = {
     versionId: 111,
     showVersionPicker: true,
   },
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-recovery'],
   parameters: {
     msw: {
-      /*
-        A story-level `handlers` array replaces the preview-level `globalHandlers`
-        rather than merging with it, so `globalHandlers` is spread back in.
-        Without it the version picker's `useLanguages`/`useVersions` calls fall
-        through to the live API, because `onUnhandledRequest` is 'warn'.
-
-        The 500 override comes first: MSW takes the first matching handler, so it
-        wins over the successful NIV passage handler in `globalHandlers`. Version
-        1588 (AMP) is left on `globalHandlers` and still resolves, which is what
-        makes the recovery path below testable.
-      */
-      handlers: [
-        http.get('*/v1/bibles/111/passages/LUK.1.39-45', () => {
-          return new HttpResponse(null, { status: 500 });
-        }),
-        ...globalHandlers,
-      ],
+      // Story handlers replace preview handlers, so restore the global set.
+      // MSW uses the first match; keep the recovery 500 override first.
+      handlers: [...bibleCardRecovery.handlers, ...globalHandlers],
     },
   },
+  decorators: [withShadowRecoveryProvider],
+  render: (args) => (
+    <>
+      <div className="yv:w-full">
+        <BibleCard {...args} />
+      </div>
+      <button type="button">After card</button>
+    </>
+  ),
   play: async ({ canvasElement }) => {
     const root = await waitForShadowRoot(canvasElement);
     const canvas = within(await waitForShadowContent(root));
@@ -387,14 +392,16 @@ export const Error: Story = {
     });
 
     const alerts = canvas.getAllByRole('alert');
-
+    const alert = alerts[0];
+    if (!alert) throw new globalThis.Error('error alert not rendered');
     await expect(alerts).toHaveLength(1);
-    await expect(alerts[0]).toHaveTextContent(
+    await expect(alert.getBoundingClientRect().height).toBeGreaterThan(0);
+    await expect(alert).toHaveTextContent(
       'The Bible service is having trouble right now. Please try again in a moment.',
     );
     // role="alert" implies assertive. The explicit polite value holds the
     // announcement down, so a failed load does not interrupt the reader.
-    await expect(alerts[0]).toHaveAttribute('aria-live', 'polite');
+    await expect(alert).toHaveAttribute('aria-live', 'polite');
 
     // The picker is the in-card recovery path: a 404 is fixed by switching versions.
     const { root: pickerRoot, trigger: versionPickerButton } = await getVersionPickerQueries(
@@ -405,6 +412,16 @@ export const Error: Story = {
     await waitFor(async () => {
       await expect(versionPickerButton).toBeEnabled();
       await expect(versionPickerButton).toHaveTextContent(/NIV/i);
+    });
+    const alertRect = alert.getBoundingClientRect();
+    const pickerRect = versionPickerButton.getBoundingClientRect();
+    await expect(alertRect.top).toBeGreaterThanOrEqual(pickerRect.bottom - 1);
+
+    const afterCard = within(canvasElement).getByRole('button', { name: 'After card' });
+    versionPickerButton.focus();
+    await expect(root.activeElement).toBe(versionPickerButton);
+    await verifyNativeBrowserKey('{Tab}', async () => {
+      await expect(document.activeElement).toBe(afterCard);
     });
 
     // Walk the recovery path: switch to a version whose passage resolves.

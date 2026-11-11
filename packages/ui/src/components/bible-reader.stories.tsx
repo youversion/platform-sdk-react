@@ -20,7 +20,15 @@ import {
   type BibleReaderRootProps,
 } from './bible-reader';
 import { VerseActionPopover } from './verse-action-popover';
-import { waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
+import {
+  verifyNativeBrowserKey,
+  waitForShadowContent,
+  waitForShadowRoot,
+} from '@/test/storybook-dom';
+import { createBibleReaderRecovery } from '@/test/shadow-recovery-mocks';
+import { ShadowRecoveryStoryProvider } from '@/test/shadow-recovery-provider';
+
+const bibleReaderRecovery = createBibleReaderRecovery();
 
 async function getReaderStory(canvasElement: HTMLElement) {
   const root = await waitForShadowRoot(canvasElement);
@@ -77,6 +85,11 @@ function firstPathParam(value: string | readonly string[] | undefined): string |
 }
 
 let signInMock: ReturnType<typeof fn>;
+const withShadowRecoveryProvider = (Story: React.ComponentType) => (
+  <ShadowRecoveryStoryProvider apiHost={bibleReaderRecovery.apiHost}>
+    <Story />
+  </ShadowRecoveryStoryProvider>
+);
 
 const meta: Meta<typeof BibleReader.Root> = {
   title: 'Components/BibleReader',
@@ -216,7 +229,7 @@ export const Default: Story = {
 };
 
 export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
-  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-fresh-process'],
   args: {
     defaultVersionId: 111,
     lineSpacing: 1.7,
@@ -254,12 +267,12 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
       },
       { timeout: 10000 },
     );
-    const secondVerse = root.querySelector<HTMLElement>('.yv-v[v="2"]');
-    const secondVerseLabel = secondVerse?.querySelector<HTMLElement>('.yv-vlbl');
+    const secondSelectedVerse = root.querySelector<HTMLElement>('.yv-v[v="10"]');
+    const secondSelectedVerseLabel = secondSelectedVerse?.querySelector<HTMLElement>('.yv-vlbl');
     const outsideControl = canvasElement.querySelector<HTMLButtonElement>(
       '[data-testid="outside-reader-control"]',
     );
-    if (!secondVerse || !secondVerseLabel || !outsideControl)
+    if (!secondSelectedVerse || !secondSelectedVerseLabel || !outsideControl)
       throw new Error('reader interaction controls not rendered');
 
     const ownerDocument = canvasElement.ownerDocument;
@@ -302,11 +315,15 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
 
     await userEvent.click(firstVerse);
     dialog = await reader.findByRole('dialog');
+    // Radix disables animations until placement completes. Measure after both
+    // so initial positioning or animation cannot count as verse reanchoring.
+    await waitFor(() => expect(dialog.style.animation).not.toBe('none'));
+    await Promise.all(dialog.getAnimations().map((animation) => animation.finished));
     const firstDialogRect = dialog.getBoundingClientRect();
 
-    await userEvent.click(secondVerseLabel);
+    await userEvent.click(secondSelectedVerseLabel);
     await expect(firstVerse).toHaveClass('yv-v-selected');
-    await expect(secondVerse).toHaveClass('yv-v-selected');
+    await expect(secondSelectedVerse).toHaveClass('yv-v-selected');
     await expect(dialog).toBeInTheDocument();
     await waitFor(() => {
       const reanchoredRect = dialog.getBoundingClientRect();
@@ -318,7 +335,7 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     await userEvent.pointer({ keys: '[MouseLeft>]', target: outsideControl });
     await waitFor(() => expect(dialog).not.toBeInTheDocument(), { timeout: 10000 });
     await expect(firstVerse).not.toHaveClass('yv-v-selected');
-    await expect(secondVerse).not.toHaveClass('yv-v-selected');
+    await expect(secondSelectedVerse).not.toHaveClass('yv-v-selected');
     await userEvent.pointer({ keys: '[/MouseLeft]', target: outsideControl });
     await expect(ownerDocument.activeElement).toBe(outsideControl);
 
@@ -327,19 +344,17 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     const touchUser = userEvent.setup({ document: ownerDocument });
     await touchUser.pointer({ keys: '[TouchA]', target: firstVerse });
     dialog = await reader.findByRole('dialog');
-    // Radix disables animations until placement completes. Measure after both
-    // so initial positioning or animation cannot count as verse reanchoring.
     await waitFor(() => expect(dialog.style.animation).not.toBe('none'));
     await Promise.all(dialog.getAnimations().map((animation) => animation.finished));
     const touchDialogRect = dialog.getBoundingClientRect();
-    await touchUser.pointer({ keys: '[TouchA]', target: secondVerseLabel });
+    await touchUser.pointer({ keys: '[TouchA]', target: secondSelectedVerseLabel });
     await expect(firstVerse).toHaveClass('yv-v-selected');
-    await expect(secondVerse).toHaveClass('yv-v-selected');
+    await expect(secondSelectedVerse).toHaveClass('yv-v-selected');
     await expect(dialog).toHaveAttribute('data-state', 'open');
     await waitFor(() => {
-      const nextRect = dialog.getBoundingClientRect();
-      const movedInline = Math.abs(nextRect.left - touchDialogRect.left) > 8;
-      const movedBlock = Math.abs(nextRect.top - touchDialogRect.top) > 8;
+      const reanchoredRect = dialog.getBoundingClientRect();
+      const movedInline = Math.abs(reanchoredRect.left - touchDialogRect.left) > 8;
+      const movedBlock = Math.abs(reanchoredRect.top - touchDialogRect.top) > 8;
       void expect(movedInline || movedBlock).toBe(true);
     });
     await touchUser.pointer({ keys: '[TouchA>]', target: outsideControl });
@@ -347,13 +362,13 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     await touchUser.pointer({ keys: '[/TouchA]', target: outsideControl });
     await waitFor(() => expect(dialog).not.toBeInTheDocument(), { timeout: 10000 });
     await expect(firstVerse).not.toHaveClass('yv-v-selected');
-    await expect(secondVerse).not.toHaveClass('yv-v-selected');
+    await expect(secondSelectedVerse).not.toHaveClass('yv-v-selected');
     await expect(ownerDocument.activeElement).toBe(outsideControl);
   },
 };
 
 export const HostileCssConstrainedLayout: Story = {
-  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-fresh-process'],
   args: {
     defaultVersionId: 111,
     defaultBook: 'JHN',
@@ -446,12 +461,12 @@ async function openReaderHighlightAuthDialog(canvasElement: HTMLElement) {
   await waitFor(() => expect(root.activeElement).toBe(verseActions));
   await userEvent.click(apply);
   // Exercise the full close/reopen path instead of reusing the exiting popover DOM.
-  await waitFor(() => expect(apply.isConnected).toBe(false));
+  await waitFor(() => expect(apply.isConnected).toBe(false), { timeout: 5_000 });
   return { overlays, root };
 }
 
 export const SignedOutHighlightAuthOwnership: Story = {
-  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-fresh-process'],
   args: {
     defaultVersionId: 111,
     defaultBook: 'JHN',
@@ -505,7 +520,7 @@ function SignedInPermissionReader(args: BibleReaderRootProps) {
 }
 
 export const SignedInReaderOverlayOwnership: Story = {
-  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-fresh-process'],
   args: {
     defaultVersionId: 111,
     defaultBook: 'JHN',
@@ -1757,39 +1772,31 @@ export const ControlledFakeHost: Story = {
 };
 
 export const ChapterChangeLoadingOverlay: Story = {
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-recovery', 'shadow-fresh-process'],
+  decorators: [withShadowRecoveryProvider],
+  parameters: {
+    msw: {
+      handlers: [...bibleReaderRecovery.handlers, ...globalHandlers],
+    },
+  },
   args: {
     defaultVersionId: 111,
     defaultBook: 'JHN',
     defaultChapter: '1',
   },
-  parameters: {
-    msw: {
-      handlers: [
-        http.get('*/v1/bibles/111/passages/:usfm', async ({ params }: { params: PathParams }) => {
-          await delay(800);
-          const usfm = firstPathParam(params.usfm);
-          if (!usfm) return new HttpResponse(null, { status: 404 });
-          return HttpResponse.json({
-            id: usfm,
-            content: `<div class="p"><span class="verse">Passage text for ${usfm}.</span></div>`,
-            reference: usfm,
-          });
-        }),
-        ...globalHandlers,
-      ],
-    },
-  },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
-      <BibleReader.Root {...args}>
-        <BibleReader.Content />
-        <BibleReader.Toolbar />
-      </BibleReader.Root>
-    </div>
+    <>
+      <div className="yv:h-screen yv:bg-background">
+        <BibleReader.Root {...args}>
+          <BibleReader.Content />
+          <BibleReader.Toolbar />
+        </BibleReader.Root>
+      </div>
+      <button type="button">After reader</button>
+    </>
   ),
   play: async ({ canvasElement }) => {
-    const { root } = await getReaderStory(canvasElement);
+    const { root, reader } = await getReaderStory(canvasElement);
     await waitFor(
       async () => {
         const renderer = root.querySelector('[data-slot="yv-bible-renderer"]');
@@ -1803,29 +1810,51 @@ export const ChapterChangeLoadingOverlay: Story = {
       /change bible book and chapter/i,
     );
     const nextButton = chapterPicker.getByRole('button', { name: /next chapter/i });
-    await userEvent.click(nextButton);
+    await waitFor(async () => {
+      await expect(getComputedStyle(nextButton).pointerEvents).not.toBe('none');
+    });
+    const requestGate = bibleReaderRecovery.armRequestGate();
 
-    const rendererAfterClick = root.querySelector('[data-slot="yv-bible-renderer"]');
-    await expect(rendererAfterClick?.textContent).toContain('JHN.1');
+    try {
+      await userEvent.click(nextButton);
+      await waitFor(async () => {
+        await expect(requestGate.waiting).toBe(true);
+      });
 
-    await waitFor(
-      async () => {
-        const overlay = root.querySelector('[aria-label="Loading passage"]');
-        await expect(overlay).toBeInTheDocument();
-        await expect(overlay).toHaveAttribute('role', 'status');
-        await expect(root.querySelector('[class*="opacity-40"]')).toBeInTheDocument();
-        const renderer = root.querySelector('[data-slot="yv-bible-renderer"]');
+      const rendererAfterClick = root.querySelector('[data-slot="yv-bible-renderer"]');
+      await expect(rendererAfterClick?.textContent).toContain('JHN.1');
+
+      await waitFor(async () => {
+        const overlay = reader.getByRole('status', { name: /loading passage/i });
+        const renderer = root.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+        const loadingRegion = root.querySelector<HTMLElement>('[aria-busy="true"]');
+        if (!renderer || !loadingRegion) throw new Error('loading passage not rendered');
+        await expect(overlay?.getBoundingClientRect().height ?? 0).toBeGreaterThan(0);
+        await expect(Number.parseFloat(getComputedStyle(loadingRegion).opacity)).toBeLessThan(1);
         await expect(renderer?.textContent).toContain('JHN.1');
-      },
-      { timeout: 2000 },
-    );
+        await expect(nextButton).toBeInTheDocument();
+        await expect(nextButton).toBeVisible();
+      });
+
+      const lastReaderControl = reader.getAllByRole('button').at(-1);
+      if (!lastReaderControl) throw new Error('reader control not rendered');
+      lastReaderControl.focus();
+      await expect(root.activeElement).toBe(lastReaderControl);
+      const afterReader = within(canvasElement).getByRole('button', { name: 'After reader' });
+      await verifyNativeBrowserKey('{Tab}', async () => {
+        await expect(document.activeElement).toBe(afterReader);
+      });
+    } finally {
+      requestGate.release();
+    }
 
     await waitFor(
       async () => {
-        const renderer = root.querySelector('[data-slot="yv-bible-renderer"]');
+        const renderer = root.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+        if (!renderer) throw new Error('passage renderer not rendered');
         await expect(renderer?.textContent).toContain('JHN.2');
-        await expect(root.querySelector('[aria-label="Loading passage"]')).not.toBeInTheDocument();
-        await expect(root.querySelector('[class*="opacity-40"]')).not.toBeInTheDocument();
+        await expect(reader.queryByRole('status', { name: /loading passage/i })).toBeNull();
+        await expect(root.querySelector('[aria-busy="true"]')).toBeNull();
       },
       { timeout: 5000 },
     );

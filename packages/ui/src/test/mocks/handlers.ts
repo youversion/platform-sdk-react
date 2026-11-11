@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw';
+import { http, HttpResponse, passthrough } from 'msw';
 import { mockBooks } from '../mock-data/books';
 import { mockChapters } from '../mock-data/chapters';
 import mockPassages from '../mock-data/passages.json';
@@ -28,6 +28,14 @@ export const globalHandlers = [
       new HttpResponse('', {
         headers: { 'Content-Type': 'text/css' },
       }),
+  ),
+  // Keep automated browser journeys off the public internet without changing
+  // font loading in manual Storybook sessions.
+  http.get('https://fonts.googleapis.com/*', () =>
+    __YV_STORYBOOK_VITEST__ ? new HttpResponse(null, { status: 204 }) : passthrough(),
+  ),
+  http.get('https://fonts.gstatic.com/*', () =>
+    __YV_STORYBOOK_VITEST__ ? new HttpResponse(null, { status: 204 }) : passthrough(),
   ),
   http.get('https://notion-avatar.app/*', mockAvatar),
   http.get('https://example.com/avatar/*', mockAvatar),
