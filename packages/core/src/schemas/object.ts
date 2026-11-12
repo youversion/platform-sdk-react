@@ -9,9 +9,9 @@ import * as z from 'zod/mini';
 export const object =
   // SAFETY: this is the same function. `Writeable<T>` only removes `readonly`
   // from field keys. For an ordinary field object, it equals `T`. A field
-  // object written with `as const` keeps its `readonly` keys here, so parsed
-  // values are typed readonly while zod returns mutable objects. That only
-  // restricts callers, and no schema in core does it today.
+  // object written with `as const` keeps `readonly` on the schema's `.shape`
+  // keys, while zod's own type removes it. Parsed values are the same either
+  // way. That only restricts callers, and no schema in core does it today.
   z.object as <T extends Record<string, z.core.$ZodType>>(
     fields: T,
     params?: string | z.core.$ZodObjectParams,
