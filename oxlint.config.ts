@@ -79,6 +79,23 @@ export default defineConfig({
       },
     },
     {
+      // Since zod 4.6, these return mapped types that drop field doc comments
+      // from published .d.ts files. Core builds object schemas with `object`.
+      files: ['packages/core/src/**/*.ts'],
+      excludeFiles: ['packages/core/src/schemas/object.ts', '**/__tests__/**', '**/*.test.ts'],
+      rules: {
+        'no-restricted-properties': [
+          'error',
+          ...['object', 'strictObject', 'looseObject', 'extend'].map((property) => ({
+            object: 'z',
+            property,
+            message:
+              'Use `object` from `./schemas/object` so field doc comments survive in published types. To extend a schema, share a field object and spread it.',
+          })),
+        ],
+      },
+    },
+    {
       files: ['packages/ui/src/components/**/*.tsx'],
       excludeFiles: ['**/*.test.tsx', '**/*.stories.tsx'],
       rules: {

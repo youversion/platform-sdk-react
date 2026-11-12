@@ -166,11 +166,13 @@ export const SearchTopicsResponseSchema = object({
 
 export type SearchTopicsResponse = Readonly<z.infer<typeof SearchTopicsResponseSchema>>;
 
-export const SearchTopicWireSchema = object({
+const SearchTopicWireFields = {
   id: z.optional(z.nullable(z.int())),
   text: z.string(),
   subtopics: z.array(z.string()),
-});
+};
+
+export const SearchTopicWireSchema = object(SearchTopicWireFields);
 
 export type SearchTopicWire = z.infer<typeof SearchTopicWireSchema>;
 
@@ -252,7 +254,8 @@ export type SearchUnifiedOptions = Readonly<{
   fields?: readonly SearchUnifiedField[];
 }>;
 
-const SearchUnifiedTopicHitWireSchema = z.extend(SearchTopicWireSchema, {
+const SearchUnifiedTopicHitWireSchema = object({
+  ...SearchTopicWireFields,
   id: z.nullable(z.int()),
 });
 
