@@ -1,4 +1,5 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 
 /** BCP 47 tag limited to language or language+script (e.g., "en", "zh-Hans"). */
 export const BCP47_LANGUAGE_TAG_REGEX = /^[a-z]{2,3}(?:-[A-Z][a-z]{3})?$/;
@@ -15,7 +16,7 @@ export const LanguageIdSchema = z
     ),
   );
 
-export const LanguageSchema = z.object({
+export const LanguageSchema = object({
   /** BCP 47 language identifier (e.g., "en") */
   id: z
     .string()
@@ -66,27 +67,25 @@ const countrySchema = z
     z.toUpperCase(),
   );
 
-export const GetLanguagesOptionsSchema = z
-  .object({
-    page_size: z.optional(z.union([z.int().check(z.positive()), z.literal('*')])),
-    fields: z.optional(z.array(z.keyof(LanguageSchema))),
-    page_token: z.optional(z.string()),
-    /** ISO 3166-1 alpha-2 country code */
-    country: z.optional(countrySchema),
-  })
-  .check(
-    z.refine(
-      (data) => {
-        if (data?.page_size === '*') {
-          return data.fields && data.fields.length >= 1 && data.fields.length <= 3;
-        }
-        return true;
-      },
-      {
-        error: 'page_size="*" requires 1-3 fields to be specified',
-        path: ['page_size', 'fields'],
-      },
-    ),
-  );
+export const GetLanguagesOptionsSchema = object({
+  page_size: z.optional(z.union([z.int().check(z.positive()), z.literal('*')])),
+  fields: z.optional(z.array(z.keyof(LanguageSchema))),
+  page_token: z.optional(z.string()),
+  /** ISO 3166-1 alpha-2 country code */
+  country: z.optional(countrySchema),
+}).check(
+  z.refine(
+    (data) => {
+      if (data?.page_size === '*') {
+        return data.fields && data.fields.length >= 1 && data.fields.length <= 3;
+      }
+      return true;
+    },
+    {
+      error: 'page_size="*" requires 1-3 fields to be specified',
+      path: ['page_size', 'fields'],
+    },
+  ),
+);
 
 export type GetLanguagesOptions = z.infer<typeof GetLanguagesOptionsSchema>;

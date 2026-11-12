@@ -1,21 +1,22 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 
 /** OAuth `state`-bound permission list persisted across the redirect handoff. */
-export const StatePermissionsStashSchema = z.object({
+export const StatePermissionsStashSchema = object({
   state: z.string(),
   permissions: z.array(z.string()),
 });
 export type StatePermissionsStash = z.infer<typeof StatePermissionsStashSchema>;
 
 /** Optimistic data-exchange grants cached in storage, scoped to a user. */
-export const StoredGrantsSchema = z.object({
+export const StoredGrantsSchema = object({
   userId: z.string(),
   permissions: z.array(z.string()),
 });
 export type StoredGrants = z.infer<typeof StoredGrantsSchema>;
 
 /** Claims read from an ID token for UI display. Signature is not verified here. */
-export const IdTokenClaimsSchema = z.object({
+export const IdTokenClaimsSchema = object({
   sub: z.catch(z.optional(z.string()), undefined),
   name: z.catch(z.optional(z.string()), undefined),
   profile_picture: z.catch(z.optional(z.string()), undefined),
@@ -29,7 +30,7 @@ const TokenExpiresInSchema = z.pipe(
   z.int().check(z.positive()),
 );
 
-export const TokenExchangeResponseSchema = z.object({
+export const TokenExchangeResponseSchema = object({
   access_token: z.string(),
   expires_in: TokenExpiresInSchema,
   id_token: z.string(),
@@ -39,7 +40,7 @@ export const TokenExchangeResponseSchema = z.object({
 });
 export type TokenExchangeResponse = z.infer<typeof TokenExchangeResponseSchema>;
 
-export const TokenRefreshResponseSchema = z.object({
+export const TokenRefreshResponseSchema = object({
   access_token: z.string(),
   expires_in: TokenExpiresInSchema,
   refresh_token: z.string(),

@@ -1,30 +1,31 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 import { BibleVersionIdSchema, BibleVersionSchema, type BibleVersion } from './version';
 
-export const GetPassageDisplayOptionsSchema = z.object({
+export const GetPassageDisplayOptionsSchema = object({
   versionId: BibleVersionIdSchema,
   passageId: z.string().check(z.trim(), z.minLength(1, 'Passage ID must be a non-empty string')),
   includeHeadings: z.optional(z.boolean()),
   includeNotes: z.optional(z.boolean()),
 });
 
-export const PassageAttributionSchema = z.object({
+export const PassageAttributionSchema = object({
   text: z.string().check(z.minLength(1)),
   source: z.enum(['copyright', 'promotionalContent']),
 });
 
-export const PassageStylesheetSchema = z.object({
+export const PassageStylesheetSchema = object({
   kind: z.enum(['bible', 'font']),
   rel: z.literal('stylesheet'),
   href: z.url(),
 });
 
-const BiblePassageContainerAttributesSchema = z.object({
+const BiblePassageContainerAttributesSchema = object({
   'data-yv-sdk': z.literal(''),
   'data-slot': z.literal('yv-bible-renderer'),
 });
 
-export const BiblePassageDisplaySchema = z.object({
+export const BiblePassageDisplaySchema = object({
   version: BibleVersionSchema,
   html: z.string(),
   attribution: PassageAttributionSchema,

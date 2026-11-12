@@ -1,6 +1,7 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 
-export const BibleVerseSchema = z.object({
+export const BibleVerseSchema = object({
   /** Verse identifier (e.g., "1") */
   id: z.string(),
   /** Passage identifier (e.g., "MAT.1.1") */

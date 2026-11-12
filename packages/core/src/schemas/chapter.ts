@@ -1,7 +1,8 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 import { BibleVerseSchema } from './verse';
 
-export const BibleChapterSchema = z.object({
+export const BibleChapterSchema = object({
   /** Chapter identifier (e.g., "1") */
   id: z.string(),
   /** Passage identifier (e.g., "MAT.1") */
