@@ -1,7 +1,8 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 
 /** A license under which Bible content is offered in the Platform. */
-export const LicenseSchema = z.object({
+export const LicenseSchema = object({
   /** The license identifier. */
   id: z.optional(z.int()),
   /** The license name. */

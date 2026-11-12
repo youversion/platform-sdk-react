@@ -1,10 +1,11 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 import type { Collection } from './collection';
 import { parseLanguageRanges } from './language-range';
 
 const VOTDDaySchema = z.int().check(z.gte(1), z.lte(366));
 
-export const VOTDSchema = z.object({
+export const VOTDSchema = object({
   /** Day of year (1-366) */
   day: VOTDDaySchema,
   /** Passage identifier (e.g., "JHN.3.16") */
@@ -30,7 +31,7 @@ export const VOTDRecordWireSchema = z.pipe(
 export type VOTDResponse = Readonly<z.output<typeof VOTDRecordWireSchema>>;
 
 export const VOTDCollectionWireSchema = z.pipe(
-  z.object({
+  object({
     data: z.array(VOTDRecordWireSchema),
     next_page_token: z.optional(z.nullable(z.string())),
     total_size: z.optional(z.nullable(z.int().check(z.nonnegative()))),
@@ -47,7 +48,7 @@ export const VOTDCollectionWireSchema = z.pipe(
   }),
 );
 
-const GetVOTDOptionsSchema = z.object({
+const GetVOTDOptionsSchema = object({
   language_ranges: z.optional(
     z.readonly(
       z.array(z.string()).check(z.minLength(1, 'At least one language range is required')),

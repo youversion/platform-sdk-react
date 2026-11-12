@@ -1,4 +1,5 @@
 import * as z from 'zod/mini';
+import { object } from './schemas/object';
 import type { ApiConfig } from './types';
 import { SDK_VERSION_HEADER_NAME, buildSdkVersionHeaderValue } from './version';
 
@@ -10,11 +11,11 @@ type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 type RequestData = Record<string, JsonValue>;
 type RequestHeaders = Record<string, string>;
 
-const HttpStatusCarrierSchema = z.object({
+const HttpStatusCarrierSchema = object({
   status: z.number(),
 });
 
-const ErrorBodySchema = z.object({
+const ErrorBodySchema = object({
   message: z.optional(z.string()),
   error: z.optional(z.string()),
 });

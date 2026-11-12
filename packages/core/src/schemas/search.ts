@@ -1,4 +1,5 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 import { parseUsfmReference } from '../usfm-reference';
 
 export const MAX_SEARCH_QUERY_GRAPHEMES = 100;
@@ -42,7 +43,7 @@ export function isValidStructuralUsfmReference(usfm: string): boolean {
   return parseUsfmReference(usfm) !== null;
 }
 
-export const SearchQuerySchema = z.object({
+export const SearchQuerySchema = object({
   /** Suggested or trending query text */
   text: z.string(),
   /** Optional opaque source label from the API */
@@ -51,21 +52,21 @@ export const SearchQuerySchema = z.object({
 
 export type SearchQuery = Readonly<z.infer<typeof SearchQuerySchema>>;
 
-export const SearchQueriesSchema = z.object({
+export const SearchQueriesSchema = object({
   /** Ordered query suggestions or trending queries */
   queries: z.array(SearchQuerySchema),
 });
 
 export type SearchQueries = Readonly<z.infer<typeof SearchQueriesSchema>>;
 
-export const SearchQueryWireSchema = z.object({
+export const SearchQueryWireSchema = object({
   text: z.string(),
   source: z.optional(z.nullable(z.string())),
 });
 
 export type SearchQueryWire = z.infer<typeof SearchQueryWireSchema>;
 
-export const SearchQueriesWireSchema = z.object({
+export const SearchQueriesWireSchema = object({
   data: z.array(SearchQueryWireSchema),
 });
 
@@ -80,14 +81,14 @@ export function toSearchQuery(wire: SearchQueryWire): SearchQuery {
 }
 
 /** Verse search hit; `id` is USFM and matches {@link BiblePassage.id} semantics. */
-export const SearchVerseHitSchema = z.object({
+export const SearchVerseHitSchema = object({
   /** USFM passage identifier (e.g., "JHN.6.9") */
   id: z.string(),
 });
 
 export type SearchVerseHit = Readonly<z.infer<typeof SearchVerseHitSchema>>;
 
-export const SearchVersesResponseSchema = z.object({
+export const SearchVersesResponseSchema = object({
   /** Ordered verse hits with malformed references removed */
   verses: z.array(SearchVerseHitSchema),
   /** Classified user intent when returned by the API */
@@ -102,14 +103,14 @@ export const SearchVersesResponseSchema = z.object({
 
 export type SearchVersesResponse = Readonly<z.infer<typeof SearchVersesResponseSchema>>;
 
-export const SearchVerseHitWireSchema = z.object({
+export const SearchVerseHitWireSchema = object({
   /** USFM reference on the wire (mapped to SDK `id`) */
   reference: z.string(),
 });
 
 export type SearchVerseHitWire = z.infer<typeof SearchVerseHitWireSchema>;
 
-export const SearchVersesWireSchema = z.object({
+export const SearchVersesWireSchema = object({
   verses: z.array(SearchVerseHitWireSchema),
   user_intent: z.optional(z.nullable(z.string())),
   did_you_mean: z.array(z.string()),
@@ -143,7 +144,7 @@ export function toSearchVersesResponse(wire: SearchVersesWire): SearchVersesResp
   return response;
 }
 
-export const SearchTopicSchema = z.object({
+export const SearchTopicSchema = object({
   /** Nullable catalog identifier */
   id: z.optional(z.nullable(z.int())),
   /** Topic label */
@@ -154,7 +155,7 @@ export const SearchTopicSchema = z.object({
 
 export type SearchTopic = Readonly<z.infer<typeof SearchTopicSchema>>;
 
-export const SearchTopicsResponseSchema = z.object({
+export const SearchTopicsResponseSchema = object({
   /** Complete unpaginated topic collection */
   topics: z.array(SearchTopicSchema),
   didYouMean: z.array(z.string()),
@@ -165,15 +166,17 @@ export const SearchTopicsResponseSchema = z.object({
 
 export type SearchTopicsResponse = Readonly<z.infer<typeof SearchTopicsResponseSchema>>;
 
-export const SearchTopicWireSchema = z.object({
+const SearchTopicWireFields = {
   id: z.optional(z.nullable(z.int())),
   text: z.string(),
   subtopics: z.array(z.string()),
-});
+};
+
+export const SearchTopicWireSchema = object(SearchTopicWireFields);
 
 export type SearchTopicWire = z.infer<typeof SearchTopicWireSchema>;
 
-export const SearchTopicsWireSchema = z.object({
+export const SearchTopicsWireSchema = object({
   topics: z.array(SearchTopicWireSchema),
   did_you_mean: z.array(z.string()),
   search_instead_for: z.optional(z.nullable(z.string())),
@@ -217,7 +220,7 @@ export const SuggestedSearchQuerySchema = z
   .string()
   .check(z.trim(), z.minLength(1, 'Query must be a non-empty string'));
 
-export const SearchVersesOptionsSchema = z.object({
+export const SearchVersesOptionsSchema = object({
   userIntent: z.optional(z.string()),
   pageSize: z.optional(z.int().check(z.gte(1), z.lte(99))),
   pageToken: z.optional(z.string()),
@@ -238,7 +241,7 @@ const SearchUnifiedFieldsSchema = z.pipe(
   z.transform((fields) => [...new Set(fields)]),
 );
 
-export const SearchUnifiedOptionsSchema = z.object({
+export const SearchUnifiedOptionsSchema = object({
   /** Omit to use the service default, `unknown`. */
   userIntent: z.optional(z.enum(KNOWN_SEARCH_USER_INTENTS)),
   fields: z.optional(SearchUnifiedFieldsSchema),
@@ -251,27 +254,28 @@ export type SearchUnifiedOptions = Readonly<{
   fields?: readonly SearchUnifiedField[];
 }>;
 
-const SearchUnifiedTopicHitWireSchema = z.extend(SearchTopicWireSchema, {
+const SearchUnifiedTopicHitWireSchema = object({
+  ...SearchTopicWireFields,
   id: z.nullable(z.int()),
 });
 
 export type SearchUnifiedTopicHitWire = z.infer<typeof SearchUnifiedTopicHitWireSchema>;
 
-export const SearchImageHitSchema = z.object({
+export const SearchImageHitSchema = object({
   id: z.string().check(z.minLength(1)),
   passageId: z.string().check(z.minLength(1)),
 });
 
 export type SearchImageHit = Readonly<z.infer<typeof SearchImageHitSchema>>;
 
-const SearchImageHitWireSchema = z.object({
+const SearchImageHitWireSchema = object({
   id: z.string(),
   passage_id: z.string(),
 });
 
 type SearchImageHitWire = z.infer<typeof SearchImageHitWireSchema>;
 
-export const SearchUnifiedWireSchema = z.object({
+export const SearchUnifiedWireSchema = object({
   verses: z.optional(z.array(z.unknown())),
   topics: z.optional(z.array(z.unknown())),
   user_intent: z.optional(z.nullable(z.string())),
@@ -282,7 +286,7 @@ export const SearchUnifiedWireSchema = z.object({
 
 export type SearchUnifiedWire = z.infer<typeof SearchUnifiedWireSchema>;
 
-export const SearchUnifiedResponseSchema = z.object({
+export const SearchUnifiedResponseSchema = object({
   /** Verse hits. Malformed USFM references are removed. */
   verses: z.array(SearchVerseHitSchema),
   topics: z.array(SearchTopicSchema),
@@ -323,21 +327,21 @@ function searchImageHits(hits: readonly unknown[]): SearchImageHit[] {
   });
 }
 
-export const SearchImagesOptionsSchema = z.object({
+export const SearchImagesOptionsSchema = object({
   pageSize: z.optional(z.int().check(z.gte(1), z.lte(99))),
   pageToken: z.optional(z.string()),
 });
 
 export type SearchImagesOptions = z.infer<typeof SearchImagesOptionsSchema>;
 
-export const SearchImagesWireSchema = z.object({
+export const SearchImagesWireSchema = object({
   images: z.array(z.unknown()),
   next_page_token: z.optional(z.nullable(z.string())),
 });
 
 export type SearchImagesWire = z.infer<typeof SearchImagesWireSchema>;
 
-export const SearchImagesResponseSchema = z.object({
+export const SearchImagesResponseSchema = object({
   images: z.array(SearchImageHitSchema),
   nextPageToken: z.nullable(z.string()),
 });
