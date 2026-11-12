@@ -4,6 +4,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import React from 'react';
+import { renderToString } from 'react-dom/server';
 import { Separator } from '@/components/ui/separator';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
 import { Textarea } from '@/components/ui/textarea';
@@ -110,7 +111,9 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
       { container },
     );
 
-    googleFontLinks(ownerDocument)[0]?.dispatchEvent(new Event('error'));
+    const [googleFontLink] = googleFontLinks(ownerDocument);
+    expect(googleFontLink).toBeDefined();
+    googleFontLink!.dispatchEvent(new Event('error'));
 
     await waitFor(() => {
       expect(ownerDocument.body.querySelector('[data-testid="child"]')?.textContent).toBe('hello');
@@ -166,16 +169,34 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
           (link) => link.getAttribute('href') === GOOGLE_FONTS_HREF,
         ),
       ).toHaveLength(1);
-      const shadowFontLinks = Array.from(ownerDocument.querySelectorAll<HTMLElement>('*')).flatMap(
-        (element) =>
-          element.shadowRoot
-            ? Array.from(element.shadowRoot.querySelectorAll<HTMLLinkElement>('link[href]')).filter(
-                (link) => link.getAttribute('href') === GOOGLE_FONTS_HREF,
-              )
-            : [],
+      const shadowRoots = Array.from(ownerDocument.querySelectorAll<HTMLElement>('*')).flatMap(
+        (element) => (element.shadowRoot ? [element.shadowRoot] : []),
+      );
+      expect(shadowRoots).toHaveLength(2);
+      const shadowFontLinks = shadowRoots.flatMap((shadowRoot) =>
+        Array.from(shadowRoot.querySelectorAll<HTMLLinkElement>('link[href]')).filter(
+          (link) => link.getAttribute('href') === GOOGLE_FONTS_HREF,
+        ),
       );
       expect(shadowFontLinks).toHaveLength(0);
     });
+  });
+
+  it('preinitializes base and gated stylesheets during server rendering', () => {
+    vi.stubGlobal('document', undefined);
+    try {
+      const html = renderToString(<YvFonts appKey="key-ssr" />);
+
+      expect(html).toContain(
+        `rel="stylesheet" href="${GOOGLE_FONTS_HREF.replaceAll('&', '&amp;')}"`,
+      );
+      expect(html).toContain(
+        'rel="stylesheet" href="https://api.youversion.com/v1/fonts/1/stylesheet?app_key=key-ssr"',
+      );
+      expect(html).toContain('data-precedence="yv-sdk-fonts"');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it.each([

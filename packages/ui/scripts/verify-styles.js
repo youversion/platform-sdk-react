@@ -11,6 +11,8 @@ const errors = [];
 const packageJson = JSON.parse(readFileSync(resolve(uiRoot, 'package.json'), 'utf8'));
 const publicCssExport = packageJson.exports?.['./styles.css'];
 const forbiddenRuntimeImport = /@import\b/i;
+const publicLayerOrder =
+  '@layer properties,theme,base,components,utilities,yv-sdk-fonts,yv-sdk-styles,yv-sdk-theme,yv-sdk-utilities,yv-sdk-bible-reader;\n';
 const googleFontsImport =
   "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap') layer(yv-sdk-fonts);";
 
@@ -129,8 +131,10 @@ const publicCss = existsSync(publicCssPath) ? readFileSync(publicCssPath, 'utf-8
 if (!publicCss.trim()) {
   errors.push('the public ./styles.css export is missing or empty — did build:css run?');
 } else {
-  if (!publicCss.startsWith(googleFontsImport)) {
-    errors.push('dist/styles.css is missing the Google Fonts import for manual CSS consumers');
+  if (!publicCss.startsWith(publicLayerOrder + googleFontsImport)) {
+    errors.push(
+      'dist/styles.css must declare the public layer order before the Google Fonts import',
+    );
   }
   if (!publicCss.includes('scrollbar-hide')) {
     errors.push('dist/styles.css missing full utility sheet');

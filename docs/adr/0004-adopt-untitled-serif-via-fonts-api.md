@@ -58,11 +58,12 @@ ensureFontStylesheet(
 );
 ```
 
-The installer appends an ordinary `<link rel="stylesheet">` to `<head>` and dedupes by
-`href`, so multiple providers still yield one link. An inert template probe supplies
-the correct `ownerDocument` for same-origin iframe rendering. Avoiding React's
-`precedence` resource path keeps a failed font request from creating an unhandled
-stylesheet promise or delaying the consumer tree.
+Server rendering preinitializes the stylesheet so React streams it in `<head>`. Client
+mounts append an ordinary `<link rel="stylesheet">` and dedupe by `href`, so multiple
+providers still yield one link and hydration reuses the server resource. An inert
+template probe supplies the correct `ownerDocument` for same-origin iframe rendering.
+Avoiding React's client-side `precedence` resource path keeps a failed font request from
+creating an unhandled stylesheet promise or delaying the consumer tree.
 
 YPE-6560 later made the same component own the public Google Fonts stylesheet for
 Inter and Source Serif 4. That base-font link renders even when the app key is missing;
@@ -114,9 +115,10 @@ non-breaking if the need turns out to be real.
   ships in request headers on every API call), and the gateway accepts it on this route,
   but it will now also land in CDN/proxy access logs and `Referer` headers. Accepted
   knowingly.
-- Font resources are installed during the client commit and are not part of React's
-  stylesheet-suspension protocol. A blocked or failed font request therefore leaves the
-  consumer tree mounted and falls through to the documented system-font stack.
+- Font resources are preinitialized in server output, then installed or reused during
+  the client commit without entering React's stylesheet-suspension protocol. A blocked
+  or failed client request therefore leaves the consumer tree mounted and falls through
+  to the documented system-font stack.
 - The default reader font changes from Source Serif 4 to Untitled Serif for new users,
   and returning serif readers are migrated on hydrate. No public API is removed or
   retyped; the change ships as a `minor` across all three packages.

@@ -29,8 +29,8 @@ const browserTestBrandFontCss = `
 `;
 
 export const globalHandlers = [
-  // React's hoisted stylesheet promise rejects when a story's mock app key
-  // reaches the real Fonts API. Keep browser tests independent of that service.
+  // Keep browser tests independent of the live Fonts API while exercising the
+  // same document stylesheet links used by consumers.
   http.get(
     '*/v1/fonts/:id/stylesheet',
     () =>
