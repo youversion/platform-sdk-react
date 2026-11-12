@@ -13,8 +13,8 @@ const FONT_LINK_SELECTOR = 'link[rel="stylesheet"][data-precedence="yv-sdk-fonts
 const GOOGLE_FONTS_HREF =
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap';
 
-function fontLinks(): HTMLLinkElement[] {
-  return Array.from(document.head.querySelectorAll<HTMLLinkElement>(FONT_LINK_SELECTOR));
+function fontLinks(ownerDocument: Document = document): HTMLLinkElement[] {
+  return Array.from(ownerDocument.head.querySelectorAll<HTMLLinkElement>(FONT_LINK_SELECTOR));
 }
 
 function hrefsFor(appKey: string): string[] {
@@ -23,12 +23,16 @@ function hrefsFor(appKey: string): string[] {
     .filter((href) => href.includes(`app_key=${appKey}`));
 }
 
-function googleFontLinks(): HTMLLinkElement[] {
-  return fontLinks().filter((link) => link.getAttribute('href') === GOOGLE_FONTS_HREF);
+function googleFontLinks(ownerDocument: Document = document): HTMLLinkElement[] {
+  return fontLinks(ownerDocument).filter(
+    (link) => link.getAttribute('href') === GOOGLE_FONTS_HREF,
+  );
 }
 
-function brandFontLinks(): HTMLLinkElement[] {
-  return fontLinks().filter((link) => link.getAttribute('href')?.includes('/v1/fonts/1/stylesheet'));
+function brandFontLinks(ownerDocument: Document = document): HTMLLinkElement[] {
+  return fontLinks(ownerDocument).filter((link) =>
+    link.getAttribute('href')?.includes('/v1/fonts/1/stylesheet'),
+  );
 }
 
 // React hoists these into <head> keyed by href and keeps its own resource map, so
@@ -81,16 +85,19 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
 
   it('still loads the base fonts when the app key is missing', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const beforeBrandFonts = brandFontLinks().length;
+    const ownerDocument = document.implementation.createHTMLDocument();
+    const container = ownerDocument.createElement('div');
+    ownerDocument.body.append(container);
 
     render(
       <YouVersionProvider appKey="   ">
         <div />
       </YouVersionProvider>,
+      { container },
     );
 
-    expect(googleFontLinks()).toHaveLength(1);
-    expect(brandFontLinks()).toHaveLength(beforeBrandFonts);
+    expect(googleFontLinks(ownerDocument)).toHaveLength(1);
+    expect(brandFontLinks(ownerDocument)).toHaveLength(0);
     consoleError.mockRestore();
   });
 
@@ -126,11 +133,13 @@ describe('YvFonts', () => {
     ['empty', ''],
     ['whitespace-only', '   '],
   ])('loads only the base fonts for an %s app key', (_label, appKey) => {
-    const beforeBrandFonts = brandFontLinks().length;
+    const ownerDocument = document.implementation.createHTMLDocument();
+    const container = ownerDocument.createElement('div');
+    ownerDocument.body.append(container);
 
-    render(<YvFonts appKey={appKey} />);
+    render(<YvFonts appKey={appKey} />, { container });
 
-    expect(googleFontLinks()).toHaveLength(1);
-    expect(brandFontLinks()).toHaveLength(beforeBrandFonts);
+    expect(googleFontLinks(ownerDocument)).toHaveLength(1);
+    expect(brandFontLinks(ownerDocument)).toHaveLength(0);
   });
 });

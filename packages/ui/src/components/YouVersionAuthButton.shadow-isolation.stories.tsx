@@ -181,8 +181,8 @@ export const SameOriginIframeDocument: Story = {
     if (!originalReplaceSyncDescriptor?.configurable) {
       throw new Error('iframe CSSStyleSheet.replaceSync cannot be observed');
     }
-    // SAFETY: the descriptor comes from the standardized CSSStyleSheet method on
-    // this iframe's prototype; configurability was verified before wrapping it.
+    // SAFETY: this descriptor is the standardized CSSStyleSheet method on the
+    // iframe prototype, and configurability was verified before wrapping it.
     const originalReplaceSync = originalReplaceSyncDescriptor.value as CSSStyleSheet['replaceSync'];
     const replacementInputs: string[] = [];
     Object.defineProperty(styleSheetPrototype, 'replaceSync', {
@@ -215,50 +215,38 @@ export const SameOriginIframeDocument: Story = {
         await expect(iframeWindow.getComputedStyle(content).display).toBe('flex');
       }, browserWaitOptions);
       await expect(replacementInputs).toHaveLength(1);
-      await expect(replacementInputs[0]).not.toMatch(/@import\s+(?:url\()?['"]?https?:\/\//i);
-
-      const replaceSyncDescriptor = Object.getOwnPropertyDescriptor(
-        styleSheetPrototype,
-        'replaceSync',
-      );
-      if (!replaceSyncDescriptor?.configurable) {
-        throw new Error('iframe CSSStyleSheet.replaceSync cannot be disabled for fallback proof');
-      }
+      await expect(replacementInputs[0]).not.toMatch(/@import\b/i);
 
       Reflect.deleteProperty(styleSheetPrototype, 'replaceSync');
-      try {
-        fallbackContainer = iframeDocument.createElement('div');
-        iframeDocument.body.append(fallbackContainer);
-        fallbackRoot = createRoot(fallbackContainer);
-        fallbackRoot.render(
-          <ShadowRootHost>
-            <span className="yv:flex" data-testid="iframe-fallback-content">
-              Fallback isolated
-            </span>
-          </ShadowRootHost>,
-        );
+      fallbackContainer = iframeDocument.createElement('div');
+      iframeDocument.body.append(fallbackContainer);
+      fallbackRoot = createRoot(fallbackContainer);
+      fallbackRoot.render(
+        <ShadowRootHost>
+          <span className="yv:flex" data-testid="iframe-fallback-content">
+            Fallback isolated
+          </span>
+        </ShadowRootHost>,
+      );
 
-        await waitFor(async () => {
-          const fallbackHost =
-            fallbackContainer?.querySelector<HTMLDivElement>('[data-yv-shadow-host]');
-          const shadowRoot = fallbackHost?.shadowRoot;
-          const content = shadowRoot?.querySelector('[data-testid="iframe-fallback-content"]');
-          const style = shadowRoot?.querySelector('style');
-          if (!content || !style) throw new Error('iframe fallback content not mounted');
-          await expect(shadowRoot?.adoptedStyleSheets).toHaveLength(0);
-          await expect(style.getAttribute('data-href')).toBe('yv-sdk-shadow-styles');
-          await expect(style.getAttribute('data-precedence')).toBe('yv-sdk');
-          await expect(iframeWindow.getComputedStyle(content).display).toBe('flex');
-        }, browserWaitOptions);
-      } finally {
-        fallbackRoot?.unmount();
-        fallbackContainer?.remove();
-        Object.defineProperty(styleSheetPrototype, 'replaceSync', replaceSyncDescriptor);
-      }
+      await waitFor(async () => {
+        const fallbackHost =
+          fallbackContainer?.querySelector<HTMLDivElement>('[data-yv-shadow-host]');
+        const shadowRoot = fallbackHost?.shadowRoot;
+        const content = shadowRoot?.querySelector('[data-testid="iframe-fallback-content"]');
+        const style = shadowRoot?.querySelector('style');
+        if (!content || !style) throw new Error('iframe fallback content not mounted');
+        await expect(shadowRoot?.adoptedStyleSheets).toHaveLength(0);
+        await expect(style.getAttribute('data-href')).toBe('yv-sdk-shadow-styles');
+        await expect(style.getAttribute('data-precedence')).toBe('yv-sdk');
+        await expect(iframeWindow.getComputedStyle(content).display).toBe('flex');
+      }, browserWaitOptions);
     } finally {
+      Object.defineProperty(styleSheetPrototype, 'replaceSync', originalReplaceSyncDescriptor);
+      fallbackRoot?.unmount();
+      fallbackContainer?.remove();
       root.unmount();
       container.remove();
-      Object.defineProperty(styleSheetPrototype, 'replaceSync', originalReplaceSyncDescriptor);
     }
   },
 };
