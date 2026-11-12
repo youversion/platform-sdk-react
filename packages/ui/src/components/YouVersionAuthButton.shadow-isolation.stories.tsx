@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { http, HttpResponse } from 'msw';
 import { createRoot, type Root } from 'react-dom/client';
 import { expect } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
@@ -36,35 +35,11 @@ const HOSTILE_CSS = `
 
 const GOOGLE_FONTS_STYLESHEET =
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap';
-const TEST_FONT_SOURCE = 'local("Arial"), local("Liberation Sans"), local("DejaVu Sans")';
-const BASE_FONT_FIXTURE_CSS = `
-  @font-face { font-family: 'Inter'; font-style: normal; font-weight: 400 700; src: ${TEST_FONT_SOURCE}; }
-  @font-face { font-family: 'Source Serif 4'; font-style: normal; font-weight: 400 700; src: ${TEST_FONT_SOURCE}; }
-`;
-const BRAND_FONT_FIXTURE_CSS = `
-  @font-face { font-family: 'Untitled Serif'; font-style: normal; font-weight: 400 700; src: ${TEST_FONT_SOURCE}; }
-`;
 
 const meta = {
   title: 'Spikes/Automatic Shadow DOM isolation',
   component: YouVersionAuthButton,
   tags: ['integration', 'shadow-dom'],
-  parameters: {
-    msw: {
-      handlers: [
-        http.get('*/v1/fonts/1/stylesheet', () =>
-          HttpResponse.text(BRAND_FONT_FIXTURE_CSS, {
-            headers: { 'Content-Type': 'text/css' },
-          }),
-        ),
-        http.get('https://fonts.googleapis.com/*', () =>
-          HttpResponse.text(BASE_FONT_FIXTURE_CSS, {
-            headers: { 'Content-Type': 'text/css' },
-          }),
-        ),
-      ],
-    },
-  },
 } satisfies Meta<typeof YouVersionAuthButton>;
 
 export default meta;
@@ -72,19 +47,11 @@ type Story = StoryObj<typeof meta>;
 
 const browserWaitOptions = { timeout: 5_000 } as const;
 
-async function installFontFixture(ownerDocument: Document, family: string): Promise<void> {
-  const style = ownerDocument.createElement('style');
-  style.textContent = `
-    @font-face {
-      font-family: '${family}';
-      font-style: normal;
-      font-weight: 400;
-      src: ${TEST_FONT_SOURCE};
-    }
-  `;
-  ownerDocument.head.append(style);
-  const loadedFaces = await ownerDocument.fonts.load(`400 16px "${family}"`, 'SDK font probe');
-  await expect(loadedFaces.length).toBeGreaterThan(0);
+async function expectFontLoaded(ownerDocument: Document, family: string): Promise<void> {
+  await waitFor(async () => {
+    const loadedFaces = await ownerDocument.fonts.load(`400 16px "${family}"`, 'SDK font probe');
+    await expect(loadedFaces.length).toBeGreaterThan(0);
+  }, browserWaitOptions);
 }
 
 function buttonStyleSnapshot(button: HTMLButtonElement) {
@@ -154,10 +121,11 @@ export const HostileGlobalButtonRule: Story = {
         ownerDocument.head.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
       ).filter((link) => link.getAttribute('href') === GOOGLE_FONTS_STYLESHEET);
       await expect(googleFontsLinks).toHaveLength(1);
+      await expect(shadowRoot.querySelector(`link[href="${GOOGLE_FONTS_STYLESHEET}"]`)).toBeNull();
     }, browserWaitOptions);
-    await installFontFixture(ownerDocument, 'Inter');
-    await installFontFixture(ownerDocument, 'Source Serif 4');
-    await installFontFixture(ownerDocument, 'Untitled Serif');
+    await expectFontLoaded(ownerDocument, 'Inter');
+    await expectFontLoaded(ownerDocument, 'Source Serif 4');
+    await expectFontLoaded(ownerDocument, 'Untitled Serif');
 
     const style = ownerDocument.createElement('style');
     style.textContent = HOSTILE_CSS;
@@ -276,9 +244,13 @@ export const SameOriginIframeDocument: Story = {
           iframeDocument.head.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
         ).filter((link) => link.getAttribute('href') === GOOGLE_FONTS_STYLESHEET);
         await expect(googleFontsLinks).toHaveLength(1);
+        const host = container.querySelector<HTMLDivElement>('[data-yv-shadow-host]');
+        await expect(
+          host?.shadowRoot?.querySelector(`link[href="${GOOGLE_FONTS_STYLESHEET}"]`),
+        ).toBeNull();
       }, browserWaitOptions);
-      await installFontFixture(iframeDocument, 'Inter');
-      await installFontFixture(iframeDocument, 'Source Serif 4');
+      await expectFontLoaded(iframeDocument, 'Inter');
+      await expectFontLoaded(iframeDocument, 'Source Serif 4');
       await waitFor(async () => {
         const host = container.querySelector<HTMLDivElement>('[data-yv-shadow-host]');
         const serifProbe = host?.shadowRoot?.querySelector<HTMLElement>(

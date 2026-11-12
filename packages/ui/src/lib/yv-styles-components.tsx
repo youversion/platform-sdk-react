@@ -1,16 +1,8 @@
-import { Suspense, useCallback, type ReactElement } from 'react';
+import { useCallback, type ReactElement } from 'react';
 import { useShadowStylesProvided } from './shadow-root-host';
 import { ensureBaseFonts, YvBaseFonts } from './yv-fonts';
 
 declare const __YV_COMPONENT_STYLES__: string;
-
-function BaseFontResource(): ReactElement {
-  return (
-    <Suspense fallback={null}>
-      <YvBaseFonts />
-    </Suspense>
-  );
-}
 
 /**
  * Utilities for scripture, pickers, auth, and popovers. Not on Provider-only.
@@ -28,17 +20,12 @@ export function YvComponentStyles(): ReactElement | null {
     [probeRef],
   );
   if (stylesProvided === null) {
-    return (
-      <>
-        <BaseFontResource />
-        <template ref={scopedProbeRef} />
-      </>
-    );
+    return <template ref={scopedProbeRef} />;
   }
 
   return (
     <>
-      <BaseFontResource />
+      {stylesProvided ? null : <YvBaseFonts />}
       {stylesProvided ? null : (
         <style href="yv-sdk-components" precedence="yv-sdk">
           {__YV_COMPONENT_STYLES__}

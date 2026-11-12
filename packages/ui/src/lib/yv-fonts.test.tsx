@@ -2,8 +2,9 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import React from 'react';
+import { Separator } from '@/components/ui/separator';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
 import { Textarea } from '@/components/ui/textarea';
 import { YvFonts } from '@/lib/yv-fonts';
@@ -55,11 +56,7 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
     ]);
     expect(googleFontLinks(ownerDocument)).toHaveLength(1);
 
-    // React can suspend a commit on <link rel="stylesheet" precedence> until the
-    // sheet loads, and jsdom never fires `load` for it. Assert children still
-    // commit, so a plain synchronous mount can't blank a consumer's tree. This
-    // covers the sync path only — a mount inside a transition is not exercised
-    // here; see the caveat in yv-fonts.tsx.
+    // Font installation must not gate or blank the consumer tree.
     expect(ownerDocument.body.querySelector('[data-testid="child"]')?.textContent).toBe('hello');
   });
 
@@ -102,6 +99,26 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
     consoleError.mockRestore();
   });
 
+  it('keeps the provider tree mounted when the base stylesheet fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { ownerDocument, container } = createTestDocument();
+
+    render(
+      <YouVersionProvider appKey="key-font-error">
+        <div data-testid="child">hello</div>
+      </YouVersionProvider>,
+      { container },
+    );
+
+    googleFontLinks(ownerDocument)[0]?.dispatchEvent(new Event('error'));
+
+    await waitFor(() => {
+      expect(ownerDocument.body.querySelector('[data-testid="child"]')?.textContent).toBe('hello');
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    consoleError.mockRestore();
+  });
+
   it('deduplicates the font <link> when multiple providers are rendered', () => {
     const { ownerDocument, container: container1 } = createTestDocument();
     const container2 = ownerDocument.createElement('div');
@@ -122,12 +139,43 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
     container2.remove();
   });
 
-  it('inserts the base font stylesheet for a standalone styled component', () => {
+  it('inserts the base font stylesheet for a standalone styled component', async () => {
     const { ownerDocument, container } = createTestDocument();
 
     render(<Textarea />, { container });
 
-    expect(googleFontLinks(ownerDocument)).toHaveLength(1);
+    await waitFor(() => expect(googleFontLinks(ownerDocument)).toHaveLength(1));
+  });
+
+  it('keeps one document-owned base stylesheet across provider and shadow components', async () => {
+    const { ownerDocument, container } = createTestDocument();
+
+    render(
+      <YouVersionProvider appKey="key-mixed-tree">
+        <Textarea />
+        <Separator />
+        <Separator />
+      </YouVersionProvider>,
+      { container },
+    );
+
+    await waitFor(() => {
+      expect(googleFontLinks(ownerDocument)).toHaveLength(1);
+      expect(
+        Array.from(ownerDocument.querySelectorAll<HTMLLinkElement>('link[href]')).filter(
+          (link) => link.getAttribute('href') === GOOGLE_FONTS_HREF,
+        ),
+      ).toHaveLength(1);
+      const shadowFontLinks = Array.from(ownerDocument.querySelectorAll<HTMLElement>('*')).flatMap(
+        (element) =>
+          element.shadowRoot
+            ? Array.from(element.shadowRoot.querySelectorAll<HTMLLinkElement>('link[href]')).filter(
+                (link) => link.getAttribute('href') === GOOGLE_FONTS_HREF,
+              )
+            : [],
+      );
+      expect(shadowFontLinks).toHaveLength(0);
+    });
   });
 
   it.each([

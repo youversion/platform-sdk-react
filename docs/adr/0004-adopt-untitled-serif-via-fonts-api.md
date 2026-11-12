@@ -48,20 +48,21 @@ footnotes, `Verse.Text` at `lg`, chapter headings, the Bible card, and the `lg` 
 the Day card all follow the token.
 
 **2. Delivery (YPE-1350).** A new `<YvFonts />` (`packages/ui/src/lib/yv-fonts.tsx`),
-sibling to `<YvStyles />`, renders the gated brand-font resource from
-`YouVersionProvider` when an app key is available:
+sibling to `<YvStyles />`, installs the gated brand-font resource in the owning
+document when an app key is available:
 
 ```tsx
-<link
-  rel="stylesheet"
-  href={`https://${apiHost}/v1/fonts/1/stylesheet?app_key=${encodeURIComponent(appKey)}`}
-  precedence="yv-sdk-fonts"
-/>
+ensureFontStylesheet(
+  ownerDocument,
+  `https://${apiHost}/v1/fonts/1/stylesheet?app_key=${encodeURIComponent(appKey)}`,
+);
 ```
 
-React 19 hoists it to `<head>` and dedupes by `href`, so multiple providers still yield
-one link and SSR streaming works. `@font-face` is not subject to `@layer`, so cascade
-position is irrelevant; `precedence` is only there to opt into the hoist and dedupe.
+The installer appends an ordinary `<link rel="stylesheet">` to `<head>` and dedupes by
+`href`, so multiple providers still yield one link. An inert template probe supplies
+the correct `ownerDocument` for same-origin iframe rendering. Avoiding React's
+`precedence` resource path keeps a failed font request from creating an unhandled
+stylesheet promise or delaying the consumer tree.
 
 YPE-6560 later made the same component own the public Google Fonts stylesheet for
 Inter and Source Serif 4. That base-font link renders even when the app key is missing;
@@ -71,8 +72,8 @@ components and in each owning iframe document.
 
 This is the SDK's first runtime-value-dependent stylesheet, and it has to be. The build
 pipeline freezes `global.css` into the `__YV_STYLES__` string literal at `pnpm
-build:css`, with no access to a consumer's app key — a React-rendered `<link>` is the
-only seam that has one.
+build:css`, with no access to a consumer's app key — the Provider's document-resource
+installer is the only seam that has one.
 
 `font_id` is hardcoded to `1` (slug `untitled-serif`) rather than discovered via
 `GET /v1/fonts`. Discovery would add a request waterfall in front of first paint to
@@ -113,12 +114,9 @@ non-breaking if the need turns out to be real.
   ships in request headers on every API call), and the gateway accepts it on this route,
   but it will now also land in CDN/proxy access logs and `Referer` headers. Accepted
   knowingly.
-- **`<link rel="stylesheet" precedence>` can suspend the commit of the component that
-  renders it while the sheet loads.** Verified that a plain synchronous mount commits its
-  children immediately (`yv-fonts.test.tsx`). A mount that happens inside a transition —
-  a Next.js App Router client navigation, for example — is not covered by that test and
-  may hold the commit until the request settles. Failures settle too, so this is a
-  latency risk rather than a hang. Revisit if a consumer reports a slow first navigation.
+- Font resources are installed during the client commit and are not part of React's
+  stylesheet-suspension protocol. A blocked or failed font request therefore leaves the
+  consumer tree mounted and falls through to the documented system-font stack.
 - The default reader font changes from Source Serif 4 to Untitled Serif for new users,
   and returning serif readers are migrated on hydrate. No public API is removed or
   retyped; the change ships as a `minor` across all three packages.

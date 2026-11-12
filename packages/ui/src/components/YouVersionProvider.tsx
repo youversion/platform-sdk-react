@@ -1,6 +1,6 @@
 'use client';
 
-import React, { type ComponentProps, Suspense, useEffect, useLayoutEffect, useState } from 'react';
+import React, { type ComponentProps, useEffect, useLayoutEffect, useState } from 'react';
 import { YouVersionProvider as BaseYouVersionProvider } from '@youversion/platform-react-hooks';
 import { syncSdkLanguage } from '@/i18n';
 import { InterfaceDirectionProvider, resolveInterfaceDirection } from '@/lib/direction';
@@ -91,9 +91,7 @@ export function YouVersionProvider({
     return (
       <>
         <YvStyles />
-        <Suspense fallback={null}>
-          <YvFonts />
-        </Suspense>
+        <YvFonts />
         <MissingAppKey theme={resolveTheme(props.theme)} direction={interfaceDirection} />
       </>
     );
@@ -114,15 +112,8 @@ export function YouVersionProvider({
       <InterfaceDirectionProvider direction={interfaceDirection}>
         <YvStyles />
         {/* The missing-app-key branch loads only the public base fonts. This branch
-            also has a key for the gated Untitled Serif request.
-
-            React suspends the component that renders a `precedence` stylesheet
-            while it loads. The local boundary keeps that suspension scoped to the
-            font link so it can't bubble to the consumer's nearest boundary above
-            the provider and hold their tree during the Fonts API fetch. */}
-        <Suspense fallback={null}>
-          <YvFonts appKey={props.appKey} apiHost={props.apiHost} />
-        </Suspense>
+            also has a key for the gated Untitled Serif request. */}
+        <YvFonts appKey={props.appKey} apiHost={props.apiHost} />
         {props.children}
       </InterfaceDirectionProvider>
     </BaseYouVersionProvider>
