@@ -3,8 +3,9 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
-import React from 'react';
-import { renderToString } from 'react-dom/server';
+import React, { Suspense } from 'react';
+import { PassThrough } from 'node:stream';
+import { renderToPipeableStream, renderToString } from 'react-dom/server';
 import { Separator } from '@/components/ui/separator';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
 import { Textarea } from '@/components/ui/textarea';
@@ -91,17 +92,19 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
 
   it('still inserts the base font stylesheet when the app key is missing', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const { ownerDocument, container } = createTestDocument();
+    try {
+      const { ownerDocument, container } = createTestDocument();
 
-    render(<YouVersionProvider appKey="   ">{null}</YouVersionProvider>, { container });
+      render(<YouVersionProvider appKey="   ">{null}</YouVersionProvider>, { container });
 
-    expect(googleFontLinks(ownerDocument)).toHaveLength(1);
-    expect(brandFontLinks(ownerDocument)).toHaveLength(0);
-    consoleError.mockRestore();
+      expect(googleFontLinks(ownerDocument)).toHaveLength(1);
+      expect(brandFontLinks(ownerDocument)).toHaveLength(0);
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it('keeps the provider tree mounted when the base stylesheet fails', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { ownerDocument, container } = createTestDocument();
 
     render(
@@ -119,7 +122,6 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
       expect(ownerDocument.body.querySelector('[data-testid="child"]')?.textContent).toBe('hello');
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
-    consoleError.mockRestore();
   });
 
   it('deduplicates the font <link> when multiple providers are rendered', () => {
@@ -182,21 +184,62 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
     });
   });
 
-  it('preinitializes base and gated stylesheets during server rendering', () => {
-    vi.stubGlobal('document', undefined);
-    try {
-      const html = renderToString(<YvFonts appKey="key-ssr" />);
+  it('emits base and gated stylesheets during server rendering with a DOM shim', () => {
+    const html = renderToString(<YvFonts appKey="key-ssr" />);
 
-      expect(html).toContain(
-        `rel="stylesheet" href="${GOOGLE_FONTS_HREF.replaceAll('&', '&amp;')}"`,
-      );
-      expect(html).toContain(
-        'rel="stylesheet" href="https://api.youversion.com/v1/fonts/1/stylesheet?app_key=key-ssr"',
-      );
-      expect(html).toContain('data-precedence="yv-sdk-fonts"');
-    } finally {
-      vi.unstubAllGlobals();
+    expect(html).toContain(
+      `rel="stylesheet" href="${GOOGLE_FONTS_HREF.replaceAll('&', '&amp;')}"`,
+    );
+    expect(html).toContain(
+      'rel="stylesheet" href="https://api.youversion.com/v1/fonts/1/stylesheet?app_key=key-ssr"',
+    );
+    expect(html).toContain('data-precedence="yv-sdk-fonts"');
+  });
+
+  it('applies font stylesheets when a provider streams after the initial shell', async () => {
+    let reveal!: () => void;
+    let revealed = false;
+    const pending = new Promise<void>((resolve) => {
+      reveal = () => {
+        revealed = true;
+        resolve();
+      };
+    });
+    function DelayedFonts(): React.ReactElement {
+      if (!revealed) throw pending;
+      return <YvFonts appKey="late-key" />;
     }
+
+    const html = await new Promise<string>((resolve, reject) => {
+      let output = '';
+      const destination = new PassThrough();
+      destination.setEncoding('utf8');
+      destination.on('data', (chunk: string) => {
+        output += chunk;
+      });
+      destination.once('data', reveal);
+      destination.on('end', () => resolve(output));
+      destination.on('error', reject);
+
+      const stream = renderToPipeableStream(
+        <main>
+          <span>shell</span>
+          <Suspense fallback={<div>loading</div>}>
+            <DelayedFonts />
+          </Suspense>
+        </main>,
+        {
+          onShellReady() {
+            stream.pipe(destination);
+          },
+          onError: reject,
+        },
+      );
+    });
+
+    expect(html).toContain(
+      `["https://api.youversion.com/v1/fonts/1/stylesheet?app_key=late-key","yv-sdk-fonts"]`,
+    );
   });
 
   it.each([

@@ -1,5 +1,4 @@
-import React, { useCallback, useState } from 'react';
-import { preinit } from 'react-dom';
+import React, { useCallback, useState, useSyncExternalStore } from 'react';
 
 /**
  * Untitled Serif — font_id 1 / slug 'untitled-serif'.
@@ -34,11 +33,7 @@ export interface YvFontsProps {
   apiHost?: string;
 }
 
-function FontStylesheet({ href }: { href: string }): React.ReactElement | null {
-  if (!globalThis.document) {
-    preinit(href, { as: 'style', precedence: 'yv-sdk-fonts' });
-  }
-
+function ClientFontStylesheet({ href }: { href: string }): React.ReactElement | null {
   const [installedHref, setInstalledHref] = useState<string>();
   const install = useCallback(
     (probe: HTMLTemplateElement | null) => {
@@ -51,6 +46,24 @@ function FontStylesheet({ href }: { href: string }): React.ReactElement | null {
   );
   if (installedHref === href) return null;
   return <template ref={install} />;
+}
+
+function subscribeToHydration(): () => void {
+  return () => undefined;
+}
+
+function FontStylesheet({ href }: { href: string }): React.ReactElement | null {
+  const serverOrHydrating = useSyncExternalStore(
+    subscribeToHydration,
+    () => false,
+    () => true,
+  );
+
+  return serverOrHydrating ? (
+    <link rel="stylesheet" href={href} precedence="yv-sdk-fonts" />
+  ) : (
+    <ClientFontStylesheet href={href} />
+  );
 }
 
 /** Loads the public base fonts required by standalone and Provider-owned UI. */
@@ -67,11 +80,11 @@ export function YvBaseFonts(): React.ReactElement | null {
  * stylesheet: the URL needs the app key, which is only known at render time, so
  * it cannot live in the build-time-frozen `__YV_STYLES__` blob.
  *
- * Server rendering preinitializes each stylesheet so its rules apply before
- * hydration. On the client, each resource is installed as an ordinary
- * document-owned stylesheet and deduped by `href`. The inert probe discovers
- * the correct owner document for same-origin iframes without creating React's
- * stylesheet-suspension promise.
+ * Server rendering and hydration use React's stylesheet resource so late
+ * Suspense segments carry an applied dependency. Fresh client mounts switch to
+ * an ordinary document-owned stylesheet, deduped by `href`. The inert probe
+ * discovers the correct owner document for same-origin iframes without creating
+ * React's stylesheet-suspension promise.
  */
 export function YvFonts({
   appKey,
