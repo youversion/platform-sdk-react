@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { http, HttpResponse } from 'msw';
 import { createRoot, type Root } from 'react-dom/client';
 import { expect } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
+import { YvComponentStyles } from '../lib/yv-styles-components';
 import { waitFor, waitForElement } from '../test/storybook-dom';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 
@@ -33,25 +33,26 @@ const HOSTILE_CSS = `
   }
 `;
 
+const GOOGLE_FONTS_STYLESHEET =
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap';
+
 const meta = {
   title: 'Spikes/Automatic Shadow DOM isolation',
   component: YouVersionAuthButton,
-  tags: ['integration', 'shadow-dom'],
-  parameters: {
-    msw: {
-      handlers: [
-        http.get('*/v1/fonts/1/stylesheet', () =>
-          HttpResponse.text('', { headers: { 'Content-Type': 'text/css' } }),
-        ),
-      ],
-    },
-  },
+  tags: ['integration', 'shadow-dom', 'shadow-fresh-process'],
 } satisfies Meta<typeof YouVersionAuthButton>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 const browserWaitOptions = { timeout: 5_000 } as const;
+
+async function expectFontLoaded(ownerDocument: Document, family: string): Promise<void> {
+  await waitFor(async () => {
+    const loadedFaces = await ownerDocument.fonts.load(`400 16px "${family}"`, 'SDK font probe');
+    await expect(loadedFaces.length).toBeGreaterThan(0);
+  }, browserWaitOptions);
+}
 
 function buttonStyleSnapshot(button: HTMLButtonElement) {
   const ownerWindow = button.ownerDocument.defaultView;
@@ -115,6 +116,16 @@ export const HostileGlobalButtonRule: Story = {
     // also happens not to equal the hostile values below.
     await expect(sdkBaseline.display).toBe('flex');
     await expect(sdkBaseline.fontFamily).toContain('Inter');
+    await waitFor(async () => {
+      const googleFontsLinks = Array.from(
+        ownerDocument.head.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
+      ).filter((link) => link.getAttribute('href') === GOOGLE_FONTS_STYLESHEET);
+      await expect(googleFontsLinks).toHaveLength(1);
+      await expect(shadowRoot.querySelector(`link[href="${GOOGLE_FONTS_STYLESHEET}"]`)).toBeNull();
+    }, browserWaitOptions);
+    await expectFontLoaded(ownerDocument, 'Inter');
+    await expectFontLoaded(ownerDocument, 'Source Serif 4');
+    await expectFontLoaded(ownerDocument, 'Untitled Serif');
 
     const style = ownerDocument.createElement('style');
     style.textContent = HOSTILE_CSS;
@@ -162,6 +173,18 @@ export const SameOriginIframeDocument: Story = {
       return { iframeDocument: currentDocument, iframeWindow: currentWindow };
     }, browserWaitOptions);
 
+    const styleSheetPrototype = iframeWindow.CSSStyleSheet.prototype;
+    const originalReplaceSyncDescriptor = Object.getOwnPropertyDescriptor(
+      styleSheetPrototype,
+      'replaceSync',
+    );
+    if (!originalReplaceSyncDescriptor?.configurable) {
+      throw new Error('iframe CSSStyleSheet.replaceSync cannot be observed');
+    }
+    // SAFETY: this descriptor is the standardized CSSStyleSheet method on the
+    // iframe prototype, and configurability was verified before wrapping it.
+    const originalReplaceSync = originalReplaceSyncDescriptor.value as CSSStyleSheet['replaceSync'];
+    const replacementInputs: string[] = [];
     const container = iframeDocument.createElement('div');
     iframeDocument.body.append(container);
     const root = createRoot(container);
@@ -169,10 +192,37 @@ export const SameOriginIframeDocument: Story = {
     let fallbackRoot: Root | undefined;
 
     try {
+      Object.defineProperty(styleSheetPrototype, 'replaceSync', {
+        ...originalReplaceSyncDescriptor,
+        value(this: CSSStyleSheet, cssText: string): void {
+          replacementInputs.push(cssText);
+          originalReplaceSync.call(this, cssText);
+        },
+      });
       root.render(
         <ShadowRootHost>
+          <YvComponentStyles />
           <span className="yv:flex" data-testid="iframe-content">
             Isolated
+          </span>
+          <span
+            className="yv:font-serif"
+            data-testid="iframe-serif-probe"
+            style={{ display: 'inline-block' }}
+          >
+            WWWWiiiiMMMM
+          </span>
+          <span
+            data-testid="iframe-source-serif-reference"
+            style={{ display: 'inline-block', fontFamily: "'Source Serif 4'" }}
+          >
+            WWWWiiiiMMMM
+          </span>
+          <span
+            data-testid="iframe-generic-serif-reference"
+            style={{ display: 'inline-block', fontFamily: 'serif' }}
+          >
+            WWWWiiiiMMMM
           </span>
         </ShadowRootHost>,
       );
@@ -187,47 +237,72 @@ export const SameOriginIframeDocument: Story = {
         await expect(shadowRoot?.adoptedStyleSheets[0]).toBeInstanceOf(iframeWindow.CSSStyleSheet);
         await expect(iframeWindow.getComputedStyle(content).display).toBe('flex');
       }, browserWaitOptions);
-
-      const styleSheetPrototype = iframeWindow.CSSStyleSheet.prototype;
-      const replaceSyncDescriptor = Object.getOwnPropertyDescriptor(
-        styleSheetPrototype,
-        'replaceSync',
-      );
-      if (!replaceSyncDescriptor?.configurable) {
-        throw new Error('iframe CSSStyleSheet.replaceSync cannot be disabled for fallback proof');
-      }
+      await expect(replacementInputs).toHaveLength(1);
+      await expect(replacementInputs[0]).not.toMatch(/@import\b/i);
+      await waitFor(async () => {
+        const googleFontsLinks = Array.from(
+          iframeDocument.head.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
+        ).filter((link) => link.getAttribute('href') === GOOGLE_FONTS_STYLESHEET);
+        await expect(googleFontsLinks).toHaveLength(1);
+        const host = container.querySelector<HTMLDivElement>('[data-yv-shadow-host]');
+        await expect(
+          host?.shadowRoot?.querySelector(`link[href="${GOOGLE_FONTS_STYLESHEET}"]`),
+        ).toBeNull();
+      }, browserWaitOptions);
+      await expectFontLoaded(iframeDocument, 'Inter');
+      await expectFontLoaded(iframeDocument, 'Source Serif 4');
+      await waitFor(async () => {
+        const host = container.querySelector<HTMLDivElement>('[data-yv-shadow-host]');
+        const serifProbe = host?.shadowRoot?.querySelector<HTMLElement>(
+          '[data-testid="iframe-serif-probe"]',
+        );
+        const sourceReference = host?.shadowRoot?.querySelector<HTMLElement>(
+          '[data-testid="iframe-source-serif-reference"]',
+        );
+        const genericReference = host?.shadowRoot?.querySelector<HTMLElement>(
+          '[data-testid="iframe-generic-serif-reference"]',
+        );
+        if (!serifProbe || !sourceReference || !genericReference) {
+          throw new Error('iframe serif font probes not mounted');
+        }
+        const serifWidth = serifProbe.getBoundingClientRect().width;
+        const sourceWidth = sourceReference.getBoundingClientRect().width;
+        const genericWidth = genericReference.getBoundingClientRect().width;
+        await expect(iframeWindow.getComputedStyle(serifProbe).fontFamily).toContain(
+          'Source Serif 4',
+        );
+        await expect(Math.abs(serifWidth - sourceWidth)).toBeLessThan(0.1);
+        await expect(Math.abs(serifWidth - genericWidth)).toBeGreaterThan(0.1);
+      }, browserWaitOptions);
 
       Reflect.deleteProperty(styleSheetPrototype, 'replaceSync');
-      try {
-        fallbackContainer = iframeDocument.createElement('div');
-        iframeDocument.body.append(fallbackContainer);
-        fallbackRoot = createRoot(fallbackContainer);
-        fallbackRoot.render(
-          <ShadowRootHost>
-            <span className="yv:flex" data-testid="iframe-fallback-content">
-              Fallback isolated
-            </span>
-          </ShadowRootHost>,
-        );
+      fallbackContainer = iframeDocument.createElement('div');
+      iframeDocument.body.append(fallbackContainer);
+      fallbackRoot = createRoot(fallbackContainer);
+      fallbackRoot.render(
+        <ShadowRootHost>
+          <span className="yv:flex" data-testid="iframe-fallback-content">
+            Fallback isolated
+          </span>
+        </ShadowRootHost>,
+      );
 
-        await waitFor(async () => {
-          const fallbackHost =
-            fallbackContainer?.querySelector<HTMLDivElement>('[data-yv-shadow-host]');
-          const shadowRoot = fallbackHost?.shadowRoot;
-          const content = shadowRoot?.querySelector('[data-testid="iframe-fallback-content"]');
-          const style = shadowRoot?.querySelector('style');
-          if (!content || !style) throw new Error('iframe fallback content not mounted');
-          await expect(shadowRoot?.adoptedStyleSheets).toHaveLength(0);
-          await expect(style.getAttribute('data-href')).toBe('yv-sdk-shadow-styles');
-          await expect(style.getAttribute('data-precedence')).toBe('yv-sdk');
-          await expect(iframeWindow.getComputedStyle(content).display).toBe('flex');
-        }, browserWaitOptions);
-      } finally {
-        fallbackRoot?.unmount();
-        fallbackContainer?.remove();
-        Object.defineProperty(styleSheetPrototype, 'replaceSync', replaceSyncDescriptor);
-      }
+      await waitFor(async () => {
+        const fallbackHost =
+          fallbackContainer?.querySelector<HTMLDivElement>('[data-yv-shadow-host]');
+        const shadowRoot = fallbackHost?.shadowRoot;
+        const content = shadowRoot?.querySelector('[data-testid="iframe-fallback-content"]');
+        const style = shadowRoot?.querySelector('style');
+        if (!content || !style) throw new Error('iframe fallback content not mounted');
+        await expect(shadowRoot?.adoptedStyleSheets).toHaveLength(0);
+        await expect(style.getAttribute('data-href')).toBe('yv-sdk-shadow-styles');
+        await expect(style.getAttribute('data-precedence')).toBe('yv-sdk');
+        await expect(iframeWindow.getComputedStyle(content).display).toBe('flex');
+      }, browserWaitOptions);
     } finally {
+      Object.defineProperty(styleSheetPrototype, 'replaceSync', originalReplaceSyncDescriptor);
+      fallbackRoot?.unmount();
+      fallbackContainer?.remove();
       root.unmount();
       container.remove();
     }

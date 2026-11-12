@@ -1,5 +1,6 @@
-import type { ReactElement } from 'react';
+import { useCallback, type ReactElement } from 'react';
 import { useShadowStylesProvided } from './shadow-root-host';
+import { ensureBaseFonts, YvBaseFonts } from './yv-fonts';
 
 declare const __YV_COMPONENT_STYLES__: string;
 
@@ -11,13 +12,25 @@ declare const __YV_COMPONENT_STYLES__: string;
  */
 export function YvComponentStyles(): ReactElement | null {
   const [probeRef, stylesProvided] = useShadowStylesProvided();
+  const scopedProbeRef = useCallback(
+    (probe: HTMLTemplateElement | null) => {
+      if (probe) ensureBaseFonts(probe.ownerDocument);
+      probeRef(probe);
+    },
+    [probeRef],
+  );
   if (stylesProvided === null) {
-    return <template ref={probeRef} />;
+    return <template ref={scopedProbeRef} />;
   }
 
-  return stylesProvided ? null : (
-    <style href="yv-sdk-components" precedence="yv-sdk">
-      {__YV_COMPONENT_STYLES__}
-    </style>
+  return (
+    <>
+      {stylesProvided ? null : <YvBaseFonts />}
+      {stylesProvided ? null : (
+        <style href="yv-sdk-components" precedence="yv-sdk">
+          {__YV_COMPONENT_STYLES__}
+        </style>
+      )}
+    </>
   );
 }

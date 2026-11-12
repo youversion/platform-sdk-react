@@ -46,14 +46,14 @@ in the rollout plan.
 Constructable stylesheets are cached per owning `Document`, because a sheet from
 the top-level document cannot be adopted into a same-origin iframe's shadow
 root. Environments without constructable stylesheets receive a `<style>` element
-instead. Font loading remains document-owned: `CSSStyleSheet.replaceSync()`
-discards `@import`, so the adopted sheet does not load the Google Fonts import
-from the compiled CSS (and Chromium warns once when the cached sheet is created).
-`YouVersionProvider` installs the document stylesheet and brand-font stylesheet;
+instead. Font loading remains document-owned: constructable and fallback shadow
+styles contain no external `@import`. `YouVersionProvider` installs document-level
+Google Fonts and brand-font stylesheets, while the component-style injector ensures
+the public Google Fonts resource also exists for standalone components and in an
+iframe's owning document;
 an isolated component still depends on those document-level font registrations.
-The local `<style>` fallback retains the import but is not a substitute for
-document-owned font loading. For iframe consumers, fonts must be loaded in the
-iframe's owning document, not merely in the parent document.
+For iframe consumers, fonts must be loaded in the iframe's owning document, not
+merely in the parent document.
 
 The same infrastructure supports the picker roots and the shared Dialog and
 Popover primitives. Floating content remains in its component's shadow tree so

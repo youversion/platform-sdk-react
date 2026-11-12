@@ -522,11 +522,10 @@ separately in YPE-5749.
 ## Accepted boundaries and unresolved environment coverage
 
 - Component rules are installed locally, but font loading is document-owned.
-  Constructable stylesheets discard the compiled Google Fonts `@import` and
-  Chromium warns when the per-document cached sheet is created. The `<style>`
-  fallback retains the import; neither path replaces the provider's document
-  stylesheet and brand-font registration. Fonts must be loaded in each owning
-  document, including same-origin iframes.
+  Constructable stylesheets and the `<style>` fallback contain no external
+  `@import`; the provider installs the Google Fonts and brand-font resources, and
+  the component-style injector ensures the public Google Fonts resource in each
+  owning document. This includes standalone components and same-origin iframes.
 - Host `@font-face` registrations are document-scoped and can collide with the
   public font family names used inside a shadow root. This limitation is
   accepted for the rollout; avoiding it requires private family names and

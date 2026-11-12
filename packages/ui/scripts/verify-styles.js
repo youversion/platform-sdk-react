@@ -10,6 +10,11 @@ const dist = resolve(uiRoot, 'dist');
 const errors = [];
 const packageJson = JSON.parse(readFileSync(resolve(uiRoot, 'package.json'), 'utf8'));
 const publicCssExport = packageJson.exports?.['./styles.css'];
+const forbiddenRuntimeImport = /@import\b/i;
+const publicLayerOrder =
+  '@layer properties,theme,base,components,utilities,yv-sdk-fonts,yv-sdk-styles,yv-sdk-theme,yv-sdk-utilities,yv-sdk-bible-reader;\n';
+const googleFontsImport =
+  "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap') layer(yv-sdk-fonts);";
 
 // Tailwind --watch (and a concurrent build) can rewrite dist CSS after
 // build:css already ran preserve-host-revert-layer. Re-apply before gating.
@@ -26,6 +31,9 @@ const chromeCss = existsSync(chromeCssPath) ? readFileSync(chromeCssPath, 'utf-8
 if (!chromeCss.trim()) {
   errors.push('dist/chrome.css is missing or empty — did build:css run?');
 } else {
+  if (forbiddenRuntimeImport.test(chromeCss)) {
+    errors.push('dist/chrome.css contains an @import instead of a document resource');
+  }
   const unlayeredChrome = stripLayerBlocks(chromeCss);
   if (!unlayeredChrome.includes('revert-layer')) {
     errors.push(
@@ -42,6 +50,11 @@ const css = existsSync(cssPath) ? readFileSync(cssPath, 'utf-8') : '';
 if (!css.trim()) {
   errors.push('dist/tailwind.css is missing or empty — did build:css run?');
 } else {
+  if (forbiddenRuntimeImport.test(css)) {
+    errors.push(
+      'dist/tailwind.css contains an @import that would be passed to CSSStyleSheet.replaceSync()',
+    );
+  }
   const unlayered = stripLayerBlocks(css);
   if (!unlayered.includes('revert-layer')) {
     errors.push(
@@ -84,6 +97,11 @@ const readerCss = existsSync(readerCssPath) ? readFileSync(readerCssPath, 'utf-8
 if (!readerCss.trim()) {
   errors.push('dist/bible-reader.css is missing or empty — did build:css run?');
 } else {
+  if (forbiddenRuntimeImport.test(readerCss)) {
+    errors.push(
+      'dist/bible-reader.css contains an @import that would be passed to CSSStyleSheet.replaceSync()',
+    );
+  }
   const verseSelectionRule = readerCss.match(/\[data-yv-sdk\] \.yv-v-selected\{([^}]*)\}/)?.[1];
   const requiredDeclarations = [
     'text-decoration-line:underline',
@@ -113,6 +131,11 @@ const publicCss = existsSync(publicCssPath) ? readFileSync(publicCssPath, 'utf-8
 if (!publicCss.trim()) {
   errors.push('the public ./styles.css export is missing or empty — did build:css run?');
 } else {
+  if (!publicCss.startsWith(publicLayerOrder + googleFontsImport)) {
+    errors.push(
+      'dist/styles.css must declare the public layer order before the Google Fonts import',
+    );
+  }
   if (!publicCss.includes('scrollbar-hide')) {
     errors.push('dist/styles.css missing full utility sheet');
   }

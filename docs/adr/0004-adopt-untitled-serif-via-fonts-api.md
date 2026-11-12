@@ -48,25 +48,35 @@ footnotes, `Verse.Text` at `lg`, chapter headings, the Bible card, and the `lg` 
 the Day card all follow the token.
 
 **2. Delivery (YPE-1350).** A new `<YvFonts />` (`packages/ui/src/lib/yv-fonts.tsx`),
-sibling to `<YvStyles />`, rendered from `YouVersionProvider` in the normal branch only
-(no app key, no font):
+sibling to `<YvStyles />`, installs the gated brand-font resource in the owning
+document when an app key is available:
 
 ```tsx
-<link
-  rel="stylesheet"
-  href={`https://${apiHost}/v1/fonts/1/stylesheet?app_key=${encodeURIComponent(appKey)}`}
-  precedence="yv-sdk-fonts"
-/>
+ensureFontStylesheet(
+  ownerDocument,
+  `https://${apiHost}/v1/fonts/1/stylesheet?app_key=${encodeURIComponent(appKey)}`,
+);
 ```
 
-React 19 hoists it to `<head>` and dedupes by `href`, so multiple providers still yield
-one link and SSR streaming works. `@font-face` is not subject to `@layer`, so cascade
-position is irrelevant; `precedence` is only there to opt into the hoist and dedupe.
+Server rendering and hydration use React resources: the gated brand stylesheet is an
+applied dependency for initial and late Suspense segments, while the public base fonts
+use a non-blocking document `@import` so a Google failure cannot discard the revealed
+subtree. Fresh client mounts append an ordinary `<link rel="stylesheet">` and dedupe by
+`href`, so multiple providers still yield one resource and hydration reuses the server
+style. An inert template probe supplies the correct `ownerDocument` for same-origin
+iframe rendering. Avoiding React's external resource path for base fonts and fresh
+client mounts keeps a failed public-font request from delaying the consumer tree.
+
+YPE-6560 later made the same component own the public Google Fonts stylesheet for
+Inter and Source Serif 4. That base-font link renders even when the app key is missing;
+the gated Untitled Serif link still requires the key shown above. The component-style
+injector installs the same deduplicated base-font resource for standalone public
+components and in each owning iframe document.
 
 This is the SDK's first runtime-value-dependent stylesheet, and it has to be. The build
 pipeline freezes `global.css` into the `__YV_STYLES__` string literal at `pnpm
-build:css`, with no access to a consumer's app key — a React-rendered `<link>` is the
-only seam that has one.
+build:css`, with no access to a consumer's app key — the Provider's document-resource
+installer is the only seam that has one.
 
 `font_id` is hardcoded to `1` (slug `untitled-serif`) rather than discovered via
 `GET /v1/fonts`. Discovery would add a request waterfall in front of first paint to
@@ -107,19 +117,17 @@ non-breaking if the need turns out to be real.
   ships in request headers on every API call), and the gateway accepts it on this route,
   but it will now also land in CDN/proxy access logs and `Referer` headers. Accepted
   knowingly.
-- **`<link rel="stylesheet" precedence>` can suspend the commit of the component that
-  renders it while the sheet loads.** Verified that a plain synchronous mount commits its
-  children immediately (`yv-fonts.test.tsx`). A mount that happens inside a transition —
-  a Next.js App Router client navigation, for example — is not covered by that test and
-  may hold the commit until the request settles. Failures settle too, so this is a
-  latency risk rather than a hang. Revisit if a consumer reports a slow first navigation.
+- Font resources are streamed in server output and reused during hydration. Fresh client
+  mounts use ordinary document links without entering React's stylesheet-suspension
+  protocol, so a blocked or failed request leaves the consumer tree mounted and falls
+  through to the documented system-font stack.
 - The default reader font changes from Source Serif 4 to Untitled Serif for new users,
   and returning serif readers are migrated on hydrate. No public API is removed or
   retyped; the change ships as a `minor` across all three packages.
 - The serif stack is declared twice and must stay in sync by hand.
   `font-tokens.test.ts` is the guard — it is the first test in the repo to assert a font
   token's literal value.
-- The revert, if it is ever needed, is small and local: drop `<YvFonts />` from
-  `YouVersionProvider` and remove `'Untitled Serif'` from the two stacks. Everything
-  else — the picker label, the migration, the CSP docs — degrades to Source Serif 4 on
-  its own.
+- The brand-font revert, if it is ever needed, is small and local: stop rendering
+  the gated link from `<YvFonts />` and remove `'Untitled Serif'` from the two stacks.
+  Everything else — the picker label, the migration, the CSP docs — degrades to
+  Source Serif 4 on its own.
