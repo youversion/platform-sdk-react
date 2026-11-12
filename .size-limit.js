@@ -3,6 +3,7 @@ export default [
   {
     name: 'core / full barrel (esm)',
     path: 'packages/core/dist/index.js',
+    // Measured brotlied size 24687 B; set to measured + ~10% per CONTRIBUTING.
     limit: '27.2 KB',
     ignore: ['jsdom'],
   },
@@ -10,7 +11,8 @@ export default [
     name: 'core / ApiClient only',
     path: 'packages/core/dist/index.js',
     import: '{ ApiClient }',
-    limit: '8 KB',
+    // Measured brotlied size 5123 B; set to measured + ~10% per CONTRIBUTING.
+    limit: '5.7 KB',
     ignore: ['jsdom'],
   },
   {
@@ -28,6 +30,7 @@ export default [
   {
     name: 'hooks / full barrel',
     path: 'packages/hooks/dist/index.js',
+    // Measured brotlied size 29918 B; set to measured + ~10% per CONTRIBUTING.
     limit: '32.9 KB',
     ignore: ['react', 'react-dom', '@tanstack/react-query'],
   },
@@ -35,7 +38,8 @@ export default [
     name: 'hooks / useChapter only',
     path: 'packages/hooks/dist/index.js',
     import: '{ useChapter }',
-    limit: '12.2 KB',
+    // Measured brotlied size 10540 B; set to measured + ~10% per CONTRIBUTING.
+    limit: '11.6 KB',
     ignore: ['react', 'react-dom', '@tanstack/react-query'],
   },
   // YouVersionProvider and the full barrel include all bundled translations.
