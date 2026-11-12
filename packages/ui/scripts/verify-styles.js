@@ -10,6 +10,7 @@ const dist = resolve(uiRoot, 'dist');
 const errors = [];
 const packageJson = JSON.parse(readFileSync(resolve(uiRoot, 'package.json'), 'utf8'));
 const publicCssExport = packageJson.exports?.['./styles.css'];
+const externalImport = /@import\s+(?:url\()?['"]?https?:\/\//i;
 
 // Tailwind --watch (and a concurrent build) can rewrite dist CSS after
 // build:css already ran preserve-host-revert-layer. Re-apply before gating.
@@ -26,6 +27,9 @@ const chromeCss = existsSync(chromeCssPath) ? readFileSync(chromeCssPath, 'utf-8
 if (!chromeCss.trim()) {
   errors.push('dist/chrome.css is missing or empty — did build:css run?');
 } else {
+  if (externalImport.test(chromeCss)) {
+    errors.push('dist/chrome.css contains an external @import instead of a document resource');
+  }
   const unlayeredChrome = stripLayerBlocks(chromeCss);
   if (!unlayeredChrome.includes('revert-layer')) {
     errors.push(
@@ -42,6 +46,11 @@ const css = existsSync(cssPath) ? readFileSync(cssPath, 'utf-8') : '';
 if (!css.trim()) {
   errors.push('dist/tailwind.css is missing or empty — did build:css run?');
 } else {
+  if (externalImport.test(css)) {
+    errors.push(
+      'dist/tailwind.css contains an external @import that would be passed to CSSStyleSheet.replaceSync()',
+    );
+  }
   const unlayered = stripLayerBlocks(css);
   if (!unlayered.includes('revert-layer')) {
     errors.push(
@@ -113,6 +122,9 @@ const publicCss = existsSync(publicCssPath) ? readFileSync(publicCssPath, 'utf-8
 if (!publicCss.trim()) {
   errors.push('the public ./styles.css export is missing or empty — did build:css run?');
 } else {
+  if (!externalImport.test(publicCss)) {
+    errors.push('dist/styles.css is missing the Google Fonts import for manual CSS consumers');
+  }
   if (!publicCss.includes('scrollbar-hide')) {
     errors.push('dist/styles.css missing full utility sheet');
   }

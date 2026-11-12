@@ -10,6 +10,8 @@ import { YouVersionProvider } from '@/components/YouVersionProvider';
 import { YvFonts } from '@/lib/yv-fonts';
 
 const FONT_LINK_SELECTOR = 'link[rel="stylesheet"][data-precedence="yv-sdk-fonts"]';
+const GOOGLE_FONTS_HREF =
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap';
 
 function fontLinks(): HTMLLinkElement[] {
   return Array.from(document.head.querySelectorAll<HTMLLinkElement>(FONT_LINK_SELECTOR));
@@ -21,11 +23,19 @@ function hrefsFor(appKey: string): string[] {
     .filter((href) => href.includes(`app_key=${appKey}`));
 }
 
+function googleFontLinks(): HTMLLinkElement[] {
+  return fontLinks().filter((link) => link.getAttribute('href') === GOOGLE_FONTS_HREF);
+}
+
+function brandFontLinks(): HTMLLinkElement[] {
+  return fontLinks().filter((link) => link.getAttribute('href')?.includes('/v1/fonts/1/stylesheet'));
+}
+
 // React hoists these into <head> keyed by href and keeps its own resource map, so
 // a removed node is never re-inserted for the same href. Every test therefore uses
 // a distinct app key and asserts only on its own link.
 describe('Font stylesheet injection via YouVersionProvider', () => {
-  it('renders a <link> to the gated Fonts API stylesheet with the app key', () => {
+  it('loads the base and gated font stylesheets without host-app setup', () => {
     render(
       <YouVersionProvider appKey="key-basic">
         <div data-testid="child">hello</div>
@@ -35,6 +45,7 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
     expect(hrefsFor('key-basic')).toEqual([
       'https://api.youversion.com/v1/fonts/1/stylesheet?app_key=key-basic',
     ]);
+    expect(googleFontLinks()).toHaveLength(1);
 
     // React can suspend a commit on <link rel="stylesheet" precedence> until the
     // sheet loads, and jsdom never fires `load` for it. Assert children still
@@ -68,12 +79,9 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
     ]);
   });
 
-  it('renders no font <link> when the app key is missing', () => {
-    // A whitespace-only key trips the provider's missing-app-key guard, which
-    // renders <YvStyles /> alone — <YvFonts /> is never reached. YvFonts' own
-    // guard is covered separately below.
+  it('still loads the base fonts when the app key is missing', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const before = fontLinks().length;
+    const beforeBrandFonts = brandFontLinks().length;
 
     render(
       <YouVersionProvider appKey="   ">
@@ -81,7 +89,8 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
       </YouVersionProvider>,
     );
 
-    expect(fontLinks()).toHaveLength(before);
+    expect(googleFontLinks()).toHaveLength(1);
+    expect(brandFontLinks()).toHaveLength(beforeBrandFonts);
     consoleError.mockRestore();
   });
 
@@ -100,6 +109,7 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
     });
 
     expect(hrefsFor('key-dedupe')).toHaveLength(1);
+    expect(googleFontLinks()).toHaveLength(1);
 
     act(() => {
       root1.unmount();
@@ -110,19 +120,17 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
   });
 });
 
-// The provider guard means YvFonts is normally only reached with a real key, so
-// its own defensive guard needs direct coverage — otherwise a regression there
-// would only surface as a 401 in a consumer's network tab.
 describe('YvFonts', () => {
   it.each([
     ['undefined', undefined],
     ['empty', ''],
     ['whitespace-only', '   '],
-  ])('renders nothing for an %s app key', (_label, appKey) => {
-    const before = fontLinks().length;
+  ])('loads only the base fonts for an %s app key', (_label, appKey) => {
+    const beforeBrandFonts = brandFontLinks().length;
 
     render(<YvFonts appKey={appKey} />);
 
-    expect(fontLinks()).toHaveLength(before);
+    expect(googleFontLinks()).toHaveLength(1);
+    expect(brandFontLinks()).toHaveLength(beforeBrandFonts);
   });
 });

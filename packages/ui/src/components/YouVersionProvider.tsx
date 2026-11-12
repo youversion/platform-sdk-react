@@ -91,6 +91,9 @@ export function YouVersionProvider({
     return (
       <>
         <YvStyles />
+        <Suspense fallback={null}>
+          <YvFonts />
+        </Suspense>
         <MissingAppKey theme={resolveTheme(props.theme)} direction={interfaceDirection} />
       </>
     );
@@ -110,8 +113,8 @@ export function YouVersionProvider({
     <BaseYouVersionProvider {...props} additionalHeaders={mergedHeaders}>
       <InterfaceDirectionProvider direction={interfaceDirection}>
         <YvStyles />
-        {/* Only in this branch — the missing-app-key guard above has no key, and
-            without a key the gated Fonts API request would 401.
+        {/* The missing-app-key branch loads only the public base fonts. This branch
+            also has a key for the gated Untitled Serif request.
 
             React suspends the component that renders a `precedence` stylesheet
             while it loads. The local boundary keeps that suspension scoped to the

@@ -22,6 +22,7 @@ const themeCss = readFileSync(
   'utf8',
 );
 const globalCss = readFileSync(resolve(import.meta.dirname, './global.css'), 'utf8');
+const fontResources = readFileSync(resolve(import.meta.dirname, '../lib/yv-fonts.tsx'), 'utf8');
 
 function extractStack(css: string, property: string): string | undefined {
   // Skip comments so a font name mentioned in prose can't be mistaken for the
@@ -51,7 +52,7 @@ describe('serif font token (core theme.css ↔ ui global.css)', () => {
     // (no app key, blocked request, offline). Source Serif 4 must stay so the
     // fallback is a serif we actually load, not the platform default.
     expect(coreSerif).toContain("'Source Serif 4'");
-    expect(globalCss).toContain('Source+Serif+4');
+    expect(fontResources).toContain('Source+Serif+4');
   });
 });
 

@@ -5,17 +5,20 @@ import React from 'react';
  * See docs/adr/0004-adopt-untitled-serif-via-fonts-api.md.
  */
 const UNTITLED_SERIF_FONT_ID = 1;
+const GOOGLE_FONTS_STYLESHEET =
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap';
 
 export interface YvFontsProps {
-  /** The consumer's app key. Without one there is nothing to authorize the request. */
+  /** Authorizes the optional Untitled Serif request; base fonts do not require it. */
   appKey?: string;
   /** Mirrors `ApiClient`'s `config.apiHost ?? 'api.youversion.com'` so staging keeps working. */
   apiHost?: string;
 }
 
 /**
- * Loads the YouVersion brand serif (Untitled Serif) from the Fonts API stylesheet
- * endpoint, which requires an app key.
+ * Loads the SDK's document-owned fonts. Inter and Source Serif 4 come from the
+ * public Google Fonts stylesheet; Untitled Serif comes from the gated Fonts API
+ * stylesheet when an app key is available.
  *
  * Sibling to `<YvStyles />` and the SDK's first runtime-value-dependent
  * stylesheet: the URL needs the app key, which is only known at render time, so
@@ -36,10 +39,17 @@ export interface YvFontsProps {
 export function YvFonts({
   appKey,
   apiHost = 'api.youversion.com',
-}: YvFontsProps): React.ReactElement | null {
-  if (!appKey?.trim()) return null;
+}: YvFontsProps): React.ReactElement {
+  const brandFontHref = appKey?.trim()
+    ? `https://${apiHost}/v1/fonts/${UNTITLED_SERIF_FONT_ID}/stylesheet?app_key=${encodeURIComponent(appKey)}`
+    : undefined;
 
-  const href = `https://${apiHost}/v1/fonts/${UNTITLED_SERIF_FONT_ID}/stylesheet?app_key=${encodeURIComponent(appKey)}`;
-
-  return <link rel="stylesheet" href={href} precedence="yv-sdk-fonts" />;
+  return (
+    <>
+      <link rel="stylesheet" href={GOOGLE_FONTS_STYLESHEET} precedence="yv-sdk-fonts" />
+      {brandFontHref ? (
+        <link rel="stylesheet" href={brandFontHref} precedence="yv-sdk-fonts" />
+      ) : null}
+    </>
+  );
 }

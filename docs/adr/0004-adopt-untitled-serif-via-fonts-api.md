@@ -48,8 +48,8 @@ footnotes, `Verse.Text` at `lg`, chapter headings, the Bible card, and the `lg` 
 the Day card all follow the token.
 
 **2. Delivery (YPE-1350).** A new `<YvFonts />` (`packages/ui/src/lib/yv-fonts.tsx`),
-sibling to `<YvStyles />`, rendered from `YouVersionProvider` in the normal branch only
-(no app key, no font):
+sibling to `<YvStyles />`, renders the gated brand-font resource from
+`YouVersionProvider` when an app key is available:
 
 ```tsx
 <link
@@ -62,6 +62,10 @@ sibling to `<YvStyles />`, rendered from `YouVersionProvider` in the normal bran
 React 19 hoists it to `<head>` and dedupes by `href`, so multiple providers still yield
 one link and SSR streaming works. `@font-face` is not subject to `@layer`, so cascade
 position is irrelevant; `precedence` is only there to opt into the hoist and dedupe.
+
+YPE-6560 later made the same component own the public Google Fonts stylesheet for
+Inter and Source Serif 4. That base-font link renders even when the app key is missing;
+the gated Untitled Serif link still requires the key shown above.
 
 This is the SDK's first runtime-value-dependent stylesheet, and it has to be. The build
 pipeline freezes `global.css` into the `__YV_STYLES__` string literal at `pnpm
@@ -119,7 +123,7 @@ non-breaking if the need turns out to be real.
 - The serif stack is declared twice and must stay in sync by hand.
   `font-tokens.test.ts` is the guard — it is the first test in the repo to assert a font
   token's literal value.
-- The revert, if it is ever needed, is small and local: drop `<YvFonts />` from
-  `YouVersionProvider` and remove `'Untitled Serif'` from the two stacks. Everything
-  else — the picker label, the migration, the CSP docs — degrades to Source Serif 4 on
-  its own.
+- The brand-font revert, if it is ever needed, is small and local: stop rendering
+  the gated link from `<YvFonts />` and remove `'Untitled Serif'` from the two stacks.
+  Everything else — the picker label, the migration, the CSP docs — degrades to
+  Source Serif 4 on its own.

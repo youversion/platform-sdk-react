@@ -52,6 +52,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const browserWaitOptions = { timeout: 5_000 } as const;
+const GOOGLE_FONTS_STYLESHEET =
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap';
 
 function buttonStyleSnapshot(button: HTMLButtonElement) {
   const ownerWindow = button.ownerDocument.defaultView;
@@ -115,6 +117,12 @@ export const HostileGlobalButtonRule: Story = {
     // also happens not to equal the hostile values below.
     await expect(sdkBaseline.display).toBe('flex');
     await expect(sdkBaseline.fontFamily).toContain('Inter');
+    await waitFor(() => {
+      const googleFontsLink = Array.from(
+        ownerDocument.head.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
+      ).find((link) => link.getAttribute('href') === GOOGLE_FONTS_STYLESHEET);
+      if (!googleFontsLink) throw new Error('Google Fonts document resource not loaded');
+    }, browserWaitOptions);
 
     const style = ownerDocument.createElement('style');
     style.textContent = HOSTILE_CSS;
@@ -165,6 +173,25 @@ export const SameOriginIframeDocument: Story = {
     const container = iframeDocument.createElement('div');
     iframeDocument.body.append(container);
     const root = createRoot(container);
+    const styleSheetPrototype = iframeWindow.CSSStyleSheet.prototype;
+    const originalReplaceSyncDescriptor = Object.getOwnPropertyDescriptor(
+      styleSheetPrototype,
+      'replaceSync',
+    );
+    if (!originalReplaceSyncDescriptor?.configurable) {
+      throw new Error('iframe CSSStyleSheet.replaceSync cannot be observed');
+    }
+    // SAFETY: the descriptor comes from the standardized CSSStyleSheet method on
+    // this iframe's prototype; configurability was verified before wrapping it.
+    const originalReplaceSync = originalReplaceSyncDescriptor.value as CSSStyleSheet['replaceSync'];
+    const replacementInputs: string[] = [];
+    Object.defineProperty(styleSheetPrototype, 'replaceSync', {
+      ...originalReplaceSyncDescriptor,
+      value(this: CSSStyleSheet, cssText: string): void {
+        replacementInputs.push(cssText);
+        originalReplaceSync.call(this, cssText);
+      },
+    });
     let fallbackContainer: HTMLDivElement | undefined;
     let fallbackRoot: Root | undefined;
 
@@ -187,8 +214,9 @@ export const SameOriginIframeDocument: Story = {
         await expect(shadowRoot?.adoptedStyleSheets[0]).toBeInstanceOf(iframeWindow.CSSStyleSheet);
         await expect(iframeWindow.getComputedStyle(content).display).toBe('flex');
       }, browserWaitOptions);
+      await expect(replacementInputs).toHaveLength(1);
+      await expect(replacementInputs[0]).not.toMatch(/@import\s+(?:url\()?['"]?https?:\/\//i);
 
-      const styleSheetPrototype = iframeWindow.CSSStyleSheet.prototype;
       const replaceSyncDescriptor = Object.getOwnPropertyDescriptor(
         styleSheetPrototype,
         'replaceSync',
@@ -230,6 +258,7 @@ export const SameOriginIframeDocument: Story = {
     } finally {
       root.unmount();
       container.remove();
+      Object.defineProperty(styleSheetPrototype, 'replaceSync', originalReplaceSyncDescriptor);
     }
   },
 };
