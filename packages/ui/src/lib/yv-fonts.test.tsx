@@ -2,9 +2,10 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import React, { Suspense } from 'react';
 import { PassThrough } from 'node:stream';
+import { hydrateRoot, type Root } from 'react-dom/client';
 import { renderToPipeableStream, renderToString } from 'react-dom/server';
 import { Separator } from '@/components/ui/separator';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
@@ -195,6 +196,57 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
       'rel="stylesheet" href="https://api.youversion.com/v1/fonts/1/stylesheet?app_key=key-ssr"',
     );
     expect(html).toContain('data-precedence="yv-sdk-fonts"');
+  });
+
+  it('reuses server font resources during hydration and later client mounts', async () => {
+    const { ownerDocument, container } = createTestDocument();
+    const serverMarkup = renderToString(<YvFonts appKey="key-hydrate" />);
+    const serverResources = ownerDocument.createElement('template');
+    serverResources.innerHTML = serverMarkup;
+    const serverBaseStyle = serverResources.content.querySelector<HTMLStyleElement>(
+      'style[data-href~="yv-sdk-base-fonts"]',
+    );
+    const serverBrandLink = serverResources.content.querySelector<HTMLLinkElement>(
+      'link[href*="app_key=key-hydrate"]',
+    );
+    if (!serverBaseStyle || !serverBrandLink) {
+      throw new Error('server font resources were not rendered');
+    }
+    ownerDocument.head.append(serverBaseStyle, serverBrandLink);
+
+    const recoverableErrors: unknown[] = [];
+    let hydratedRoot: Root | undefined;
+    let clientMount: ReturnType<typeof render> | undefined;
+    const clientContainer = ownerDocument.createElement('div');
+    ownerDocument.body.append(clientContainer);
+
+    try {
+      await act(async () => {
+        hydratedRoot = hydrateRoot(container, <YvFonts appKey="key-hydrate" />, {
+          onRecoverableError: (error) => recoverableErrors.push(error),
+        });
+      });
+      clientMount = render(<YouVersionProvider appKey="key-hydrate">{null}</YouVersionProvider>, {
+        container: clientContainer,
+      });
+
+      await waitFor(() => {
+        expect(recoverableErrors).toEqual([]);
+        expect(
+          ownerDocument.head.querySelectorAll('style[data-href~="yv-sdk-base-fonts"]'),
+        ).toHaveLength(1);
+        expect(ownerDocument.head.querySelector('style[data-href~="yv-sdk-base-fonts"]')).toBe(
+          serverBaseStyle,
+        );
+        expect(googleFontLinks(ownerDocument)).toHaveLength(0);
+        expect(brandFontLinks(ownerDocument)).toEqual([serverBrandLink]);
+      });
+    } finally {
+      clientMount?.unmount();
+      if (hydratedRoot) await act(async () => hydratedRoot?.unmount());
+      clientContainer.remove();
+      container.remove();
+    }
   });
 
   it('applies font stylesheets when a provider streams after the initial shell', async () => {
