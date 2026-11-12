@@ -3,4 +3,4 @@
 "@youversion/platform-react-ui": patch
 ---
 
-Upgrade `zod` from 4.1.12 to 4.6.7 to resolve GHSA-mrhx-c7xc-m3w5 (CVE-2023-54404), a high-severity memory exhaustion issue when validating oversized collections. Apps that install the SDK no longer get a vulnerable `zod` from its exact pin.
+Update `zod` to 4.6.7. This clears security scanner warnings about zod 4.1.12 ([GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)). The SDK only checks data that comes from the YouVersion API, from your app, or from its own saved settings, so we don't expect any app to be affected in practice. No code changes are needed.
