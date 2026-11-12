@@ -1,5 +1,16 @@
 # @youversion/platform-react-ui
 
+## 3.0.1
+
+### Patch Changes
+
+- 4dfb963: Update `zod` to 4.6.7. This clears security scanner warnings about zod 4.1.12 ([GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)). The SDK only checks data that comes from the YouVersion API, from your app, or from its own saved settings, so we don't expect any app to be affected in practice. No code changes are needed.
+- 198ed9d: Use shared localization keys for equivalent UI labels, actions, and passage errors. Korean and Czech use English for shared keys that await translations.
+- 0b8721a: Expose Bible Reader passage loading state to assistive technology.
+- Updated dependencies [4dfb963]
+  - @youversion/platform-core@3.0.1
+  - @youversion/platform-react-hooks@3.0.1
+
 ## 3.0.0
 
 ### Major Changes
