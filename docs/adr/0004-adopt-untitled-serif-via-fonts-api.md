@@ -58,13 +58,14 @@ ensureFontStylesheet(
 );
 ```
 
-Server rendering and hydration use React's stylesheet resource so initial and late
-Suspense segments carry an applied dependency. Fresh client mounts append an ordinary
-`<link rel="stylesheet">` and dedupe by `href`, so multiple providers still yield one
-link and hydration reuses the server resource. An inert template probe supplies the
-correct `ownerDocument` for same-origin iframe rendering. Avoiding React's resource
-path on fresh client mounts keeps a failed font request from creating an unhandled
-stylesheet promise or delaying the consumer tree.
+Server rendering and hydration use React resources: the gated brand stylesheet is an
+applied dependency for initial and late Suspense segments, while the public base fonts
+use a non-blocking document `@import` so a Google failure cannot discard the revealed
+subtree. Fresh client mounts append an ordinary `<link rel="stylesheet">` and dedupe by
+`href`, so multiple providers still yield one resource and hydration reuses the server
+style. An inert template probe supplies the correct `ownerDocument` for same-origin
+iframe rendering. Avoiding React's external resource path for base fonts and fresh
+client mounts keeps a failed public-font request from delaying the consumer tree.
 
 YPE-6560 later made the same component own the public Google Fonts stylesheet for
 Inter and Source Serif 4. That base-font link renders even when the app key is missing;

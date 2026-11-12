@@ -187,8 +187,9 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
   it('emits base and gated stylesheets during server rendering with a DOM shim', () => {
     const html = renderToString(<YvFonts appKey="key-ssr" />);
 
+    expect(html).toContain('data-href="yv-sdk-base-fonts"');
     expect(html).toContain(
-      `rel="stylesheet" href="${GOOGLE_FONTS_HREF.replaceAll('&', '&amp;')}"`,
+      `@import url('${GOOGLE_FONTS_HREF}') layer(yv-sdk-fonts);`,
     );
     expect(html).toContain(
       'rel="stylesheet" href="https://api.youversion.com/v1/fonts/1/stylesheet?app_key=key-ssr"',
@@ -239,6 +240,10 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
 
     expect(html).toContain(
       `["https://api.youversion.com/v1/fonts/1/stylesheet?app_key=late-key","yv-sdk-fonts"]`,
+    );
+    expect(html).toContain("@import url('https://fonts.googleapis.com/");
+    expect(html).not.toContain(
+      `["${GOOGLE_FONTS_HREF.replaceAll('&', '\\u0026')}","yv-sdk-fonts"]`,
     );
   });
 
