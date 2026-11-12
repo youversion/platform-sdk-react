@@ -86,7 +86,7 @@ export default defineConfig({
       rules: {
         'no-restricted-properties': [
           'error',
-          ...['object', 'strictObject', 'looseObject', 'extend'].map((property) => ({
+          ...['object', 'strictObject', 'looseObject', 'extend', 'safeExtend'].map((property) => ({
             object: 'z',
             property,
             message:
