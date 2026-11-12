@@ -68,7 +68,13 @@ Language tags are BCP 47 (`en`, `es`, `zh-Hans`). Version ids are YouVersion Bib
 
 ## Styling
 
-All component CSS is automatically injected when you wrap your app with `YouVersionProvider` — no extra imports or build steps needed. Under the hood, it uses React 19's [`<style precedence>`](https://react.dev/reference/react-dom/components/style) to hoist styles into `<head>` with built-in deduplication and SSR/Suspense support.
+All CSS is installed automatically when you wrap your app with
+`YouVersionProvider` — no extra imports or build steps are needed. The provider
+owns the document-level base styles and font registration. Light-DOM components
+add their own styles to the document as React 19
+[`<style precedence>`](https://react.dev/reference/react-dom/components/style)
+resources, while automatically isolated components install the
+component and Bible reader CSS inside their own shadow roots.
 
 The YPE-5356 component boundary renders automatically inside client-created open
 shadow roots. This includes `YouVersionAuthButton`, the chapter and version picker
@@ -82,8 +88,9 @@ owning root instead of creating accidental nested roots.
 native outer-form and external-label behavior; standalone `VerseActionPopover`
 must retain its owning-DOM anchor; and the providers own document context, styles,
 and fonts rather than a visual component boundary. See the
-[rollout policy](../../docs/shadow-dom-rollout-policy.md) and
-[consumer compatibility contract](../../docs/shadow-dom-consumer-compatibility.md)
+[rollout policy](https://github.com/youversion/platform-sdk-react/blob/main/docs/shadow-dom-rollout-policy.md)
+and
+[consumer compatibility contract](https://github.com/youversion/platform-sdk-react/blob/main/docs/shadow-dom-consumer-compatibility.md)
 for the complete boundary and evidence.
 
 ### Shadow DOM migration guidance
@@ -125,7 +132,23 @@ are unchanged:
   `visibility` and `pointer-events`. To hide an isolated component, apply
   `display: none` to a consumer-owned light-DOM wrapper or do not render the
   component. To disable one, use a supported component API instead of ancestor
-  `pointer-events`.
+  `pointer-events`. For a same-origin iframe, render `YouVersionProvider` in the
+  iframe document—either from a React root whose container is inside the iframe
+  or inside the subtree portaled into the iframe—so React installs its document
+  styles and font resources there. Portaling components from a provider that
+  remains outside the iframe does not move that provider's resources into the
+  iframe. Fonts loaded only in the parent document are unavailable in the iframe.
+- **Standalone `BibleThemeSettingsContent`:** Its server host declares
+  `display: flex`; the client reset adds `flex-direction: column` and
+  `min-block-size: 0` so the host can shrink inside a constrained block-size
+  track. Its controls are inside the open shadow root, so global CSS does not
+  reach them. Pass `theme`, `fontSize`, `fontFamily`, `lineSpacing`,
+  `onFontSelected`, `onFontIncreased`, `onFontDecreased`, and
+  `onChangeLineSpacing` through the component API. For Expo DOM, use the exported
+  `createBibleThemeSettingsContentHandlers` helper and keep its four callbacks as
+  top-level props rather than nesting them in a `BibleThemeSettingsSnapshot`.
+  Interface direction comes from `YouVersionProvider`'s `direction` or resolved
+  locale.
 - **Overlays:** Popovers and dialogs stay in their owning root and use the native
   top layer where needed. Opening a peer popover dismisses the current peer;
   simultaneous peer popovers are not supported. The native Popover API is
@@ -141,11 +164,13 @@ are unchanged:
 
 Validated with:
 
-- The 43-test focused Storybook matrix in Chromium, Firefox, and Playwright
-  WebKit. Playwright WebKit is not actual Safari.
+- The 43-story focused Storybook matrix recorded for the 3.0 release candidate
+  in Chromium, Firefox, and Playwright WebKit. This is historical
+  release-candidate evidence, not a live suite count. Playwright WebKit is not
+  actual Safari.
 - The targeted actual-Safari gate on Safari 26.6.2. The latest run and its exact
   story count are recorded in the
-  [release-candidate evidence](../../docs/shadow-dom-isolation-plan.md#ype-6214-final-release-candidate-safari-validation).
+  [release-candidate evidence](https://github.com/youversion/platform-sdk-react/blob/main/docs/shadow-dom-isolation-plan.md#ype-6214-final-release-candidate-safari-validation).
 - Safari 26.6.2 on macOS 26.6.2 with VoiceOver 10 across the seven required
   sign-in, picker, reader, verse-action, theme-settings, and nested-overlay
   journeys. This is the only completed real assistive-technology combination.

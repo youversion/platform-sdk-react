@@ -6,8 +6,8 @@ Accepted
 
 Compatible public UI components use the automatic boundary defined by the
 [production rollout policy](../shadow-dom-rollout-policy.md). The coordinated
-major release treats that boundary as one breaking rendered-DOM change rather
-than publishing partial component groups.
+boundary shipped in `@youversion/platform-react-ui` 3.0.0 as one breaking
+rendered-DOM change rather than as partial component groups.
 
 The automatic boundary belongs to the SDK-owned top-level component instance.
 Compound members and SDK components composed inside another isolated SDK
@@ -111,6 +111,14 @@ ordinary boundary's declarative display:
 Components that can be in phrasing content (`YouVersionAuthButton`, the picker
 roots, `Separator`, and `ProfileAvatar`) use a `span` host with the same
 attributes.
+
+The ordinary server host uses `display: contents`. Standalone
+`BibleThemeSettingsContent` is the intentional exception: its server host
+declares `display: flex`, and the client host reset adds
+`flex-direction: column` and `min-block-size: 0` so the host can shrink inside a
+constrained block-size track (such as a grid row with a bounded height, as in the
+constrained-layout story) while it lays out its content as a column. Reader-owned
+settings reuse the reader boundary and do not create that standalone host.
 
 The first client render matches that markup. A layout effect applies the
 protected host reset before paint. After hydration, a passive effect attaches
