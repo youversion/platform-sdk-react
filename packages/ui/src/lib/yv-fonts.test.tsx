@@ -216,7 +216,7 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
 
     const recoverableErrors: unknown[] = [];
     let hydratedRoot: Root | undefined;
-    let clientMount: ReturnType<typeof render> | undefined;
+    let unmountClient: (() => void) | undefined;
     const clientContainer = ownerDocument.createElement('div');
     ownerDocument.body.append(clientContainer);
 
@@ -226,9 +226,10 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
           onRecoverableError: (error) => recoverableErrors.push(error),
         });
       });
-      clientMount = render(<YouVersionProvider appKey="key-hydrate">{null}</YouVersionProvider>, {
+      const clientMount = render(<YouVersionProvider appKey="key-hydrate">{null}</YouVersionProvider>, {
         container: clientContainer,
       });
+      unmountClient = clientMount.unmount;
 
       await waitFor(() => {
         expect(recoverableErrors).toEqual([]);
@@ -242,7 +243,7 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
         expect(brandFontLinks(ownerDocument)).toEqual([serverBrandLink]);
       });
     } finally {
-      clientMount?.unmount();
+      unmountClient?.();
       if (hydratedRoot) await act(async () => hydratedRoot?.unmount());
       clientContainer.remove();
       container.remove();

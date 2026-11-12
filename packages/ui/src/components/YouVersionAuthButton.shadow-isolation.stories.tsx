@@ -281,7 +281,6 @@ export const SameOriginIframeDocument: Story = {
       fallbackRoot = createRoot(fallbackContainer);
       fallbackRoot.render(
         <ShadowRootHost>
-          <YvComponentStyles />
           <span className="yv:flex" data-testid="iframe-fallback-content">
             Fallback isolated
           </span>

@@ -26,7 +26,6 @@ function ensureFontStylesheet(
   const link = ownerDocument.createElement('link');
   link.rel = 'stylesheet';
   link.href = href;
-  link.dataset.yvFont = '';
   ownerDocument.head.append(link);
 }
 
