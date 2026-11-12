@@ -39,7 +39,7 @@ const GOOGLE_FONTS_STYLESHEET =
 const meta = {
   title: 'Spikes/Automatic Shadow DOM isolation',
   component: YouVersionAuthButton,
-  tags: ['integration', 'shadow-dom'],
+  tags: ['integration', 'shadow-dom', 'shadow-fresh-process'],
 } satisfies Meta<typeof YouVersionAuthButton>;
 
 export default meta;
