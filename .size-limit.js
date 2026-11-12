@@ -3,7 +3,7 @@ export default [
   {
     name: 'core / full barrel (esm)',
     path: 'packages/core/dist/index.js',
-    limit: '23.7 KB',
+    limit: '27.2 KB',
     ignore: ['jsdom'],
   },
   {
@@ -28,7 +28,7 @@ export default [
   {
     name: 'hooks / full barrel',
     path: 'packages/hooks/dist/index.js',
-    limit: '29.8 KB',
+    limit: '32.9 KB',
     ignore: ['react', 'react-dom', '@tanstack/react-query'],
   },
   {

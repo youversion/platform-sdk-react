@@ -145,8 +145,8 @@ importers:
   packages/core:
     dependencies:
       zod:
-        specifier: 4.1.12
-        version: 4.1.12
+        specifier: 4.6.7
+        version: 4.6.7
     devDependencies:
       '@internal/tsconfig':
         specifier: workspace:*
@@ -294,8 +294,8 @@ importers:
         specifier: 5.32.4
         version: 5.32.4
       zod:
-        specifier: 4.1.12
-        version: 4.1.12
+        specifier: 4.6.7
+        version: 4.6.7
     devDependencies:
       '@internal/tsconfig':
         specifier: workspace:*
@@ -7274,8 +7274,8 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.1.12:
-    resolution: {integrity: sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ==}
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
 snapshots:
 
@@ -12319,7 +12319,7 @@ snapshots:
       smol-toml: 1.4.2
       strip-json-comments: 5.0.2
       typescript: 7.0.2
-      zod: 4.1.12
+      zod: 4.6.7
 
   lazystream@1.0.1:
     dependencies:
@@ -14488,4 +14488,4 @@ snapshots:
 
   zod@3.25.76: {}
 
-  zod@4.1.12: {}
+  zod@4.6.7: {}
