@@ -8,11 +8,30 @@ const UNTITLED_SERIF_FONT_ID = 1;
 const GOOGLE_FONTS_STYLESHEET =
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap';
 
+/** @internal Installs the base-font resource in a specific owning document. */
+export function ensureBaseFonts(ownerDocument: Document): void {
+  const existing = Array.from(
+    ownerDocument.head.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
+  ).some((link) => link.getAttribute('href') === GOOGLE_FONTS_STYLESHEET);
+  if (existing) return;
+
+  const link = ownerDocument.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = GOOGLE_FONTS_STYLESHEET;
+  link.dataset.precedence = 'yv-sdk-fonts';
+  ownerDocument.head.append(link);
+}
+
 export interface YvFontsProps {
   /** Authorizes the optional Untitled Serif request; base fonts do not require it. */
   appKey?: string;
   /** Mirrors `ApiClient`'s `config.apiHost ?? 'api.youversion.com'` so staging keeps working. */
   apiHost?: string;
+}
+
+/** Loads the public base fonts required by standalone and Provider-owned UI. */
+export function YvBaseFonts(): React.ReactElement {
+  return <link rel="stylesheet" href={GOOGLE_FONTS_STYLESHEET} precedence="yv-sdk-fonts" />;
 }
 
 /**
@@ -46,7 +65,7 @@ export function YvFonts({
 
   return (
     <>
-      <link rel="stylesheet" href={GOOGLE_FONTS_STYLESHEET} precedence="yv-sdk-fonts" />
+      <YvBaseFonts />
       {brandFontHref ? (
         <link rel="stylesheet" href={brandFontHref} precedence="yv-sdk-fonts" />
       ) : null}

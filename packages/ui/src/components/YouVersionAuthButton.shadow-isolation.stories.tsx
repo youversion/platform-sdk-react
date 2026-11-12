@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { createRoot, type Root } from 'react-dom/client';
 import { expect } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
+import { YvComponentStyles } from '../lib/yv-styles-components';
 import { waitFor, waitForElement } from '../test/storybook-dom';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 
@@ -33,6 +34,17 @@ const HOSTILE_CSS = `
   }
 `;
 
+const GOOGLE_FONTS_STYLESHEET =
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap';
+const TEST_FONT_SOURCE = 'local("Arial"), local("Liberation Sans"), local("DejaVu Sans")';
+const BASE_FONT_FIXTURE_CSS = `
+  @font-face { font-family: 'Inter'; font-style: normal; font-weight: 400 700; src: ${TEST_FONT_SOURCE}; }
+  @font-face { font-family: 'Source Serif 4'; font-style: normal; font-weight: 400 700; src: ${TEST_FONT_SOURCE}; }
+`;
+const BRAND_FONT_FIXTURE_CSS = `
+  @font-face { font-family: 'Untitled Serif'; font-style: normal; font-weight: 400 700; src: ${TEST_FONT_SOURCE}; }
+`;
+
 const meta = {
   title: 'Spikes/Automatic Shadow DOM isolation',
   component: YouVersionAuthButton,
@@ -41,7 +53,14 @@ const meta = {
     msw: {
       handlers: [
         http.get('*/v1/fonts/1/stylesheet', () =>
-          HttpResponse.text('', { headers: { 'Content-Type': 'text/css' } }),
+          HttpResponse.text(BRAND_FONT_FIXTURE_CSS, {
+            headers: { 'Content-Type': 'text/css' },
+          }),
+        ),
+        http.get('https://fonts.googleapis.com/*', () =>
+          HttpResponse.text(BASE_FONT_FIXTURE_CSS, {
+            headers: { 'Content-Type': 'text/css' },
+          }),
         ),
       ],
     },
@@ -52,8 +71,21 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const browserWaitOptions = { timeout: 5_000 } as const;
-const GOOGLE_FONTS_STYLESHEET =
-  'https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap';
+
+async function installFontFixture(ownerDocument: Document, family: string): Promise<void> {
+  const style = ownerDocument.createElement('style');
+  style.textContent = `
+    @font-face {
+      font-family: '${family}';
+      font-style: normal;
+      font-weight: 400;
+      src: ${TEST_FONT_SOURCE};
+    }
+  `;
+  ownerDocument.head.append(style);
+  const loadedFaces = await ownerDocument.fonts.load(`400 16px "${family}"`, 'SDK font probe');
+  await expect(loadedFaces.length).toBeGreaterThan(0);
+}
 
 function buttonStyleSnapshot(button: HTMLButtonElement) {
   const ownerWindow = button.ownerDocument.defaultView;
@@ -117,12 +149,15 @@ export const HostileGlobalButtonRule: Story = {
     // also happens not to equal the hostile values below.
     await expect(sdkBaseline.display).toBe('flex');
     await expect(sdkBaseline.fontFamily).toContain('Inter');
-    await waitFor(() => {
-      const googleFontsLink = Array.from(
+    await waitFor(async () => {
+      const googleFontsLinks = Array.from(
         ownerDocument.head.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
-      ).find((link) => link.getAttribute('href') === GOOGLE_FONTS_STYLESHEET);
-      if (!googleFontsLink) throw new Error('Google Fonts document resource not loaded');
+      ).filter((link) => link.getAttribute('href') === GOOGLE_FONTS_STYLESHEET);
+      await expect(googleFontsLinks).toHaveLength(1);
     }, browserWaitOptions);
+    await installFontFixture(ownerDocument, 'Inter');
+    await installFontFixture(ownerDocument, 'Source Serif 4');
+    await installFontFixture(ownerDocument, 'Untitled Serif');
 
     const style = ownerDocument.createElement('style');
     style.textContent = HOSTILE_CSS;
@@ -170,9 +205,6 @@ export const SameOriginIframeDocument: Story = {
       return { iframeDocument: currentDocument, iframeWindow: currentWindow };
     }, browserWaitOptions);
 
-    const container = iframeDocument.createElement('div');
-    iframeDocument.body.append(container);
-    const root = createRoot(container);
     const styleSheetPrototype = iframeWindow.CSSStyleSheet.prototype;
     const originalReplaceSyncDescriptor = Object.getOwnPropertyDescriptor(
       styleSheetPrototype,
@@ -185,21 +217,44 @@ export const SameOriginIframeDocument: Story = {
     // iframe prototype, and configurability was verified before wrapping it.
     const originalReplaceSync = originalReplaceSyncDescriptor.value as CSSStyleSheet['replaceSync'];
     const replacementInputs: string[] = [];
-    Object.defineProperty(styleSheetPrototype, 'replaceSync', {
-      ...originalReplaceSyncDescriptor,
-      value(this: CSSStyleSheet, cssText: string): void {
-        replacementInputs.push(cssText);
-        originalReplaceSync.call(this, cssText);
-      },
-    });
+    const container = iframeDocument.createElement('div');
+    iframeDocument.body.append(container);
+    const root = createRoot(container);
     let fallbackContainer: HTMLDivElement | undefined;
     let fallbackRoot: Root | undefined;
 
     try {
+      Object.defineProperty(styleSheetPrototype, 'replaceSync', {
+        ...originalReplaceSyncDescriptor,
+        value(this: CSSStyleSheet, cssText: string): void {
+          replacementInputs.push(cssText);
+          originalReplaceSync.call(this, cssText);
+        },
+      });
       root.render(
         <ShadowRootHost>
+          <YvComponentStyles />
           <span className="yv:flex" data-testid="iframe-content">
             Isolated
+          </span>
+          <span
+            className="yv:font-serif"
+            data-testid="iframe-serif-probe"
+            style={{ display: 'inline-block' }}
+          >
+            WWWWiiiiMMMM
+          </span>
+          <span
+            data-testid="iframe-source-serif-reference"
+            style={{ display: 'inline-block', fontFamily: "'Source Serif 4'" }}
+          >
+            WWWWiiiiMMMM
+          </span>
+          <span
+            data-testid="iframe-generic-serif-reference"
+            style={{ display: 'inline-block', fontFamily: 'serif' }}
+          >
+            WWWWiiiiMMMM
           </span>
         </ShadowRootHost>,
       );
@@ -216,6 +271,37 @@ export const SameOriginIframeDocument: Story = {
       }, browserWaitOptions);
       await expect(replacementInputs).toHaveLength(1);
       await expect(replacementInputs[0]).not.toMatch(/@import\b/i);
+      await waitFor(async () => {
+        const googleFontsLinks = Array.from(
+          iframeDocument.head.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
+        ).filter((link) => link.getAttribute('href') === GOOGLE_FONTS_STYLESHEET);
+        await expect(googleFontsLinks).toHaveLength(1);
+      }, browserWaitOptions);
+      await installFontFixture(iframeDocument, 'Inter');
+      await installFontFixture(iframeDocument, 'Source Serif 4');
+      await waitFor(async () => {
+        const host = container.querySelector<HTMLDivElement>('[data-yv-shadow-host]');
+        const serifProbe = host?.shadowRoot?.querySelector<HTMLElement>(
+          '[data-testid="iframe-serif-probe"]',
+        );
+        const sourceReference = host?.shadowRoot?.querySelector<HTMLElement>(
+          '[data-testid="iframe-source-serif-reference"]',
+        );
+        const genericReference = host?.shadowRoot?.querySelector<HTMLElement>(
+          '[data-testid="iframe-generic-serif-reference"]',
+        );
+        if (!serifProbe || !sourceReference || !genericReference) {
+          throw new Error('iframe serif font probes not mounted');
+        }
+        const serifWidth = serifProbe.getBoundingClientRect().width;
+        const sourceWidth = sourceReference.getBoundingClientRect().width;
+        const genericWidth = genericReference.getBoundingClientRect().width;
+        await expect(iframeWindow.getComputedStyle(serifProbe).fontFamily).toContain(
+          'Source Serif 4',
+        );
+        await expect(Math.abs(serifWidth - sourceWidth)).toBeLessThan(0.1);
+        await expect(Math.abs(serifWidth - genericWidth)).toBeGreaterThan(0.1);
+      }, browserWaitOptions);
 
       Reflect.deleteProperty(styleSheetPrototype, 'replaceSync');
       fallbackContainer = iframeDocument.createElement('div');
@@ -223,6 +309,7 @@ export const SameOriginIframeDocument: Story = {
       fallbackRoot = createRoot(fallbackContainer);
       fallbackRoot.render(
         <ShadowRootHost>
+          <YvComponentStyles />
           <span className="yv:flex" data-testid="iframe-fallback-content">
             Fallback isolated
           </span>

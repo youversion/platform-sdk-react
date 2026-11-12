@@ -48,7 +48,9 @@ the top-level document cannot be adopted into a same-origin iframe's shadow
 root. Environments without constructable stylesheets receive a `<style>` element
 instead. Font loading remains document-owned: constructable and fallback shadow
 styles contain no external `@import`. `YouVersionProvider` installs document-level
-Google Fonts and brand-font stylesheets;
+Google Fonts and brand-font stylesheets, while the component-style injector ensures
+the public Google Fonts resource also exists for standalone components and in an
+iframe's owning document;
 an isolated component still depends on those document-level font registrations.
 For iframe consumers, fonts must be loaded in the iframe's owning document, not
 merely in the parent document.

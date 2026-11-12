@@ -523,9 +523,9 @@ separately in YPE-5749.
 
 - Component rules are installed locally, but font loading is document-owned.
   Constructable stylesheets and the `<style>` fallback contain no external
-  `@import`; the provider installs the Google Fonts and brand-font resources in
-  the owning document. Fonts must be loaded in each owning document, including
-  same-origin iframes.
+  `@import`; the provider installs the Google Fonts and brand-font resources, and
+  the component-style injector ensures the public Google Fonts resource in each
+  owning document. This includes standalone components and same-origin iframes.
 - Host `@font-face` registrations are document-scoped and can collide with the
   public font family names used inside a shadow root. This limitation is
   accepted for the rollout; avoiding it requires private family names and

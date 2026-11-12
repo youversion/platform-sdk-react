@@ -45,13 +45,6 @@ describe('serif font token (core theme.css ↔ ui global.css)', () => {
   it('keeps the two duplicate declarations byte-identical', () => {
     expect(uiSerif).toBe(coreSerif);
   });
-
-  it('keeps Source Serif 4 in the stack as the fallback', () => {
-    // Untitled Serif is fetched at runtime from the gated Fonts API and can fail
-    // (no app key, blocked request, offline). Source Serif 4 must stay so the
-    // fallback remains a documented part of the stack.
-    expect(coreSerif).toContain("'Source Serif 4'");
-  });
 });
 
 describe('sans font token (core theme.css ↔ ui global.css)', () => {

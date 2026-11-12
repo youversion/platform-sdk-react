@@ -65,7 +65,9 @@ position is irrelevant; `precedence` is only there to opt into the hoist and ded
 
 YPE-6560 later made the same component own the public Google Fonts stylesheet for
 Inter and Source Serif 4. That base-font link renders even when the app key is missing;
-the gated Untitled Serif link still requires the key shown above.
+the gated Untitled Serif link still requires the key shown above. The component-style
+injector installs the same deduplicated base-font resource for standalone public
+components and in each owning iframe document.
 
 This is the SDK's first runtime-value-dependent stylesheet, and it has to be. The build
 pipeline freezes `global.css` into the `__YV_STYLES__` string literal at `pnpm
