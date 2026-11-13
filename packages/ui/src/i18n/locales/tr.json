@@ -33,7 +33,7 @@
   "backToBibleVersionsAriaLabel": "Kutsal Kitap çeviri versiyonlarına geri dön",
   "selectLanguageHeading": "Bir Dil Seçin",
   "selectLanguageAriaLabel": "Bir Dil Seçin",
-  "recentlyUsedVersionsHeading": "Son Kullanılan Sürümler",
+  "recentlyUsedVersionsHeading": "Son Versiyonlar",
   "allVersionsHeading": "Tüm Çeviri Versiyonları",
   "regionalHeading": "Bölgesel",
   "allLanguagesHeading": "Tüm Diller",
@@ -103,8 +103,8 @@
   "regional": "Bölgesel",
   "retry": "Yeniden Dene",
   "search": "Ara",
-  "searchLanguages": "Dilleri ara",
-  "searchVersions": "Çeviri versiyonu ara",
+  "searchLanguages": "Dilleri Ara",
+  "searchVersions": "Versiyonları Ara",
   "selectLanguage": "Bir Dil Seçin",
   "suggested": "Önerilen",
   "traditional": "Geleneksel",
@@ -120,5 +120,8 @@
   "bibleSearchFilterOldTestament": "Eski Antlaşma",
   "bibleSearchFiltersButton": "Filtreler",
   "bibleSearchRecentHeading": "Son Aramalar",
-  "bibleSearchTrendingHeading": "Popüler Aramalar"
+  "bibleSearchTrendingHeading": "Popüler Aramalar",
+  "bibleLanguagesHeading": "Kutsal Kitap Dilleri",
+  "languageVersionsHeading": "{{language}} Versiyonlar",
+  "versionsStatistics": "{{languagesCount}} Dilde {{versionsCount}} Versiyon"
 }
