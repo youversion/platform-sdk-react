@@ -114,11 +114,14 @@
   "backToBibleVersionsAriaLabel": "Вернуться к переводам Библии",
   "noLanguageSearchResults": "К сожалению, по этому запросу результатов не найдено.",
   "noRegionalLanguagesAvailable": "Региональные языки недоступны",
-  "recentlyUsedVersionsHeading": "Недавно использованные переводы",
+  "recentlyUsedVersionsHeading": "Недавние переводы",
   "changeLineSpacingAriaLabel": "Изменить межстрочный интервал",
   "decreaseFontSizeAriaLabel": "Уменьшить размер шрифта",
   "footnoteAriaLabel": "Сноска",
   "increaseFontSizeAriaLabel": "Увеличить размер шрифта",
   "interFontName": "Inter",
-  "untitledSerifFontName": "Untitled Serif"
+  "untitledSerifFontName": "Untitled Serif",
+  "bibleLanguagesHeading": "Языки Библии",
+  "languageVersionsHeading": "Переводы на: {{language}}",
+  "versionsStatistics": "Переводов: {{versionsCount}} на языках: {{languagesCount}}"
 }

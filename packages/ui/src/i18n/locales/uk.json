@@ -114,11 +114,14 @@
   "backToBibleVersionsAriaLabel": "Назад до перекладів Біблії",
   "noLanguageSearchResults": "Вибачте, за цим запитом немає результатів.",
   "noRegionalLanguagesAvailable": "Регіональні мови недоступні",
-  "recentlyUsedVersionsHeading": "Нещодавно використані переклади",
+  "recentlyUsedVersionsHeading": "Нещодавні переклади",
   "changeLineSpacingAriaLabel": "Змінити міжрядковий інтервал",
   "decreaseFontSizeAriaLabel": "Зменшити розмір шрифту",
   "footnoteAriaLabel": "Виноска",
   "increaseFontSizeAriaLabel": "Збільшити розмір шрифту",
   "interFontName": "Inter",
-  "untitledSerifFontName": "Untitled Serif"
+  "untitledSerifFontName": "Untitled Serif",
+  "bibleLanguagesHeading": "Мови Біблії",
+  "languageVersionsHeading": "Перекладів: {{language}}",
+  "versionsStatistics": "{{versionsCount}} перекладів {{languagesCount}} мовами"
 }
