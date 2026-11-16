@@ -144,11 +144,11 @@ are unchanged:
   track. Its controls are inside the open shadow root, so global CSS does not
   reach them. Pass `theme`, `fontSize`, `fontFamily`, `lineSpacing`,
   `onFontSelected`, `onFontIncreased`, `onFontDecreased`, and
-  `onChangeLineSpacing` through the component API. For Expo DOM, use the exported
-  `createBibleThemeSettingsContentHandlers` helper and keep its four callbacks as
-  top-level props rather than nesting them in a `BibleThemeSettingsSnapshot`.
-  Interface direction comes from `YouVersionProvider`'s `direction` or resolved
-  locale.
+  `onChangeLineSpacing` through the component API. For Expo DOM, build the four
+  callbacks on the native side that owns font state—you can use the exported
+  `createBibleThemeSettingsContentHandlers` helper—and pass them as top-level
+  props rather than nesting them in a `BibleThemeSettingsSnapshot`. Interface
+  direction comes from `YouVersionProvider`'s `direction` or resolved locale.
 - **Overlays:** Popovers and dialogs stay in their owning root and use the native
   top layer where needed. Opening a peer popover dismisses the current peer;
   simultaneous peer popovers are not supported. The native Popover API is
