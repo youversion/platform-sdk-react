@@ -378,7 +378,7 @@ export const MultipleFootnotesInSingleVerse: Story = {
   },
 };
 
-export const SwiftPhaseTwoTypographyFixture: Story = {
+export const SwiftTypographyFixture: Story = {
   args: { reference: 'GEN.1', versionId: 111 },
   render: () => (
     <>

@@ -201,7 +201,6 @@
     margin-block-start: calc(var(--yv-reader-font-size) * 0.25);
     margin-block-end: calc(var(--yv-reader-font-size) * 0.5);
     padding-inline: 0;
-    text-indent: 0;
     display: block;
   }
 
@@ -213,7 +212,6 @@
     text-align: center;
     margin-block-end: calc(var(--yv-reader-font-size) * 0.25);
     padding-inline: 0;
-    text-indent: 0;
     display: block;
   }
 
@@ -311,7 +309,6 @@
     margin-block-start: calc(var(--yv-reader-font-size) * 0.5);
     margin-block-end: calc(var(--yv-reader-font-size) * 0.15);
     padding-inline: 0;
-    text-indent: 0;
     display: block;
   }
 
@@ -547,33 +544,31 @@
     display: block;
   }
 
-  /* \io, \io1 - Introduction outline entry (level 1) */
+  /* \io, \io1-4 - Introduction outline entries */
   & .io,
-  & .io1 {
-    display: block;
-    padding-inline-start: 1em;
-    text-indent: 0;
-  }
-
-  /* \io2 - Introduction outline entry (level 2) */
-  & .io2 {
-    display: block;
-    padding-inline-start: 1.5em;
-    text-indent: 0;
-  }
-
-  /* \io3 - Introduction outline entry (level 3) */
-  & .io3 {
-    display: block;
-    padding-inline-start: 2em;
-    text-indent: 0;
-  }
-
-  /* \io4 - Introduction outline entry (level 4) */
+  & .io1,
+  & .io2,
+  & .io3,
   & .io4 {
     display: block;
-    padding-inline-start: 2.5em;
     text-indent: 0;
+  }
+
+  & .io,
+  & .io1 {
+    padding-inline-start: 1em;
+  }
+
+  & .io2 {
+    padding-inline-start: 1.5em;
+  }
+
+  & .io3 {
+    padding-inline-start: 2em;
+  }
+
+  & .io4 {
+    padding-inline-start: 2.5em;
   }
 
   /* \ior - Introduction outline reference range — no special style per spec */
@@ -960,7 +955,7 @@
   & .b {
     display: block;
     /* Empty breaks keep one blank line; breaks with text grow to fit it. */
-    min-block-size: calc(1em * var(--yv-reader-line-height));
+    min-block-size: 1lh;
     text-indent: 0;
   }
 
@@ -1254,15 +1249,8 @@
     text-indent: 0;
   }
 
-  /* \lim - Embedded list entry */
-  & .lim {
-    display: block;
-    list-style-type: none;
-    padding-inline-start: 1em;
-    text-indent: 0;
-  }
-
-  /* \lim1 - Embedded list entry (level 1) */
+  /* \lim, \lim1 - Embedded list entry (level 1) */
+  & .lim,
   & .lim1 {
     display: block;
     list-style-type: none;
