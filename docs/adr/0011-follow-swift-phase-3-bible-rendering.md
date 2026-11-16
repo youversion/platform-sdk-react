@@ -10,8 +10,8 @@ titles that are now centered and `\k` that is now bold without italics.
 
 As in [ADR 0009](./0009-follow-swift-phase-2-bible-rendering.md), match these
 behaviors with browser-native CSS, check them visually rather than for pixel
-equality, and cover every changed class in left-to-right and right-to-left
-Storybook examples.
+equality, and use deterministic examples for every changed class plus
+representative left-to-right and right-to-left passages.
 
 Keep the existing CSS major and `/platform/1/bible.css` URL, and release the
 change as a patch. It corrects Bible text styling to its Swift-defined behavior

@@ -1401,7 +1401,7 @@
     height: 1em;
   }
 
-  /* \lb - Line break (same as \b) */
+  /* \lb - Line break */
   & .lb {
     display: block;
     height: 1em;
@@ -1414,6 +1414,7 @@
     text-indent: 0;
   }
 
+  /* \cd in a YouVersion heading — weight 500 (Swift font100em500Italic) */
   & .yv-h.cd {
     font-weight: 500;
   }

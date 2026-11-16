@@ -80,7 +80,7 @@ const SWIFT_TYPOGRAPHY_FIXTURE_HTML = `
     <div class="sr">sr: Section reference</div>
   </div>
   <div class="mt">mt: Main title</div><div class="cd">cd: Chapter description</div><div class="yv-h cd">yv-h cd: Heading description</div>
-  <div class="iot">Outline</div><div class="io1">io1: Outline 1</div><div class="io2">io2: Outline 2</div>
+  <div class="iot">Outline</div><div class="io">io: Outline</div><div class="io1">io1: Outline 1</div><div class="io2">io2: Outline 2</div>
   <div class="io3">io3: Outline 3</div><div class="io4">io4: Outline 4</div>
   <div class="imi">imi: Indented introduction paragraph that wraps onto a second line to show the indent.</div>
   <div class="ipq">ipq: Introduction quote that wraps onto a second line to show the first-line indent.</div>
