@@ -125,7 +125,9 @@ export const HostileGlobalButtonRule: Story = {
     }, browserWaitOptions);
     await expectFontLoaded(ownerDocument, 'Inter');
     await expectFontLoaded(ownerDocument, 'Source Serif 4');
-    await expectFontLoaded(ownerDocument, 'Untitled Serif');
+    if (__YV_STORYBOOK_VITEST__) {
+      await expectFontLoaded(ownerDocument, 'Untitled Serif');
+    }
 
     const style = ownerDocument.createElement('style');
     style.textContent = HOSTILE_CSS;
