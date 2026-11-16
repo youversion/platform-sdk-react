@@ -44,7 +44,7 @@ const MULTIPLE_FOOTNOTE_SINGLE_VERSE_HTML = `
   </div>
 `;
 
-const SWIFT_PHASE_TWO_FIXTURE_HTML = `
+const SWIFT_TYPOGRAPHY_FIXTURE_HTML = `
   <div class="imt1">The Gospel According to John</div><div class="imt2">The Word Became Flesh</div>
   <div class="imte2">Introduction ending</div><div class="imt3">The witness of John</div><div class="is1">Jesus, the Lamb of God</div>
   <div class="imq">“Look, the Lamb of God, who takes away the sin of the world!”</div><div class="lh">The first disciples</div>
@@ -93,9 +93,14 @@ const SWIFT_PHASE_TWO_FIXTURE_HTML = `
   </div>
 `;
 
-const SWIFT_PHASE_TWO_RTL_HTML = `
+const SWIFT_TYPOGRAPHY_RTL_HTML = `
   <div class="mt1">בְּרֵאשִׁית</div><div class="p"><span class="yv-v" v="1"><span class="yv-vlbl">1</span><span class="va">1א</span>
   בְּרֵאשִׁית בָּרָא אֱלֹהִים אֵת הַשָּׁמַיִם וְאֵת הָאָרֶץ׃</span></div>
+  <div class="io1">io1: רָאשֵׁי פְּרָקִים</div><div class="io2">io2: רָאשֵׁי פְּרָקִים</div>
+  <div class="imi">imi: הַקְדָּמָה מוּזַחַת שֶׁנִּמְשֶׁכֶת לְשׁוּרָה שְׁנִיָּה כְּדֵי לְהַרְאוֹת אֶת הַהֲזָחָה</div>
+  <div class="ipq">ipq: צִיטוּט בַּהַקְדָּמָה שֶׁנִּמְשָׁךְ לְשׁוּרָה שְׁנִיָּה כְּדֵי לְהַרְאוֹת הֲזָחַת שׁוּרָה רִאשׁוֹנָה</div>
+  <div class="lim1">lim1: פְּרִיט רְשִׁימָה</div>
+  <div class="ipr">ipr: מְיֻשָּׁר לַסּוֹף</div><div class="pr">pr: מְיֻשָּׁר לַסּוֹף</div>
 `;
 
 function DebouncedBibleTextView({
@@ -383,7 +388,7 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
         <section dir="ltr" className="yv:min-w-0">
           <h2 className="yv:font-sans yv:font-bold yv:mb-3">LTR</h2>
           <Verse.Html
-            html={SWIFT_PHASE_TWO_FIXTURE_HTML}
+            html={SWIFT_TYPOGRAPHY_FIXTURE_HTML}
             renderNotes={true}
             highlightedVerses={{ 2: '#f19c33' }}
           />
@@ -397,7 +402,7 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
         </section>
         <section dir="rtl" className="yv:min-w-0">
           <h2 className="yv:font-sans yv:font-bold yv:mb-3">RTL</h2>
-          <Verse.Html html={SWIFT_PHASE_TWO_RTL_HTML} showVerseNumbers={false} />
+          <Verse.Html html={SWIFT_TYPOGRAPHY_RTL_HTML} showVerseNumbers={false} />
         </section>
         <section className="yv:min-w-0">
           <h2 className="yv:font-sans yv:font-bold yv:mb-3">Standalone HTML/CSS</h2>
@@ -407,7 +412,7 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
               // SAFETY: CSSProperties omits custom properties; this is a valid CSS length variable.
               { '--yv-reader-font-size': '24px' } as React.CSSProperties
             }
-            dangerouslySetInnerHTML={{ __html: SWIFT_PHASE_TWO_FIXTURE_HTML }}
+            dangerouslySetInnerHTML={{ __html: SWIFT_TYPOGRAPHY_FIXTURE_HTML }}
           />
         </section>
       </div>

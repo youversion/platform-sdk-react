@@ -291,6 +291,9 @@ describe('bible-reader Swift-aligned typography', () => {
     }
     expect(rulesForExactClass('k')).toContain('font-weight: bold');
     expect(rulesForExactClass('k')).toContain('font-style: normal');
+
+    // Swift has no sibling override; is1 keeps its own 0.5× top margin after imt1.
+    expect(cssWithoutComments).not.toMatch(/\.imt1\s*\+\s*\.is1/);
   });
 
   it('treats va consistently as a visible, hideable alternate verse label', () => {

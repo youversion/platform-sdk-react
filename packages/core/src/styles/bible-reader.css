@@ -286,7 +286,6 @@
     text-align: center;
     margin-block: calc(var(--yv-reader-font-size) * 0.15);
     padding-inline: 0;
-    text-indent: 0;
     display: block;
   }
 
@@ -302,7 +301,6 @@
     margin-block-start: var(--yv-reader-font-size);
     margin-block-end: calc(var(--yv-reader-font-size) * 0.25);
     padding-inline: 0;
-    text-indent: 0;
     display: block;
   }
 
@@ -668,7 +666,7 @@
     margin-block: var(--yv-reader-font-size);
   }
 
-  /* \ipr - Introduction right-aligned paragraph — Italic, Right, margins */
+  /* \ipr - Introduction right-aligned paragraph — Italic, Right */
   & .ipr {
     display: block;
     font-style: italic;
@@ -685,13 +683,6 @@
   & .iex {
     display: block;
     text-indent: 1em;
-  }
-
-  /* \iqt - Introduction quoted text (scripture quotation, character style) — Italic */
-  & .iqt {
-    font-size: var(--yv-reader-font-size);
-    font-weight: normal;
-    font-style: italic;
   }
 
   /* ============================================================
@@ -803,11 +794,6 @@
     margin-top: 0;
   }
 
-  /* Unadjusted-tag combinators only (phase-1 sibling overrides removed) */
-  & .imt1 + .is1 {
-    margin-block-start: 1em;
-  }
-
   /* ============================================================
      CHARACTER STYLES
      ============================================================ */
@@ -827,8 +813,9 @@
     font-variant: small-caps;
   }
 
-  /* \bd - Bold text */
-  & .bd {
+  /* \bd - Bold text, \k - Keyword/keyterm */
+  & .bd,
+  & .k {
     font-size: var(--yv-reader-font-size);
     font-weight: bold;
     font-style: normal;
@@ -879,13 +866,6 @@
     font-style: normal;
   }
 
-  /* \k - Keyword/keyterm — Bold */
-  & .k {
-    font-size: var(--yv-reader-font-size);
-    font-weight: bold;
-    font-style: normal;
-  }
-
   /* \w - Wordlist/glossary entry */
   & .w {
     display: inline;
@@ -920,18 +900,14 @@
   }
 
   /* \it - Italic text, \tl - Transliterated word,
-     \fq / \fqa - Footnote quotation — Italic */
+     \fq / \fqa - Footnote quotation, \sls - Secondary language,
+     \iqt - Introduction quoted text — Italic */
   & .it,
   & .tl,
   & .fq,
-  & .fqa {
-    font-size: var(--yv-reader-font-size);
-    font-weight: normal;
-    font-style: italic;
-  }
-
-  /* \sls - Secondary language — Italic */
-  & .sls {
+  & .fqa,
+  & .sls,
+  & .iqt {
     font-size: var(--yv-reader-font-size);
     font-weight: normal;
     font-style: italic;
