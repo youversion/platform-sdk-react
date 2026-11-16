@@ -74,7 +74,7 @@ component rollout targets.
 | `Separator` | Included | The separator | Audit orientation, decorative semantics, consumer props, and flex/grid sizing through a `display: contents` host. |
 | `Textarea` | Excluded | None | Native outer-form ownership, serialization, and external `<label for>` relationships do not cross a shadow boundary. Include it only after an explicit form-associated public contract is designed. |
 | `VerseActionPopover` | Excluded as an independent boundary; included inside `BibleReader` | The owning reader boundary | Its public contract accepts verse elements and a virtual anchor from the owning DOM tree. An independent shadow host would split that anchor relationship. |
-| `YouVersionProvider` | Excluded | None | It is the document-level context, document stylesheet, and font owner rather than a visual component boundary. It must remain outside isolated descendants. |
+| `YouVersionProvider` | Excluded | None | It is the document-level context and stylesheet owner rather than a visual component boundary. It loads base and gated brand fonts for Provider trees, while the component-style injector loads base fonts for standalone components. It must remain outside isolated descendants. |
 | `BaseYouVersionProvider` | Excluded | None | This hooks-package provider is re-exported for advanced consumers. It supplies React context without rendering a visual SDK boundary. |
 
 Exports nested under a compound root are not exclusions from isolated behavior;
@@ -112,7 +112,7 @@ supported component contract.
 | A consumer capture-phase React handler on a light-DOM ancestor can receive one composed event twice | Accepted documented limitation | YPE-6210 records exactly two `onClickCapture` deliveries for one fresh composed internal click. A React capture redesign and native propagation suppression are outside the coordinated rollout, so capture remains a documented limitation. |
 | Consumer global CSS and document-level token overrides do not style internals | Accepted | Supported props and component-owned tokens replace accidental global customization; consumer-supplied children require focused review. |
 | `rem` still follows the owning document root size | Accepted | Review this sizing input per component. |
-| Font loading and public `@font-face` names remain document-owned | Accepted | `YouVersionProvider` remains responsible for document fonts, including inside same-origin iframe documents. |
+| Font loading and public `@font-face` names remain document-owned | Accepted | `YouVersionProvider` installs base and gated brand-font resources for Provider trees. The component-style injector ensures base fonts for standalone components and in each owning document, including same-origin iframe documents. |
 | Ancestor geometry can clip, transform, or constrain the shadow host, while ancestor `visibility` or `pointer-events` values can be reset inside the shadow tree | Accepted | Keep the consumer consequence and guidance in the [compatibility contract](shadow-dom-consumer-compatibility.md#compatibility-matrix). |
 | Native Popover API support is absent | Unsupported for isolated floating content | Keep the consumer consequence and guidance in the [compatibility contract](shadow-dom-consumer-compatibility.md#compatibility-matrix). |
 | Open roots are inspectable and mutable by same-page JavaScript | Accepted | Isolation is not a security boundary. |

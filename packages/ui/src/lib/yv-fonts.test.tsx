@@ -119,10 +119,10 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
     expect(googleFontLink).toBeDefined();
     googleFontLink!.dispatchEvent(new Event('error'));
 
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await waitFor(() => {
       expect(ownerDocument.body.querySelector('[data-testid="child"]')?.textContent).toBe('hello');
     });
-    await new Promise((resolve) => setTimeout(resolve, 0));
   });
 
   it('deduplicates the font <link> when multiple providers are rendered', () => {
