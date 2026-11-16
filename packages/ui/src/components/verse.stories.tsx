@@ -79,6 +79,15 @@ const SWIFT_PHASE_TWO_FIXTURE_HTML = `
     <div class="s3">s3: Section heading 3</div><div class="s4">s4: Section heading 4</div>
     <div class="sr">sr: Section reference</div>
   </div>
+  <div class="mt">mt: Main title</div><div class="cd">cd: Chapter description</div><div class="yv-h cd">yv-h cd: Heading description</div>
+  <div class="iot">Outline</div><div class="io1">io1: Outline 1</div><div class="io2">io2: Outline 2</div>
+  <div class="io3">io3: Outline 3</div><div class="io4">io4: Outline 4</div>
+  <div class="imi">imi: Indented introduction paragraph that wraps onto a second line to show the indent.</div>
+  <div class="ipq">ipq: Introduction quote that wraps onto a second line to show the first-line indent.</div>
+  <div class="ipr">ipr: Right-aligned introduction</div><div class="pr">pr: Right-aligned paragraph</div>
+  <div class="q1">Stanza one</div><div class="b"></div><div class="q1">Stanza two</div><div class="qd">qd: Hebrew note</div>
+  <div class="lim1">lim1: Embedded list entry</div>
+  <div class="p"><span class="k">k: keyword</span> <span class="sls">sls: secondary</span> <span class="iqt">iqt: quoted</span></div>
   <div class="po">Dear children,</div><div class="p"><span class="yv-v" v="2"></span><span class="va">2a</span>
     In the beginning was the Word, and the Word was with God.
   </div>
