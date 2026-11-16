@@ -3,6 +3,12 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { auditCustomProperties, auditShadowPropertyDefaults } from './custom-property-contract.js';
+import {
+  FONT_LAYER_ORDER,
+  GOOGLE_FONTS_IMPORT,
+  GOOGLE_FONTS_STYLESHEET,
+  PUBLIC_FONT_LAYER_ORDER,
+} from './font-resource-contract.js';
 import { stripLayerBlocks } from './strip-layer-blocks.js';
 
 const uiRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -11,10 +17,19 @@ const errors = [];
 const packageJson = JSON.parse(readFileSync(resolve(uiRoot, 'package.json'), 'utf8'));
 const publicCssExport = packageJson.exports?.['./styles.css'];
 const forbiddenRuntimeImport = /@import\b/i;
-const publicLayerOrder =
-  '@layer properties,theme,base,components,utilities,yv-sdk-fonts,yv-sdk-styles,yv-sdk-theme,yv-sdk-utilities,yv-sdk-bible-reader;\n';
-const googleFontsImport =
-  "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap') layer(yv-sdk-fonts);";
+const publicStylesPrefix = `${PUBLIC_FONT_LAYER_ORDER}\n${GOOGLE_FONTS_IMPORT}`;
+
+const runtimeFontsSource = readFileSync(resolve(uiRoot, 'src/lib/yv-fonts.tsx'), 'utf8');
+if (!runtimeFontsSource.includes(`'${GOOGLE_FONTS_STYLESHEET}'`)) {
+  errors.push('yv-fonts.tsx Google Fonts URL has drifted from the public stylesheet contract');
+}
+
+for (const sourceFile of ['src/styles/global.css', 'src/styles/chrome.css']) {
+  const sourceCss = readFileSync(resolve(uiRoot, sourceFile), 'utf8');
+  if (!sourceCss.includes(FONT_LAYER_ORDER)) {
+    errors.push(`${sourceFile} layer order has drifted from the public stylesheet contract`);
+  }
+}
 
 // Tailwind --watch (and a concurrent build) can rewrite dist CSS after
 // build:css already ran preserve-host-revert-layer. Re-apply before gating.
@@ -131,7 +146,7 @@ const publicCss = existsSync(publicCssPath) ? readFileSync(publicCssPath, 'utf-8
 if (!publicCss.trim()) {
   errors.push('the public ./styles.css export is missing or empty — did build:css run?');
 } else {
-  if (!publicCss.startsWith(publicLayerOrder + googleFontsImport)) {
+  if (!publicCss.startsWith(publicStylesPrefix)) {
     errors.push(
       'dist/styles.css must declare the public layer order before the Google Fonts import',
     );

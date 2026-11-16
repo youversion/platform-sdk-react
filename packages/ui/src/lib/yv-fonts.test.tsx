@@ -5,6 +5,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { act, render, waitFor } from '@testing-library/react';
 import React, { Suspense } from 'react';
 import { PassThrough } from 'node:stream';
+import { JSDOM } from 'jsdom';
 import { hydrateRoot, type Root } from 'react-dom/client';
 import { renderToPipeableStream, renderToString } from 'react-dom/server';
 import { Separator } from '@/components/ui/separator';
@@ -185,6 +186,47 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
     });
   });
 
+  it('places provider and standalone font resources before host styles', async () => {
+    const providerDocument = createTestDocument();
+    const providerHostStyle = providerDocument.ownerDocument.createElement('style');
+    providerHostStyle.textContent = "@font-face { font-family: 'Untitled Serif'; src: local('serif'); }";
+    providerDocument.ownerDocument.head.append(providerHostStyle);
+
+    render(<YouVersionProvider appKey="key-host-font">provider</YouVersionProvider>, {
+      container: providerDocument.container,
+    });
+
+    await waitFor(() => {
+      const headChildren = Array.from(providerDocument.ownerDocument.head.children);
+      const hostStyleIndex = headChildren.indexOf(providerHostStyle);
+      const sdkResources = [
+        ...googleFontLinks(providerDocument.ownerDocument),
+        ...brandFontLinks(providerDocument.ownerDocument),
+      ];
+      expect(sdkResources).toHaveLength(2);
+      for (const resource of sdkResources) {
+        expect(headChildren.indexOf(resource)).toBeLessThan(hostStyleIndex);
+      }
+    });
+
+    const standaloneDocument = createTestDocument();
+    const standaloneHostStyle = standaloneDocument.ownerDocument.createElement('style');
+    standaloneHostStyle.textContent =
+      "@font-face { font-family: 'Inter'; src: local('sans-serif'); }";
+    standaloneDocument.ownerDocument.head.append(standaloneHostStyle);
+
+    render(<Textarea />, { container: standaloneDocument.container });
+
+    await waitFor(() => {
+      const headChildren = Array.from(standaloneDocument.ownerDocument.head.children);
+      const [baseFontLink] = googleFontLinks(standaloneDocument.ownerDocument);
+      expect(baseFontLink).toBeDefined();
+      expect(headChildren.indexOf(baseFontLink!)).toBeLessThan(
+        headChildren.indexOf(standaloneHostStyle),
+      );
+    });
+  });
+
   it('emits base and gated stylesheets during server rendering with a DOM shim', () => {
     const html = renderToString(<YvFonts appKey="key-ssr" />);
 
@@ -250,7 +292,7 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
     }
   });
 
-  it('applies font stylesheets when a provider streams after the initial shell', async () => {
+  it('reveals late streamed font resources without making the base fonts blocking', async () => {
     let reveal!: () => void;
     let revealed = false;
     const pending = new Promise<void>((resolve) => {
@@ -261,7 +303,12 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
     });
     function DelayedFonts(): React.ReactElement {
       if (!revealed) throw pending;
-      return <YvFonts appKey="late-key" />;
+      return (
+        <>
+          <YvFonts appKey="late-key" />
+          <span data-testid="late-content">late content</span>
+        </>
+      );
     }
 
     const html = await new Promise<string>((resolve, reject) => {
@@ -291,13 +338,30 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
       );
     });
 
-    expect(html).toContain(
-      `["https://api.youversion.com/v1/fonts/1/stylesheet?app_key=late-key","yv-sdk-fonts"]`,
-    );
-    expect(html).toContain("@import url('https://fonts.googleapis.com/");
-    expect(html).not.toContain(
-      `["${GOOGLE_FONTS_HREF.replaceAll('&', '\\u0026')}","yv-sdk-fonts"]`,
-    );
+    const streamedDom = new JSDOM(`<!doctype html><html><head></head><body>${html}</body></html>`, {
+      runScripts: 'dangerously',
+      url: 'https://stream.test/',
+    });
+
+    try {
+      const streamedDocument = streamedDom.window.document;
+      const [brandLink] = brandFontLinks(streamedDocument);
+      expect(brandLink).toBeDefined();
+      brandLink!.dispatchEvent(new streamedDom.window.Event('load'));
+
+      await waitFor(() => {
+        expect(streamedDocument.querySelector('[data-testid="late-content"]')?.textContent).toBe(
+          'late content',
+        );
+        expect(brandFontLinks(streamedDocument)).toHaveLength(1);
+        expect(
+          streamedDocument.head.querySelectorAll('style[data-href~="yv-sdk-base-fonts"]'),
+        ).toHaveLength(1);
+        expect(googleFontLinks(streamedDocument)).toHaveLength(0);
+      });
+    } finally {
+      streamedDom.window.close();
+    }
   });
 
   it.each([

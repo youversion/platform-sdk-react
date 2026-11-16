@@ -29,12 +29,14 @@ const browserTestBrandFontCss = `
 `;
 
 export const globalHandlers = [
-  // Keep browser tests independent of the live Fonts API while exercising the
-  // same document stylesheet links used by consumers.
+  // Keep automated browser tests independent of the live Fonts API while
+  // exercising the same document stylesheet links used by consumers. Manual
+  // Storybook keeps the empty response used by its mock app key, so serif
+  // previews continue to fall back to Source Serif 4 instead of local sans.
   http.get(
     '*/v1/fonts/:id/stylesheet',
     () =>
-      new HttpResponse(browserTestBrandFontCss, {
+      new HttpResponse(__YV_STORYBOOK_VITEST__ ? browserTestBrandFontCss : '', {
         headers: { 'Content-Type': 'text/css' },
       }),
   ),

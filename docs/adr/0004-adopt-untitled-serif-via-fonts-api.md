@@ -66,6 +66,10 @@ subtree. Fresh client mounts append an ordinary `<link rel="stylesheet">` and de
 style. An inert template probe supplies the correct `ownerDocument` for same-origin
 iframe rendering. Avoiding React's external resource path for base fonts and fresh
 client mounts keeps a failed public-font request from delaying the consumer tree.
+During server streaming, React waits to reveal a late Suspense segment until its gated
+brand stylesheet settles. If that stylesheet fails, React discards the streamed segment
+and renders the boundary on the client. This does not apply to the non-blocking base-font
+import or to fresh client mounts.
 
 YPE-6560 later made the same component own the public Google Fonts stylesheet for
 Inter and Source Serif 4. That base-font link renders even when the app key is missing;
@@ -119,8 +123,11 @@ non-breaking if the need turns out to be real.
   knowingly.
 - Font resources are streamed in server output and reused during hydration. Fresh client
   mounts use ordinary document links without entering React's stylesheet-suspension
-  protocol, so a blocked or failed request leaves the consumer tree mounted and falls
-  through to the documented system-font stack.
+  protocol, so a blocked or failed request leaves the consumer tree mounted. A failed
+  brand-font request falls through to Source Serif 4 and then generic serif; failed base
+  fonts fall through to the corresponding generic sans-serif or serif family. During
+  server streaming, however, the gated brand stylesheet remains a Suspense dependency,
+  and a failed load makes React render that boundary on the client.
 - The default reader font changes from Source Serif 4 to Untitled Serif for new users,
   and returning serif readers are migrated on hydrate. No public API is removed or
   retyped; the change ships as a `minor` across all three packages.

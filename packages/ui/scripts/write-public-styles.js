@@ -3,20 +3,16 @@
 import { mkdirSync, readFileSync, watch, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { GOOGLE_FONTS_IMPORT, PUBLIC_FONT_LAYER_ORDER } from './font-resource-contract.js';
 
 const dist = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const inputs = ['tailwind.css', 'bible-reader.css'];
-const layerOrder =
-  '@layer properties,theme,base,components,utilities,yv-sdk-fonts,yv-sdk-styles,yv-sdk-theme,yv-sdk-utilities,yv-sdk-bible-reader;\n';
-const googleFontsImport =
-  "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap') layer(yv-sdk-fonts);\n";
 
 function writePublicStyles() {
   try {
     writeFileSync(
       resolve(dist, 'styles.css'),
-      layerOrder +
-        googleFontsImport +
+      `${PUBLIC_FONT_LAYER_ORDER}\n${GOOGLE_FONTS_IMPORT}\n` +
         inputs.map((file) => readFileSync(resolve(dist, file), 'utf8')).join(''),
     );
   } catch (error) {

@@ -26,7 +26,17 @@ function ensureFontStylesheet(
   const link = ownerDocument.createElement('link');
   link.rel = 'stylesheet';
   link.href = href;
-  ownerDocument.head.append(link);
+  const precedenceResources = ownerDocument.head.querySelectorAll(
+    'link[rel="stylesheet"][data-precedence="yv-sdk-fonts"], style[data-precedence="yv-sdk-fonts"]',
+  );
+  const lastPrecedenceResource = precedenceResources.item(precedenceResources.length - 1);
+  if (lastPrecedenceResource) {
+    lastPrecedenceResource.after(link);
+    return;
+  }
+
+  const firstStylesheet = ownerDocument.head.querySelector('link[rel="stylesheet"], style');
+  ownerDocument.head.insertBefore(link, firstStylesheet);
 }
 
 /** @internal Installs the base-font resource in a specific owning document. */
