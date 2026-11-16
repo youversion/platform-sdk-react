@@ -1,4 +1,5 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 
 /**
  * Shape of the decoded user profile that is persisted at sign-in.
@@ -8,7 +9,7 @@ import * as z from 'zod/mini';
  * rehydrated from storage so a tampered or malformed entry is rejected rather
  * than trusted blindly.
  */
-export const YouVersionUserInfoJSONSchema = z.object({
+export const YouVersionUserInfoJSONSchema = object({
   name: z.optional(z.string()),
   id: z.optional(z.string()),
   avatar_url: z.optional(z.string()),

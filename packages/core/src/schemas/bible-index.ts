@@ -1,7 +1,8 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 import { BookUsfmSchema, CanonSchema } from './book';
 
-const BibleIndexVerseSchema = z.object({
+const BibleIndexVerseSchema = object({
   /** Verse identifier */
   id: z.string(),
   /** Passage identifier (e.g., "GEN.1.1"). */
@@ -12,7 +13,7 @@ const BibleIndexVerseSchema = z.object({
 
 export type BibleIndexVerse = Readonly<z.infer<typeof BibleIndexVerseSchema>>;
 
-const BibleIndexChapterSchema = z.object({
+const BibleIndexChapterSchema = object({
   /** Chapter identifier */
   id: z.string(),
   /** Passage identifier (e.g., "GEN.1"). */
@@ -25,7 +26,7 @@ const BibleIndexChapterSchema = z.object({
 
 export type BibleIndexChapter = Readonly<z.infer<typeof BibleIndexChapterSchema>>;
 
-const BibleIndexBookIntroSchema = z.object({
+const BibleIndexBookIntroSchema = object({
   /** Intro identifier (e.g., "INTRO") */
   id: z.string(),
   /** Passage identifier (e.g., "GEN.INTRO") */
@@ -36,7 +37,7 @@ const BibleIndexBookIntroSchema = z.object({
 
 export type BibleIndexBookIntro = Readonly<z.infer<typeof BibleIndexBookIntroSchema>>;
 
-const BibleIndexBookSchema = z.object({
+const BibleIndexBookSchema = object({
   /** Book identifier */
   id: BookUsfmSchema,
   /** Book title */
@@ -55,7 +56,7 @@ const BibleIndexBookSchema = z.object({
 
 export type BibleIndexBook = Readonly<z.infer<typeof BibleIndexBookSchema>>;
 
-const _BibleIndexSchema = z.object({
+const _BibleIndexSchema = object({
   /** Text direction (e.g., "ltr") */
   text_direction: z.string(),
   /** Array of books with chapters and verses */

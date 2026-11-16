@@ -1,7 +1,8 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 
 /** A CDN asset for a specific font weight and style. */
-export const FontSourceSchema = z.object({
+export const FontSourceSchema = object({
   /** The file format for this source asset. */
   format: z.enum(['woff2', 'ttf']),
   /** Fully qualified CDN URL for this font source file. */
@@ -11,7 +12,7 @@ export const FontSourceSchema = z.object({
 export type FontSource = Readonly<z.infer<typeof FontSourceSchema>>;
 
 /** An available face within a font family. */
-export const FontVariantSchema = z.object({
+export const FontVariantSchema = object({
   /** Numeric font weight for this variant. */
   weight: z.union([z.literal(400), z.literal(500), z.literal(700)]),
   /** Font style for this variant. */
@@ -23,7 +24,7 @@ export const FontVariantSchema = z.object({
 export type FontVariant = Readonly<z.infer<typeof FontVariantSchema>>;
 
 /** A font family resource with available variants and CDN-backed source files. */
-export const FontSchema = z.object({
+export const FontSchema = object({
   /** Stable integer identifier for the font family. */
   id: z.int(),
   /** Stable URL-safe identifier for the font family. */

@@ -1,7 +1,8 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 
 /** Body of `POST /data-exchange/token`. */
-export const DataExchangeTokenRequestSchema = z.object({
+export const DataExchangeTokenRequestSchema = object({
   requested_permissions: z.array(z.string()),
 });
 export type DataExchangeTokenRequest = z.infer<typeof DataExchangeTokenRequestSchema>;
@@ -10,7 +11,7 @@ export type DataExchangeTokenRequest = z.infer<typeof DataExchangeTokenRequestSc
  * Response of `POST /data-exchange/token`: a short-lived data-exchange token
  * minted for the requested permissions (see {@link DataExchangeClient}).
  */
-export const DataExchangeTokenResponseSchema = z.object({
+export const DataExchangeTokenResponseSchema = object({
   token: z.string().check(z.minLength(1)),
 });
 

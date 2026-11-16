@@ -1,8 +1,9 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 import { parseSearchLanguageRange } from './language-range';
 
 /** A verse-art image record from the Images API. */
-export const ImageSchema = z.object({
+export const ImageSchema = object({
   /** Opaque identifier. Pass it to `ImagesClient.getImage` unchanged. */
   id: z.string(),
   /**
@@ -38,7 +39,7 @@ const ImageNextPageTokenWireSchema = z.pipe(
  * the server's count and may exceed the kept `data` length.
  */
 export const ImageCollectionWireSchema = z.pipe(
-  z.object({
+  object({
     data: z.array(z.unknown()),
     next_page_token: ImageNextPageTokenWireSchema,
     total_size: z.optional(z.nullable(z.int().check(z.nonnegative()))),
@@ -72,7 +73,7 @@ const ImageLanguageRangeSchema = z.pipe(
 
 const PAGE_SIZE_ERROR = 'Page size must be an integer from 1 to 99';
 
-export const GetImagesOptionsSchema = z.object({
+export const GetImagesOptionsSchema = object({
   /**
    * Passage filter. Trimmed, and a blank value is rejected.
    * Pass a single verse or a verse range, such as `JHN.3.16` or `JHN.3.16-18`.

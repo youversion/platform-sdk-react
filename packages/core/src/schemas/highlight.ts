@@ -1,4 +1,5 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 
 // Case-insensitive: the API may echo colors in any case, and the client's input
 // validator accepts both, so response parsing must not reject uppercase hex.
@@ -21,7 +22,7 @@ export const HighlightColorSchema = z
  * Bible version field `bible_id`. The SDK exposes it as `version_id` for
  * consistency with the rest of the public API (see {@link toHighlight}).
  */
-export const HighlightWireSchema = z.object({
+export const HighlightWireSchema = object({
   /** Bible version identifier */
   bible_id: z.int().check(z.positive()),
   /** Passage identifier (e.g., "MAT.1.1") */
@@ -32,14 +33,14 @@ export const HighlightWireSchema = z.object({
 
 export type HighlightWire = z.infer<typeof HighlightWireSchema>;
 
-export const HighlightCollectionWireSchema = z.object({
+export const HighlightCollectionWireSchema = object({
   data: z.array(HighlightWireSchema),
   next_page_token: z.optional(z.nullable(z.string())),
 });
 
 export type HighlightCollectionWire = z.infer<typeof HighlightCollectionWireSchema>;
 
-const _HighlightSchema = z.object({
+const _HighlightSchema = object({
   /** Bible version identifier (sent to / received from the API as `bible_id`) */
   version_id: z.int().check(z.positive()),
   /** Passage identifier (e.g., "MAT.1.1") */
@@ -59,7 +60,7 @@ export function toHighlight(wire: HighlightWire): Highlight {
   };
 }
 
-const _CreateHighlightSchema = z.object({
+const _CreateHighlightSchema = object({
   /** Bible version identifier (sent to the API as `bible_id`) */
   version_id: z.int().check(z.positive()),
   /** Passage identifier (e.g., "MAT.1.1") */
@@ -70,7 +71,7 @@ const _CreateHighlightSchema = z.object({
 
 export type CreateHighlight = z.infer<typeof _CreateHighlightSchema>;
 
-export const CreateHighlightEnvelopeSchema = z.object({
+export const CreateHighlightEnvelopeSchema = object({
   request_id: z.string().check(z.minLength(1)),
   highlight: HighlightWireSchema,
 });

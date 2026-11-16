@@ -1,7 +1,8 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 
 /** A playable video or audio source. */
-export const VideoPlaybackSourceSchema = z.object({
+export const VideoPlaybackSourceSchema = object({
   /**
    * URL for the playable video or audio source.
    *
@@ -18,7 +19,7 @@ export const VideoPlaybackSourceSchema = z.object({
 export type VideoPlaybackSource = Readonly<z.infer<typeof VideoPlaybackSourceSchema>>;
 
 /** A thumbnail image for a video. */
-export const VideoThumbnailSchema = z.object({
+export const VideoThumbnailSchema = object({
   /** URL for the thumbnail image. */
   url: z.optional(z.nullable(z.string())),
   /** Thumbnail width in pixels. */
@@ -30,7 +31,7 @@ export const VideoThumbnailSchema = z.object({
 export type VideoThumbnail = Readonly<z.infer<typeof VideoThumbnailSchema>>;
 
 /** A dark-launched video resource approved for Platform consumers. */
-export const VideoSchema = z.object({
+export const VideoSchema = object({
   /** Video identifier. */
   id: z.int(),
   /** Video title. */
