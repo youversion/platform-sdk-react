@@ -6,6 +6,7 @@ Keep this file brief. Put task-specific guidance behind a pointer.
 
 ## Gotchas
 
+- Build object schemas with `object` from `./schemas/object`, not `z.object`, and extend a schema by spreading a shared field object into it. Since zod 4.6, `z.object`, `z.extend`, and `z.safeExtend` drop field doc comments from the published `.d.ts` files. Lint enforces this.
 - Client modules import schema files directly, such as `./schemas/version`, rather than the `./schemas` barrel, so tree-shakable entries stay narrow.
 - Auth and configuration use storage from the default entry point through `web-storage.ts`. Resolve stores with `getLocalStorage()` or `getSessionStorage()`; they return `null` when unusable. Even a resolved store can throw on writes, so mutate through `setStorageItem()`, `removeStorageItem()`, or `clearStorage()`. If a value must survive a reload or redirect, check `setStorageItem()`'s boolean result.
 - Browser CSS is plain CSS, without Tailwind or preprocessors. Its public specifier stays `@youversion/platform-core/browser/styles/*`.

@@ -1,7 +1,8 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 
 /** A public app summary resource. */
-export const AppSummarySchema = z.object({
+export const AppSummarySchema = object({
   /** The unique identifier of the app. */
   app_id: z.uuid(),
   /** The app name. */

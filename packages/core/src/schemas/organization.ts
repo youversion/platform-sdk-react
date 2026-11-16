@@ -1,7 +1,8 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 
 /** A localized place name with short and long forms. */
-const PlaceNameSchema = z.object({
+const PlaceNameSchema = object({
   /** The short name of the place, e.g. "OK" for Oklahoma. */
   short_name: z.optional(z.string()),
   /** The long name of the place, e.g. "Oklahoma" for the state of Oklahoma. */
@@ -9,7 +10,7 @@ const PlaceNameSchema = z.object({
 });
 
 /** The Address Schema belonging to the Organization Resource in the Platform. */
-export const OrganizationAddressSchema = z.object({
+export const OrganizationAddressSchema = object({
   /** The human-readable address of the organization. */
   formatted_address: z.optional(z.string()),
   /** A less specific, more broad field combining different regional fields. */
@@ -31,7 +32,7 @@ export const OrganizationAddressSchema = z.object({
 export type OrganizationAddress = Readonly<z.infer<typeof OrganizationAddressSchema>>;
 
 /** The Organization Resource in the Platform. */
-export const OrganizationSchema = z.object({
+export const OrganizationSchema = object({
   /** The unique identifier of the organization in the Platform. */
   id: z.uuid(),
   /** The id of the parent organization if one exists. */

@@ -1,4 +1,5 @@
 import * as z from 'zod/mini';
+import { object } from './schemas/object';
 import type { BibleVersion, Collection, Language } from './types';
 import { versionFilterState, type VersionFilterState } from './version-filter-state';
 
@@ -84,7 +85,7 @@ export function fieldsNeededForLanguageFilter(
 /** Resume token for leftover usable rows on a server page. Never send to the API. */
 const FILTER_PAGE_CURSOR_PREFIX = 'yv-vf1:';
 
-const FilterPageCursorSchema = z.object({
+const FilterPageCursorSchema = object({
   t: z.nullable(z.string()),
   s: z.int().check(z.nonnegative()),
 });

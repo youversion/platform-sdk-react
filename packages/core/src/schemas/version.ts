@@ -1,7 +1,8 @@
 import * as z from 'zod/mini';
+import { object } from './object';
 import { BookUsfmSchema } from './book';
 
-export const BibleVersionSchema = z.object({
+export const BibleVersionSchema = object({
   /** Bible version identifier */
   id: z.int(),
   /** Bible version abbreviation */
@@ -44,7 +45,7 @@ export const LanguageRangeSchema = z
 
 export const GetVersionsOptionsSchema = z
   .optional(
-    z.object({
+    object({
       page_size: z.optional(z.union([z.int().check(z.positive()), z.literal('*')])),
       page_token: z.optional(z.string()),
       fields: z.optional(z.array(z.keyof(BibleVersionSchema))),
