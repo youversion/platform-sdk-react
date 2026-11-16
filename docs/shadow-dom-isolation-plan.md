@@ -4,8 +4,8 @@ YPE-5356 reconciles this research into the
 [Shadow DOM production rollout policy](shadow-dom-rollout-policy.md). This file
 remains the detailed evidence inventory; the policy owns the approved public
 boundary, implementation groups, accepted limitations, and coordinated release
-gate. The implementation groups are complete on the coordinated release branch;
-publishing remains gated by the YPE-5952 evidence recorded below.
+gate. The complete boundary shipped in `@youversion/platform-react-ui` 3.0.0;
+the YPE-5952 evidence recorded below is the historical release-candidate record.
 
 ## Why this doc exists
 
@@ -14,21 +14,21 @@ architectural decision behind automatic Shadow DOM isolation. This document trac
 the implementation evidence, unresolved audits, and coordinated-release
 validation for the approved public boundary.
 
-This is an evidence inventory and release-candidate plan. The manual validation
-recorded below is complete, but the major release has not shipped.
+This is the evidence inventory and release-candidate record for the boundary
+shipped in `@youversion/platform-react-ui` 3.0.0. The manual validation recorded
+below is complete.
 
 ## Current scope
 
-- The current stable package has no automatically isolated components. On the
-  coordinated release branch, every included YPE-5356 component boundary is
-  implemented: the auth button, chapter and
+- `@youversion/platform-react-ui` 3.0.0 includes every YPE-5356 component
+  boundary: the auth button, chapter and
   version picker roots, `BibleReader.Root`, `ProfileAvatar`, `Separator`,
   `FootnoteContent`, and standalone `BibleThemeSettingsContent`,
   `BibleTextView`, `VerseOfTheDay`, and `BibleCard`.
 - Compound members and SDK-owned composed children reuse the owner boundary.
   Reader-owned scripture, pickers, settings, avatar, verse actions, and dialogs
   therefore stay in the reader root instead of creating accidental nested roots.
-  The boundaries remain subject to the coordinated YPE-5952 release gate.
+  The boundaries shipped together after the coordinated YPE-5952 release gate.
 - The picker roots validate shadow-local native top-layer floating content
   through their public runtime boundaries. A historical inline negative
   control demonstrated clipping beyond a constrained ancestor before that
@@ -300,11 +300,12 @@ trigger focus. This focused browser evidence does not establish
 assistive-technology support.
 
 `BibleReader.Root` suppresses the standalone boundary around its owned settings,
-so the settings body remains in the reader root without nesting. YPE-5952 must
-document the childless, declaratively styled host contract, open-root automation,
-native event retargeting, loss of global-CSS access, and the supported explicit
-theme, direction, and callback inputs as part of the coordinated major release.
-YPE-5994 has an empty changeset and must not publish an independent partial
+so the settings body remains in the reader root without nesting. The 3.0
+consumer documentation records the childless, declaratively styled host
+contract, open-root automation, native event retargeting, loss of global-CSS
+access, and the supported explicit theme, direction, and callback inputs as part
+of the coordinated major release.
+YPE-5994 had an empty changeset and did not publish an independent partial
 rollout.
 
 ## YPE-5950 scripture presentation evidence
@@ -333,9 +334,9 @@ shadow-local footnote overlay. The ADR's childless, declaratively styled host
 client-only first-paint contract is accepted for these reviewed layouts; without
 JavaScript the component content remains absent, and nearby layout can move
 after the passive-effect mount. This evidence does not establish actual-Safari
-or assistive-technology support. YPE-5952 must document the coordinated public
-behavior, and YPE-5950 carries an empty changeset so it cannot publish a partial
-rollout independently.
+or assistive-technology support. The 3.0 documentation records the coordinated
+public behavior, and YPE-5950 carried an empty changeset so it could not publish a
+partial rollout independently.
 
 Real Chromium validation also found that a consumer React handler on a
 light-DOM ancestor can receive one composed event through both the shadow-root
@@ -396,11 +397,11 @@ The ADR's client-only first-paint gap is accepted for the reviewed reader
 layout: without JavaScript the reader remains absent, and nearby layout can
 move after the passive-effect mount. This evidence is qualitative and does not
 claim zero layout shift, a benchmark, actual-Safari coverage, or
-assistive-technology coverage. YPE-5952 must document that arbitrary
-`BibleReader.Root` children move into the open root, so document-root queries
-and global CSS no longer reach them. YPE-6040's ancestor React-event dispatch
-correction is included in the coordinated release branch with the limitations
-recorded in the consumer compatibility contract.
+assistive-technology coverage. The 3.0 consumer documentation records that
+arbitrary `BibleReader.Root` children move into the open root, so document-root
+queries and global CSS no longer reach them. YPE-6040's ancestor React-event
+dispatch correction shipped in 3.0.0 with the limitations recorded in the
+consumer compatibility contract.
 
 ## Safari spacing evidence
 
