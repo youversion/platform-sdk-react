@@ -231,7 +231,7 @@ describe('bible-reader Swift-aligned typography', () => {
     expect(rulesForExactClass('fp')).toContain('text-indent: 0');
   });
 
-  it('applies Swift phase-3 agreed styles', () => {
+  it('matches Swift phase-3 heading, outline, list and inline styles', () => {
     const readerFontSize = 'var(--yv-reader-font-size)';
     for (const cls of ['imt4', 'imte', 'imte1', 'imte2', 'iot', 'is2']) {
       expect(rulesForExactClass(cls)).toContain('text-align: center');
@@ -263,7 +263,7 @@ describe('bible-reader Swift-aligned typography', () => {
     for (const [cls, indent] of outline) {
       expect(rulesForExactClass(cls)).toContain(`padding-inline-start: ${indent}`);
     }
-    expect(css).not.toMatch(/\.io1?:(not|has)\(/);
+    expect(cssWithoutComments).not.toMatch(/\.io1?:(not|has)\(/);
     expect(rulesForExactClass('imi')).toContain('text-indent: 0');
     expect(rulesForExactClass('imi')).toContain('margin-block-end: 0.6em');
     expect(rulesForExactClass('ipq')).toContain('text-indent: 1em');
