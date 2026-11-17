@@ -551,12 +551,8 @@
   & .io3,
   & .io4 {
     display: block;
-    text-indent: 0;
-  }
-
-  & .io,
-  & .io1 {
     padding-inline-start: 1em;
+    text-indent: 0;
   }
 
   & .io2 {
@@ -954,7 +950,8 @@
   /* \b - Blank line (stanza break in poetry) */
   & .b {
     display: block;
-    /* Empty breaks keep one blank line; breaks with text grow to fit it. */
+    /* Empty breaks keep one blank line; breaks with text grow to fit it.
+       The 1em fallback survives only in core's unminified CSS. */
     min-block-size: 1em;
     min-block-size: 1lh;
     text-indent: 0;
