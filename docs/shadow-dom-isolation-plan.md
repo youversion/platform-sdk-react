@@ -88,6 +88,40 @@ Windows/NVDA validation gap are recorded in the YPE-5952 section below.
 | Nested shadow roots | Coverage verifies basic rendering, recursive queries, event retargeting at each boundary, and one React ancestor dispatch per scope for nested click, pointerdown, and focus-leave events. | Supported for the validated basics | Single-active-peer dismissal is accepted; verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
 | Realistic same-page usage | YPE-5437 mounts, removes, and re-adds a 12-component mix in Normal and Strict Mode. Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 coverage verifies exact host counts, rendered scripture content, and one shared stylesheet object across roots and remounts. A production-build comparison found a small warm-run mount-cost difference on one machine. | No shared-host blocker found; component layout reviews are recorded below | Keep the lifecycle fixture green; it is not a universal performance budget. |
 
+## YPE-6465 browser zoom validation
+
+YPE-6465 checks representative Shadow DOM journeys at 200% browser zoom. It is
+a focused desktop-browser layout and keyboard review, not a complete WCAG audit.
+The validation uses the existing production Storybook journeys; it does not add
+duplicate stories or change component behavior.
+
+The 2026-11-17 run used a static Storybook build from commit
+`787e2ef5cc33fdd5caf1d0b098f6d5c94c8ee8f4` on macOS 26.6.2 (25G83). Safari
+was reviewed interactively in Safari 27.2 (21625.2.8.18.4). The installed Chrome
+157.0.8103.79 binary was exercised through WebDriver in a 1280 by 900 headless
+browser window with browser zoom set to 200%; the resulting CSS viewport was 640
+by 378 with a device pixel ratio of 2. The invalid local Firefox installation
+was replaced with the current official Mozilla build, and Firefox 160.0.1 was
+exercised through WebDriver in a 1280 by 900 headless browser window. Firefox's
+native zoom manager reported 2.0; the resulting CSS viewport was 640 by 408 with
+a device pixel ratio of 2.
+
+| Journey | Chrome 157 at 200% | Safari 27.2 at 200% | Firefox 160.0.1 at 200% | Finding or limitation |
+| --- | --- | --- | --- | --- |
+| Bible Reader | Pass | Pass | Pass | Scripture and reader controls remained readable and operable without page-level horizontal overflow. Reader Settings fit the viewport, and keyboard focus remained visible. |
+| BibleCard | Pass | Pass | Pass | Content remained readable. The version-picker panel fit the viewport and its controls remained reachable with visible keyboard focus. |
+| Verse of the Day | Pass | Pass | Pass | Content and share control remained readable without clipping or page-level horizontal overflow. |
+| Chapter picker | Pass | Fail | Pass | Safari advanced keyboard focus to book controls below the visible panel without scrolling them into view. [YPE-6671](https://lifechurch.atlassian.net/browse/YPE-6671) tracks the fix. Chrome and Firefox scrolled each focused book into view. |
+| Version picker | Fail | Pass | Fail | Chrome advanced focus to a version row that remained partially below the viewport, leaving only a fragment of its focus indicator visible. [YPE-6673](https://lifechurch.atlassian.net/browse/YPE-6673) tracks the Chrome fix. In Firefox, the outer container became a sequential Tab stop and focus cycled between it and Close, skipping the search, language, and version controls. [YPE-6674](https://lifechurch.atlassian.net/browse/YPE-6674) tracks the Firefox fix. Safari scrolled focused versions into view. |
+| Verse actions | Pass | Pass | Pass | The SDK popover fit the viewport and retained visible keyboard focus. The dedicated story's deliberately oversized host-fixture buttons create page-level horizontal overflow; that fixture artifact is not attributed to the SDK popover. |
+| Theme settings | Pass | Pass | Fail | The settings panel fit the viewport and its controls remained reachable in every browser. The dedicated fixed-800px host fixture creates page-level horizontal overflow at 200%; that fixture artifact is not attributed to the SDK settings panel. Firefox focused the controls but did not display a visible focus indicator. [YPE-6675](https://lifechurch.atlassian.net/browse/YPE-6675) tracks the fix. |
+| Sign-in dialog | Pass | Pass | Fail | The current Safari dialog fit the viewport and displayed visible keyboard focus. A preliminary Safari 26.6.2 run clipped the `INTRODUCING` heading above the viewport without usable scrolling; [YPE-6672](https://lifechurch.atlassian.net/browse/YPE-6672) retains that version-specific evidence. The Chrome and Firefox dialogs fit the viewport, but Firefox did not display a visible focus indicator on focused controls. [YPE-6676](https://lifechurch.atlassian.net/browse/YPE-6676) tracks the Firefox fix. |
+
+The six linked product defects are intentionally outside YPE-6465; this ticket
+records the results and limitations rather than expanding into their
+implementation. The Chrome and Firefox runs used the installed desktop-browser
+binaries in headless WebDriver windows, while Safari was reviewed interactively.
+
 ## YPE-5952 release-candidate validation
 
 This section is the durable record for the coordinated-release checks. It does
