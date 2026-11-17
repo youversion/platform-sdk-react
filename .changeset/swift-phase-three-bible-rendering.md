@@ -3,4 +3,4 @@
 '@youversion/platform-react-ui': patch
 ---
 
-Align the remaining Bible typography classes (introduction outlines and titles, stanza breaks, list, paragraph, and inline styles) with the Swift phase-three rendering contract.
+Align Bible typography with the Swift phase-three rendering contract: main and introduction titles, introduction outlines, stanza breaks, lists, right-aligned paragraphs, chapter descriptions, `\qd`, `\lf`, and the `\k`, `\sls`, and `\iqt` inline styles.
