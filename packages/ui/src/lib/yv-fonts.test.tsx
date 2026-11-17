@@ -227,6 +227,28 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
     });
   });
 
+  it('inserts a fresh font link after server font resources and before host styles', async () => {
+    const { ownerDocument, container } = createTestDocument();
+    const serverFontStyle = ownerDocument.createElement('style');
+    serverFontStyle.dataset.precedence = 'yv-sdk-fonts';
+    serverFontStyle.dataset.href = 'yv-sdk-base-fonts';
+    const hostStyle = ownerDocument.createElement('style');
+    hostStyle.textContent = "@font-face { font-family: 'Untitled Serif'; src: local('serif'); }";
+    ownerDocument.head.append(serverFontStyle, hostStyle);
+
+    render(<YvFonts appKey="key-server-order" />, { container });
+
+    await waitFor(() => {
+      const [brandLink] = brandFontLinks(ownerDocument);
+      expect(brandLink).toBeDefined();
+      expect(Array.from(ownerDocument.head.children)).toEqual([
+        serverFontStyle,
+        brandLink,
+        hostStyle,
+      ]);
+    });
+  });
+
   it('emits base and gated stylesheets during server rendering with a DOM shim', () => {
     const html = renderToString(<YvFonts appKey="key-ssr" />);
 
@@ -345,14 +367,19 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
 
     try {
       const streamedDocument = streamedDom.window.document;
+      const lateContent = streamedDocument.querySelector('[data-testid="late-content"]');
       const [brandLink] = brandFontLinks(streamedDocument);
+
+      expect(lateContent?.closest('[hidden]')).not.toBeNull();
+      expect(streamedDocument.body.textContent).toContain('loading');
       expect(brandLink).toBeDefined();
+
       brandLink!.dispatchEvent(new streamedDom.window.Event('load'));
 
       await waitFor(() => {
-        expect(streamedDocument.querySelector('[data-testid="late-content"]')?.textContent).toBe(
-          'late content',
-        );
+        expect(lateContent?.closest('[hidden]')).toBeNull();
+        expect(streamedDocument.body.textContent).not.toContain('loading');
+        expect(lateContent?.textContent).toBe('late content');
         expect(brandFontLinks(streamedDocument)).toHaveLength(1);
         expect(
           streamedDocument.head.querySelectorAll('style[data-href~="yv-sdk-base-fonts"]'),

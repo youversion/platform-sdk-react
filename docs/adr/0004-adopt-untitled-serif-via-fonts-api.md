@@ -61,7 +61,8 @@ ensureFontStylesheet(
 Server rendering and hydration use React resources: the gated brand stylesheet is an
 applied dependency for initial and late Suspense segments, while the public base fonts
 use a non-blocking document `@import` so a Google failure cannot discard the revealed
-subtree. Fresh client mounts append an ordinary `<link rel="stylesheet">` and dedupe by
+subtree. Fresh client mounts insert an ordinary `<link rel="stylesheet">` after any
+existing SDK font resources, otherwise before the first host stylesheet, and dedupe by
 `href`, so multiple providers still yield one resource and hydration reuses the server
 style. An inert template probe supplies the correct `ownerDocument` for same-origin
 iframe rendering. Avoiding React's external resource path for base fonts and fresh
