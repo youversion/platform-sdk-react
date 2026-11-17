@@ -26,7 +26,12 @@ function ConstrainedSettings(): React.ReactNode {
         <div style={{ position: 'absolute', insetBlockStart: '53%', insetInlineStart: '50%' }}>
           <Popover>
             <PopoverTrigger data-testid="settings-trigger">Settings</PopoverTrigger>
-            <PopoverContent heading="Reader settings" collisionBoundary={boundary} sideOffset={16}>
+            <PopoverContent
+              heading="Reader settings"
+              collisionBoundary={boundary}
+              sideOffset={16}
+              closeButtonClassName="yv:focus:border-ring yv:focus:ring-[3px] yv:focus:ring-ring/50"
+            >
               <BibleThemeSettingsContent
                 theme="light"
                 fontFamily={fontFamily}
@@ -101,6 +106,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+function focusStyle(element: HTMLElement) {
+  const style = getComputedStyle(element);
+  return {
+    boxShadow: style.boxShadow,
+    outline: style.outline,
+  };
+}
+
 export const FontControlsRemainReachableInConstrainedSpace: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -127,8 +140,15 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
     void expect(controls[controls.length - 1]).toBe(serifButton);
     const closeButton = within(dialog).getByRole('button', { name: i18n.t('close') });
     void expect(ownerDocument.activeElement).toBe(closeButton);
+    await userEvent.click(settingsScope);
+    const unfocusedStyles = new Map(controls.map((control) => [control, focusStyle(control)]));
+    const unfocusedCloseStyle = focusStyle(closeButton);
+    closeButton.focus();
     await userEvent.tab();
     void expect(settingsRoot.activeElement).toBe(decreaseFontSizeButton);
+    void expect(focusStyle(decreaseFontSizeButton)).not.toEqual(
+      unfocusedStyles.get(decreaseFontSizeButton),
+    );
     await userEvent.keyboard('{Enter}');
     void expect(canvas.getByTestId('settings-boundary')).toHaveAttribute('data-font-size', '15');
 
@@ -143,6 +163,7 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
     for (const control of controls.slice(1)) {
       await userEvent.tab();
       void expect(settingsRoot.activeElement).toBe(control);
+      void expect(focusStyle(control)).not.toEqual(unfocusedStyles.get(control));
     }
     void expect(focusedControlReceivedTab).toBe(true);
     await userEvent.keyboard('{Enter}');
@@ -152,6 +173,7 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
     );
     await userEvent.tab();
     void expect(ownerDocument.activeElement).toBe(closeButton);
+    void expect(focusStyle(closeButton)).not.toEqual(unfocusedCloseStyle);
     for (const control of [...controls].reverse()) {
       await userEvent.tab({ shift: true });
       void expect(settingsRoot.activeElement).toBe(control);

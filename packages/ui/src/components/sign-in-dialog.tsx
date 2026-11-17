@@ -72,10 +72,18 @@ export const SignInDialog: FC<SignInDialogProps> = ({
         </DialogDescription>
 
         <div className="yv:flex yv:w-full yv:flex-col yv:gap-2">
-          <Button variant="default" className="yv:w-full yv:rounded-full" onClick={onConfirm}>
+          <Button
+            variant="default"
+            className="yv:w-full yv:rounded-full yv:focus:border-ring yv:focus:ring-[3px] yv:focus:ring-ring/50"
+            onClick={onConfirm}
+          >
             {t('signInYesButton')}
           </Button>
-          <Button variant="ghost" className="yv:w-full yv:rounded-full" onClick={onDecline}>
+          <Button
+            variant="ghost"
+            className="yv:w-full yv:rounded-full yv:focus:border-ring yv:focus:ring-[3px] yv:focus:ring-ring/50"
+            onClick={onDecline}
+          >
             {t('signInNoButton')}
           </Button>
         </div>

@@ -93,6 +93,18 @@ const FIXTURE_BOOKS: BibleBook[] = [
     chapters: [{ id: '1', passage_id: '1KI.1', title: '1' }],
   },
   {
+    id: 'PSA',
+    title: 'Psalms',
+    full_title: 'Psalms',
+    abbreviation: 'Ps',
+    canon: 'old_testament',
+    chapters: Array.from({ length: 150 }, (_, index) => ({
+      id: String(index + 1),
+      passage_id: `PSA.${index + 1}`,
+      title: String(index + 1),
+    })),
+  },
+  {
     id: 'MAT',
     title: 'Matthew',
     full_title: 'Matthew',
@@ -252,6 +264,8 @@ export const PublicRootJourney: Story = {
     const closeButton = panelQueries.getByRole('button', { name: 'Close' });
     const genesisBook = panelQueries.getByRole('button', { name: /genesis/i });
     const exodusBook = panelQueries.getByRole('button', { name: /exodus/i });
+    const firstKingsBook = panelQueries.getByRole('button', { name: /1 kings/i });
+    const psalmsBook = panelQueries.getByRole('button', { name: /psalms/i });
     const bookList = await waitForElement<HTMLElement>(
       panel,
       '[data-slot="accordion"]',
@@ -288,6 +302,14 @@ export const PublicRootJourney: Story = {
     await waitFor(async () => {
       await expect(root.activeElement).toBe(panel);
     });
+    genesisBook.focus({ preventScroll: true });
+    const focusedBookListScrollTop = bookList.scrollTop;
+    const focusedPanelScrollTop = panel.scrollTop;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await expect(root.activeElement).toBe(genesisBook);
+    await expect(bookList.scrollTop).toBe(focusedBookListScrollTop);
+    await expect(panel.scrollTop).toBe(focusedPanelScrollTop);
+    panel.focus({ preventScroll: true });
     exitAnimationStyle.remove();
     await userEvent.tab({ shift: true });
     await expect(root.activeElement).toBe(initialSearch);
@@ -295,6 +317,40 @@ export const PublicRootJourney: Story = {
     await expect(tabOrder.at(-2)).toBe(lastChapterButton);
     await expect(tabOrder.at(-1)).toBe(initialSearch);
     await expect(bookList.scrollHeight).toBeGreaterThan(bookList.clientHeight);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    bookList.scrollTop = 0;
+    const clippedBookRect = firstKingsBook.getBoundingClientRect();
+    const initialListRect = bookList.getBoundingClientRect();
+    await expect(clippedBookRect.bottom).toBeGreaterThan(initialListRect.bottom);
+    firstKingsBook.focus({ preventScroll: true });
+    await waitFor(async () => {
+      await expect(root.activeElement).toBe(firstKingsBook);
+      const bookRect = firstKingsBook.getBoundingClientRect();
+      const listRect = bookList.getBoundingClientRect();
+      await expect(bookRect.top).toBeGreaterThanOrEqual(listRect.top - 1);
+      await expect(bookRect.bottom).toBeLessThanOrEqual(listRect.bottom + 1);
+    });
+    psalmsBook.focus({ preventScroll: true });
+    await userEvent.keyboard('{Enter}');
+    await waitFor(async () => await expect(psalmsBook).toHaveAttribute('aria-expanded', 'true'));
+    const expandedPsalms = psalmsBook.closest<HTMLElement>('[data-slot="accordion-item"]');
+    if (!expandedPsalms) throw new Error('expanded Psalms item not rendered');
+    const firstPsalmsChapter = within(expandedPsalms).getByRole('button', { name: '1' });
+    await waitFor(async () => {
+      await expect(expandedPsalms.scrollHeight).toBeGreaterThan(bookList.clientHeight);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await expect(root.activeElement).toBe(psalmsBook);
+    const expandedTriggerRect = psalmsBook.getBoundingClientRect();
+    const expandedListRect = bookList.getBoundingClientRect();
+    await expect(expandedTriggerRect.top).toBeGreaterThanOrEqual(expandedListRect.top - 1);
+    await expect(expandedTriggerRect.bottom).toBeLessThanOrEqual(expandedListRect.bottom + 1);
+    const firstChapterRect = firstPsalmsChapter.getBoundingClientRect();
+    await expect(firstChapterRect.top).toBeGreaterThanOrEqual(expandedListRect.top - 1);
+    await expect(firstChapterRect.bottom).toBeLessThanOrEqual(expandedListRect.bottom + 1);
+    await userEvent.keyboard('{Enter}');
+    await waitFor(async () => await expect(psalmsBook).toHaveAttribute('aria-expanded', 'false'));
+    panel.focus({ preventScroll: true });
     await userEvent.tab();
     await expect(root.activeElement).toBe(closeButton);
     const { userEvent: browserUserEvent } = await import('vitest/browser');

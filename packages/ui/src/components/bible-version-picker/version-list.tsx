@@ -223,13 +223,35 @@ export function VersionList({
     'yv:rounded-[6px] yv:size-12 yv:bg-secondary yv:border yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center';
   const versionRowClassName = (selected: boolean) =>
     cn('yv:hover:bg-muted yv:rounded-lg', selected ? 'yv:bg-muted' : '');
+  const revealFocusedVersion = (element: HTMLButtonElement) => {
+    const list = element.closest<HTMLElement>(
+      '[data-testid="recent-version-list"], [data-testid="version-list"]',
+    );
+    const scrollRegion = list?.parentElement;
+    const versionListRoot = scrollRegion?.parentElement;
+    for (const container of [scrollRegion, versionListRoot]) {
+      if (!container) continue;
+      const elementRect = element.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const blockScale =
+        container.clientHeight > 0 && containerRect.height > 0
+          ? containerRect.height / container.clientHeight
+          : 1;
+      if (elementRect.top < containerRect.top) {
+        container.scrollTop += (elementRect.top - containerRect.top) / blockScale;
+      } else if (elementRect.bottom > containerRect.bottom) {
+        container.scrollTop += (elementRect.bottom - containerRect.bottom) / blockScale;
+      }
+    }
+  };
 
   return (
     <div
-      className="yv:overflow-y-auto yv:h-full yv:flex yv:flex-col yv:font-sans yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center"
+      className="yv:overflow-y-auto yv:h-full yv:min-h-0 yv:flex yv:flex-col yv:font-sans yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center"
       data-yv-sdk
       data-yv-theme={background}
       dir={interfaceDirection}
+      tabIndex={-1}
     >
       <div className="yv:shrink-0">
         <section className="yv:px-4 yv:pt-4">
@@ -250,7 +272,10 @@ export function VersionList({
         {headerOwnsChrome ? <LanguageEntry name={selectedLanguageName} /> : null}
       </div>
       {/* Firefox makes scroll containers a Tab stop; the version rows are the keyboard targets. */}
-      <div className="yv:flex-1 yv:overflow-y-auto yv:py-2" tabIndex={-1}>
+      <div
+        className="yv:flex-1 yv:min-h-[4.625rem] yv:overflow-y-auto yv:[padding-block-start:0.5rem] yv:[padding-block-end:0.75rem]"
+        tabIndex={-1}
+      >
         {filteredRecentVersions.length > 0 && (
           <>
             <h2 className="yv:px-4 yv:py-2 yv:text-xl yv:font-bold yv:leading-6">
@@ -269,7 +294,8 @@ export function VersionList({
                 >
                   <button
                     type="button"
-                    className="yv:w-full"
+                    className="yv:w-full yv:focus-visible:ring-inset"
+                    onFocus={(event) => revealFocusedVersion(event.currentTarget)}
                     onClick={() => handleSelectVersion(version)}
                   >
                     <ItemMedia variant="icon" className={versionTileClassName}>
@@ -313,7 +339,8 @@ export function VersionList({
               >
                 <button
                   type="button"
-                  className="yv:w-full"
+                  className="yv:w-full yv:focus-visible:ring-inset"
+                  onFocus={(event) => revealFocusedVersion(event.currentTarget)}
                   onClick={() => handleSelectVersion(version)}
                 >
                   <ItemMedia variant="icon" className={versionTileClassName}>

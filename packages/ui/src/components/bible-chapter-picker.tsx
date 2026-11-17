@@ -55,8 +55,23 @@ type BibleChapterPickerContextType = {
   setExpandedBook: (bookId: string) => void;
   filteredBooks: BibleBook[] | null;
   registerBookElement: (bookId: string, node: HTMLDivElement | null) => void;
+  markBookFocused: () => void;
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
 };
+
+function revealBookElement(element: HTMLElement, align: 'nearest' | 'start' = 'nearest'): void {
+  const list = element.closest<HTMLElement>('[data-slot="accordion"]');
+  if (!list) return;
+  const elementRect = element.getBoundingClientRect();
+  const listRect = list.getBoundingClientRect();
+  const blockScale =
+    list.clientHeight > 0 && listRect.height > 0 ? listRect.height / list.clientHeight : 1;
+  if (align === 'start' || elementRect.top < listRect.top) {
+    list.scrollTop += (elementRect.top - listRect.top) / blockScale;
+  } else if (elementRect.bottom > listRect.bottom) {
+    list.scrollTop += (elementRect.bottom - listRect.bottom) / blockScale;
+  }
+}
 
 type TriggerElementProps = React.HTMLAttributes<HTMLButtonElement> & {
   'data-yv-sdk'?: boolean;
@@ -141,6 +156,7 @@ function RootImplementation({
   }, [books?.data, searchQuery]);
 
   const bookElementsRef = useRef<Record<string, HTMLDivElement | null>>({});
+  const bookFocusSequenceRef = useRef(0);
 
   const registerBookElement = (bookId: string, node: HTMLDivElement | null) => {
     if (node) {
@@ -150,15 +166,26 @@ function RootImplementation({
     }
   };
 
+  const shouldPreserveFocusedBook = useCallback((element: HTMLElement | undefined) => {
+    // SAFETY: A connected DOM element is rooted in either a Document or ShadowRoot.
+    const focusRoot = element?.getRootNode() as Document | ShadowRoot | undefined;
+    const activeElement = focusRoot?.activeElement;
+    const focusedBook = activeElement?.closest('[data-slot="accordion-item"]');
+    return Boolean(
+      focusedBook &&
+        (focusedBook !== element || !activeElement?.matches('[data-slot="accordion-trigger"]')),
+    );
+  }, []);
+
   const scrollToCurrentBook = () => {
     if (book) {
       setExpandedBook(book);
+      const focusSequence = bookFocusSequenceRef.current;
       setTimeout(() => {
+        if (bookFocusSequenceRef.current !== focusSequence) return;
         const element = bookElementsRef.current[book];
-        element?.scrollIntoView?.({
-          behavior: 'smooth',
-          block: 'start',
-        });
+        if (shouldPreserveFocusedBook(element ?? undefined)) return;
+        if (element) revealBookElement(element, 'start');
       }, 200);
     }
   };
@@ -168,13 +195,12 @@ function RootImplementation({
     if (!expandedBook) return;
 
     const controller = new AbortController();
+    const focusSequence = bookFocusSequenceRef.current;
     const timeoutId = setTimeout(() => {
-      if (!controller.signal.aborted) {
+      if (!controller.signal.aborted && bookFocusSequenceRef.current === focusSequence) {
         const element = bookElementsRef.current[expandedBook];
-        element?.scrollIntoView?.({
-          behavior: 'smooth',
-          block: 'start',
-        });
+        if (shouldPreserveFocusedBook(element ?? undefined)) return;
+        if (element) revealBookElement(element, 'start');
       }
     }, 200);
 
@@ -182,7 +208,7 @@ function RootImplementation({
       controller.abort();
       clearTimeout(timeoutId);
     };
-  }, [expandedBook]);
+  }, [expandedBook, shouldPreserveFocusedBook]);
 
   const setIsPopoverOpen = (open: boolean) => {
     if (onChapterPickerPress) return;
@@ -240,6 +266,9 @@ function RootImplementation({
     setExpandedBook,
     filteredBooks,
     registerBookElement,
+    markBookFocused: () => {
+      bookFocusSequenceRef.current += 1;
+    },
     onChapterPickerPress,
   };
 
@@ -410,6 +439,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
     searchQuery,
     setSearchQuery,
     registerBookElement,
+    markBookFocused,
     setBook,
     setChapter,
     versionId,
@@ -452,7 +482,13 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
               id={bookItem.id}
               ref={(node) => registerBookElement(bookItem.id, node)}
             >
-              <AccordionTrigger className="yv:rounded-none yv:text-base yv:font-normal yv:leading-normal yv:text-foreground yv:data-[state=open]:font-bold">
+              <AccordionTrigger
+                className="yv:rounded-none yv:text-base yv:font-normal yv:leading-normal yv:text-foreground yv:focus-visible:ring-inset yv:data-[state=open]:font-bold yv:[@media(max-height:700px)]:[padding-block:0.375rem]"
+                onFocus={(event) => {
+                  markBookFocused();
+                  revealBookElement(event.currentTarget);
+                }}
+              >
                 <bdi dir="auto">{bookItem.title}</bdi>
               </AccordionTrigger>
               <AccordionContent>

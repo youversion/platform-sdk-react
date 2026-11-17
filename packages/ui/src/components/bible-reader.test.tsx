@@ -394,6 +394,10 @@ describe('BibleReader theme settings', () => {
     await user.click(screen.getByRole('button', { name: 'Settings' }));
     expect(await screen.findByText('Reader Settings')).toBeInTheDocument();
 
+    const closeButton = screen.getByRole('button', { name: 'Close' });
+    expect(closeButton.className).toContain('yv:focus:border-ring');
+    expect(closeButton.className).toContain('yv:focus:ring-[3px]');
+
     expect(screen.getByRole('button', { name: /untitled/i }).className).toContain('yv:bg-primary');
   });
 
