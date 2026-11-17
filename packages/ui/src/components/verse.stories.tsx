@@ -428,12 +428,12 @@ export const SwiftTypographyFixture: Story = {
 
     await expect(style('.imt1').fontSize).toBe('23.4px');
     await expect(style('.imt1').marginTop).toBe('20px');
-    await expect(style('.imte2').marginBottom).toBe('5px');
+    await expect(style('.imte2').marginBottom).toBe('3px');
     await expect(style('.r.yv-h').textIndent).toBe('0px');
     await expect(style('.r.yv-h').marginTop).toBe('0px');
     await expect(style('.imq').paddingInlineStart).toBe('20px');
     await expect(style('.li').paddingInlineStart).toBe('20px');
-    await expect(style('.lf').marginTop).toBe('10px');
+    await expect(style('.lf').marginTop).toBe('0px');
     await expect(style('.rq').fontSize).toBe('16.6px');
     await expect(style('.is1 .rq').fontWeight).toBe('400');
     await expect(style('.is1 .va').fontSize).toBe('13px');
