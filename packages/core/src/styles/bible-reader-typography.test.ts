@@ -231,6 +231,75 @@ describe('bible-reader Swift-aligned typography', () => {
     expect(rulesForExactClass('fp')).toContain('text-indent: 0');
   });
 
+  it('matches Swift phase-3 heading, outline, list and inline styles', () => {
+    const readerFontSize = 'var(--yv-reader-font-size)';
+    for (const cls of ['imt4', 'imte', 'imte1', 'imte2', 'iot', 'is2']) {
+      expect(rulesForExactClass(cls)).toContain('text-align: center');
+      expect(rulesForExactClass(cls)).not.toContain('line-height');
+    }
+    expect(rulesForExactClass('imt4')).toContain('font-style: italic');
+    expect(rulesForExactClass('imt4')).toContain(`margin-block: calc(${readerFontSize} * 0.15)`);
+    expect(rulesForExactClass('imte1')).toContain('font-weight: bold');
+    expect(rulesForExactClass('imte1')).not.toMatch(/^\s*font-size:/m);
+    expect(rulesForExactClass('imte1')).toContain(`margin-block-start: ${readerFontSize}`);
+    expect(rulesForExactClass('imte2')).toContain(
+      `margin-block-end: calc(${readerFontSize} * 0.15)`,
+    );
+    expect(rulesForExactClass('iot')).toContain(`margin-block: calc(${readerFontSize} * 0.5)`);
+    expect(rulesForExactClass('is2')).toContain(`margin-block: calc(${readerFontSize} * 0.5)`);
+    expect(rulesForExactClass('mt')).toBe(rulesForExactClass('mt1'));
+
+    // Swift indent units are 8pt (0.5em); first-line indents are 1em.
+    const outline: Array<[string, string]> = [
+      ['io', '1em'],
+      ['io1', '1em'],
+      ['io2', '1.5em'],
+      ['io3', '2em'],
+      ['io4', '2.5em'],
+      ['imi', '1em'],
+      ['ipq', '1em'],
+      ['lim1', '1em'],
+    ];
+    for (const [cls, indent] of outline) {
+      expect(rulesForExactClass(cls)).toContain(`padding-inline-start: ${indent}`);
+    }
+    expect(cssWithoutComments).not.toMatch(/\.io1?:(not|has)\(/);
+    expect(rulesForExactClass('imi')).toContain('text-indent: 0');
+    expect(rulesForExactClass('imi')).toContain('margin-block-end: 0.6em');
+    expect(rulesForExactClass('ipq')).toContain('text-indent: 1em');
+    expect(rulesForExactClass('lim1')).toContain('text-indent: 0');
+    expect(rulesForExactClass('ipr')).toContain('text-align: end');
+    expect(rulesForExactClass('ipr')).not.toContain('margin-inline');
+    expect(rulesForExactClass('pr')).toContain('text-align: end');
+    expect(rulesForExactClass('pr')).not.toContain('margin');
+    expect(rulesForExactClass('qd')).toContain('font-style: italic');
+    expect(rulesForExactClass('qd')).not.toContain('margin');
+    expect(rulesForExactClass('lf')).not.toContain('margin');
+
+    expect(rulesForExactClass('cd')).toContain('font-style: italic');
+    expect(rulesForExactClass('cd')).not.toContain('margin');
+    expect(rulesForExactClass('yv-h.cd')).toContain('font-weight: 500');
+
+    // lh tracks the computed line height even when the variable has a unit.
+    // The 1em fallback sits outside @supports so minifiers cannot merge it away.
+    expect(rulesForExactClass('b')).toContain('min-block-size: 1em');
+    expect(rulesForExactClass('b')).not.toContain('1lh');
+    expect(cssWithoutComments).toMatch(
+      /@supports \(min-block-size: 1lh\) \{\s*& \.b \{\s*min-block-size: 1lh;\s*\}\s*\}/,
+    );
+    expect(rulesForExactClass('b')).not.toMatch(/(^|[^-])height:/);
+
+    for (const cls of ['sls', 'iqt']) {
+      expect(rulesForExactClass(cls)).toContain('font-style: italic');
+      expect(rulesForExactClass(cls)).toContain('font-weight: normal');
+    }
+    expect(rulesForExactClass('k')).toContain('font-weight: bold');
+    expect(rulesForExactClass('k')).toContain('font-style: normal');
+
+    // Swift has no sibling override; is1 keeps its own 0.5× top margin after imt1.
+    expect(cssWithoutComments).not.toMatch(/\.imt1\s*\+\s*\.is1/);
+  });
+
   it('treats va consistently as a visible, hideable alternate verse label', () => {
     const va = rulesForExactClass('va');
     expect(va).toContain('font-size: calc(var(--yv-reader-font-size) * 0.65)');
