@@ -261,11 +261,13 @@ export const SettingsCloseShowsFocusThroughToolbar: Story = {
     await expect(focusedIndicator.boxShadow).toContain('inset');
 
     await userEvent.click(settings.getByTestId('decrease-font-size'));
-    const unfocusedStyle = getComputedStyle(closeButton);
-    await expect({
-      boxShadow: unfocusedStyle.boxShadow,
-      outline: unfocusedStyle.outline,
-    }).not.toEqual(focusedIndicator);
+    await waitFor(async () => {
+      const unfocusedStyle = getComputedStyle(closeButton);
+      await expect({
+        boxShadow: unfocusedStyle.boxShadow,
+        outline: unfocusedStyle.outline,
+      }).not.toEqual(focusedIndicator);
+    });
   },
 };
 
