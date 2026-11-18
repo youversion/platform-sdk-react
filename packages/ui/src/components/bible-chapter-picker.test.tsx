@@ -91,6 +91,61 @@ function renderContent(props: Partial<BibleChapterPickerRootProps> = {}) {
   );
 }
 
+function standaloneContent(onChapterPickerPress: () => void): ReactElement {
+  return (
+    <HookOverrideProvider overrides={defaultOverrides()}>
+      <ReuseShadowBoundary>
+        <BibleChapterPicker.Root
+          versionId={3034}
+          book="GEN"
+          chapter="1"
+          onChapterPickerPress={onChapterPickerPress}
+        >
+          <BibleChapterPicker.Trigger />
+          <BibleChapterPicker.Content />
+        </BibleChapterPicker.Root>
+      </ReuseShadowBoundary>
+    </HookOverrideProvider>
+  );
+}
+
+it('does not scroll consumer ancestors again when only the callback identity changes', async () => {
+  const scrollSpy = vi.spyOn(Element.prototype, 'scrollIntoView');
+  try {
+    const { rerender } = render(standaloneContent(() => undefined));
+    await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1));
+
+    rerender(standaloneContent(() => undefined));
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    expect(scrollSpy).toHaveBeenCalledTimes(1);
+  } finally {
+    scrollSpy.mockRestore();
+  }
+});
+
+it('keeps standalone content usable when scrollIntoView is unavailable', async () => {
+  const scrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(
+    Element.prototype,
+    'scrollIntoView',
+  );
+  Object.defineProperty(Element.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: undefined,
+  });
+  try {
+    render(standaloneContent(() => undefined));
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    expect(findAccordionTrigger(/Genesis/i)).toBeInTheDocument();
+  } finally {
+    if (scrollIntoViewDescriptor) {
+      Object.defineProperty(Element.prototype, 'scrollIntoView', scrollIntoViewDescriptor);
+    } else {
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    }
+  }
+});
+
 describe('BibleChapterPicker - onChapterPickerPress override', () => {
   beforeEach(() => {
     vi.clearAllMocks();

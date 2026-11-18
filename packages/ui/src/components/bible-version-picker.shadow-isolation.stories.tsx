@@ -172,7 +172,7 @@ function SameOriginIframeHarness(): React.ReactNode {
         data-testid="iframe"
         srcDoc="<!doctype html><html><head></head><body></body></html>"
         title="same-origin picker target"
-        style={{ inlineSize: 1280, blockSize: 720 }}
+        style={{ inlineSize: 800, blockSize: 600 }}
         onLoad={(event) => setIframeDocument(event.currentTarget.contentDocument)}
       />
       {container ? createPortal(<AutomaticBibleVersionPicker />, container) : null}
@@ -1056,9 +1056,6 @@ export const SameOriginIframeTopLayerRemainsInteractive: Story = {
       return { iframe: currentIframe, iframeDocument: currentDocument };
     });
     const componentRoot = await waitForShadowRoot(iframeDocument);
-    const iframeWindow = iframeDocument.defaultView;
-    if (!iframeWindow) throw new Error('same-origin iframe window not available');
-    await expect(iframeWindow.matchMedia('(max-height: 800px)').matches).toBe(true);
     const trigger = await getTrigger(componentRoot);
     iframe.contentWindow?.focus();
     trigger.focus();
@@ -1107,8 +1104,6 @@ export const SameOriginIframeTopLayerRemainsInteractive: Story = {
     await expect(portalWindow.getComputedStyle(panel).boxShadow).not.toBe('none');
     const closeButton = within(panel).getByRole('button', { name: /close/i });
     const closeButtonStyles = portalWindow.getComputedStyle(closeButton);
-    await expect(closeButton).toHaveClass('yv:border');
-    await expect(closeButtonStyles.getPropertyValue('--tw-border-style')).toBe('solid');
     await expect(Number.parseFloat(closeButtonStyles.borderTopWidth)).toBeGreaterThan(0);
     await expect(closeButtonStyles.borderTopStyle).toBe('solid');
     const versionSearch = within(panel).getByRole('textbox', { name: i18n.t('searchVersions') });

@@ -282,6 +282,7 @@ export const PublicRootJourney: Story = {
     const closeButton = panelQueries.getByRole('button', { name: 'Close' });
     const genesisBook = panelQueries.getByRole('button', { name: /genesis/i });
     const exodusBook = panelQueries.getByRole('button', { name: /exodus/i });
+    const leviticusBook = panelQueries.getByRole('button', { name: /leviticus/i });
     const firstKingsBook = panelQueries.getByRole('button', { name: /1 kings/i });
     const psalmsBook = panelQueries.getByRole('button', { name: /psalms/i });
     const bookList = await waitForElement<HTMLElement>(
@@ -380,6 +381,8 @@ export const PublicRootJourney: Story = {
     await expect(root.activeElement).toBe(genesisBook);
     await browserUserEvent.keyboard(forwardTraversalKey);
     await expect(root.activeElement).toBe(exodusBook);
+    await browserUserEvent.keyboard(forwardTraversalKey);
+    await expect(root.activeElement).toBe(leviticusBook);
     await userEvent.click(closeButton);
     await waitFor(async () => {
       await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();

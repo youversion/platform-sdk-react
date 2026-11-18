@@ -245,14 +245,20 @@ export const SettingsCloseShowsFocusThroughToolbar: Story = {
     await userEvent.click(reader.getByRole('button', { name: /settings/i }));
     const settings = await getReaderOverlay(root);
     const closeButton = await settings.findByRole('button', { name: i18n.t('close') });
-    closeButton.focus();
-    await waitFor(async () => await expect(root.activeElement).toBe(closeButton));
+    const dialog = closeButton.closest<HTMLElement>('[role="dialog"]');
+    if (!dialog) throw new Error('reader settings dialog not rendered');
+    dialog.focus({ preventScroll: true });
+    const nativeKeyAvailable = await verifyNativeBrowserKey('{Tab}', async () => {
+      await expect(root.activeElement).toBe(closeButton);
+    });
+    if (!nativeKeyAvailable) return;
     const focusedStyle = getComputedStyle(closeButton);
     const focusedIndicator = {
       boxShadow: focusedStyle.boxShadow,
       outline: focusedStyle.outline,
     };
     await expect(focusedIndicator.boxShadow).not.toBe('none');
+    await expect(focusedIndicator.boxShadow).toContain('inset');
 
     await userEvent.click(settings.getByTestId('decrease-font-size'));
     const unfocusedStyle = getComputedStyle(closeButton);

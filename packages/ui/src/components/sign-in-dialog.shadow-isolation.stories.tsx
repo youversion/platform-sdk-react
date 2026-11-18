@@ -175,9 +175,11 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
     await userEvent.tab();
     await expect(root.activeElement).toBe(confirmButton);
     await expect(focusStyle(confirmButton)).not.toEqual(unfocusedButtonStyles.get(confirmButton));
+    await expect(focusStyle(confirmButton).boxShadow).toContain('inset');
     await userEvent.tab();
     await expect(root.activeElement).toBe(declineButton);
     await expect(focusStyle(declineButton)).not.toEqual(unfocusedButtonStyles.get(declineButton));
+    await expect(focusStyle(declineButton).boxShadow).toContain('inset');
 
     const negativeTabIndexButton = canvasElement.ownerDocument.createElement('button');
     negativeTabIndexButton.tabIndex = -2;
