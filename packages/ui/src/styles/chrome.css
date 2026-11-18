@@ -6,8 +6,6 @@
  */
 @layer theme, base, components, utilities, yv-sdk-fonts, yv-sdk-styles, yv-sdk-theme, yv-sdk-utilities, yv-sdk-bible-reader;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap')
-layer(yv-sdk-fonts);
 @import '@youversion/platform-core/browser/styles/preflight.css' layer(yv-sdk-styles);
 @import 'tailwindcss/theme.css' layer(yv-sdk-theme) prefix(yv);
 @import 'tailwindcss/utilities.css' layer(yv-sdk-utilities) prefix(yv) source(none);
