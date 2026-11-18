@@ -3,6 +3,7 @@
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { useInterfaceDirection } from '@/lib/direction';
+import { revealElementWithinScrollContainer } from '@/lib/scroll-reveal';
 import { cn } from '@/lib/utils';
 import { type BibleVersion } from '@youversion/platform-core';
 import { useLanguage, useOrganizations } from '@youversion/platform-react-hooks';
@@ -229,17 +230,7 @@ export function VersionList({
     const element = event.currentTarget;
     for (const container of [versionScrollRegionRef.current, versionListRootRef.current]) {
       if (!container) continue;
-      const elementRect = element.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      const blockScale =
-        container.clientHeight > 0 && containerRect.height > 0
-          ? containerRect.height / container.clientHeight
-          : 1;
-      if (elementRect.top < containerRect.top) {
-        container.scrollTop += (elementRect.top - containerRect.top) / blockScale;
-      } else if (elementRect.bottom > containerRect.bottom) {
-        container.scrollTop += (elementRect.bottom - containerRect.bottom) / blockScale;
-      }
+      revealElementWithinScrollContainer(element, container);
     }
   };
 
@@ -273,7 +264,7 @@ export function VersionList({
       {/* Firefox makes scroll containers a Tab stop; the version rows are the keyboard targets. */}
       <div
         ref={versionScrollRegionRef}
-        className="yv:flex-1 yv:min-h-[4.625rem] yv:overflow-y-auto yv:[padding-block-start:0.5rem] yv:[padding-block-end:0.75rem]"
+        className="yv:flex-1 yv:min-h-[4.625rem] yv:overflow-y-auto yv:[padding-block-start:0.5rem] yv:[padding-block-end:0.5rem]"
         tabIndex={-1}
       >
         {filteredRecentVersions.length > 0 && (

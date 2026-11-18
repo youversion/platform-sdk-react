@@ -26,6 +26,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './
 import { InputGroup, InputGroupInput, InputGroupAddon } from './ui/input-group';
 import { useInterfaceDirection } from '@/lib/direction';
 import { ShadowIsolationBoundary } from '@/lib/shadow-isolation';
+import { revealElementWithinScrollContainer } from '@/lib/scroll-reveal';
 
 export interface BibleChapterPickerPressData {
   book: string;
@@ -70,15 +71,7 @@ function revealBookElement(
   }
   const list = element.closest<HTMLElement>('[data-slot="accordion"]');
   if (!list) return;
-  const elementRect = element.getBoundingClientRect();
-  const listRect = list.getBoundingClientRect();
-  const blockScale =
-    list.clientHeight > 0 && listRect.height > 0 ? listRect.height / list.clientHeight : 1;
-  if (align === 'start' || elementRect.top < listRect.top) {
-    list.scrollTop += (elementRect.top - listRect.top) / blockScale;
-  } else if (elementRect.bottom > listRect.bottom) {
-    list.scrollTop += (elementRect.bottom - listRect.bottom) / blockScale;
-  }
+  revealElementWithinScrollContainer(element, list, align);
 }
 
 type TriggerElementProps = React.HTMLAttributes<HTMLButtonElement> & {
