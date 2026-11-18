@@ -434,6 +434,11 @@ export const SwiftTypographyFixture: Story = {
     await expect(style('.imq').paddingInlineStart).toBe('20px');
     await expect(style('.li').paddingInlineStart).toBe('20px');
     await expect(style('.lf').marginTop).toBe('0px');
+    await expect(style('.mt').textAlign).toBe('center');
+    await expect(style('.io2').paddingInlineStart).toBe('30px');
+    await expect(style('.b').minHeight).toBe(style('.b').lineHeight);
+    await expect(style('.b').height).toBe(style('.b').lineHeight);
+    await expect(style('.k').fontWeight).toBe('700');
     await expect(style('.rq').fontSize).toBe('16.6px');
     await expect(style('.is1 .rq').fontWeight).toBe('400');
     await expect(style('.is1 .va').fontSize).toBe('13px');

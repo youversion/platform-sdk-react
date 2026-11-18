@@ -281,7 +281,12 @@ describe('bible-reader Swift-aligned typography', () => {
     expect(rulesForExactClass('yv-h.cd')).toContain('font-weight: 500');
 
     // lh tracks the computed line height even when the variable has a unit.
-    expect(rulesForExactClass('b')).toMatch(/min-block-size: 1em;\s*min-block-size: 1lh/);
+    // The 1em fallback sits outside @supports so minifiers cannot merge it away.
+    expect(rulesForExactClass('b')).toContain('min-block-size: 1em');
+    expect(rulesForExactClass('b')).not.toContain('1lh');
+    expect(cssWithoutComments).toMatch(
+      /@supports \(min-block-size: 1lh\) \{\s*& \.b \{\s*min-block-size: 1lh;\s*\}\s*\}/,
+    );
     expect(rulesForExactClass('b')).not.toMatch(/(^|[^-])height:/);
 
     for (const cls of ['sls', 'iqt']) {

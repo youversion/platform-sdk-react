@@ -951,10 +951,16 @@
   & .b {
     display: block;
     /* Empty breaks keep one blank line; breaks with text grow to fit it.
-       The 1em fallback survives only in core's unminified CSS. */
+       @supports keeps the 1em fallback through Lightning CSS minification,
+       which drops a declaration overridden in the same rule. */
     min-block-size: 1em;
-    min-block-size: 1lh;
     text-indent: 0;
+  }
+
+  @supports (min-block-size: 1lh) {
+    & .b {
+      min-block-size: 1lh;
+    }
   }
 
   /* \q - Poetic line (unadjusted) — hanging indent */
