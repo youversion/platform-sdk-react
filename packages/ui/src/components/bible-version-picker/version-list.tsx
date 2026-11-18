@@ -223,13 +223,10 @@ export function VersionList({
     'yv:rounded-[6px] yv:size-12 yv:bg-secondary yv:border yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center';
   const versionRowClassName = (selected: boolean) =>
     cn('yv:hover:bg-muted yv:rounded-lg', selected ? 'yv:bg-muted' : '');
+  const versionListRootRef = useRef<HTMLDivElement>(null);
+  const versionScrollRegionRef = useRef<HTMLDivElement>(null);
   const revealFocusedVersion = (element: HTMLButtonElement) => {
-    const list = element.closest<HTMLElement>(
-      '[data-testid="recent-version-list"], [data-testid="version-list"]',
-    );
-    const scrollRegion = list?.parentElement;
-    const versionListRoot = scrollRegion?.parentElement;
-    for (const container of [scrollRegion, versionListRoot]) {
+    for (const container of [versionScrollRegionRef.current, versionListRootRef.current]) {
       if (!container) continue;
       const elementRect = element.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
@@ -247,6 +244,7 @@ export function VersionList({
 
   return (
     <div
+      ref={versionListRootRef}
       className="yv:overflow-y-auto yv:h-full yv:min-h-0 yv:flex yv:flex-col yv:font-sans yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center"
       data-yv-sdk
       data-yv-theme={background}
@@ -273,6 +271,7 @@ export function VersionList({
       </div>
       {/* Firefox makes scroll containers a Tab stop; the version rows are the keyboard targets. */}
       <div
+        ref={versionScrollRegionRef}
         className="yv:flex-1 yv:min-h-[4.625rem] yv:overflow-y-auto yv:[padding-block-start:0.5rem] yv:[padding-block-end:0.75rem]"
         tabIndex={-1}
       >

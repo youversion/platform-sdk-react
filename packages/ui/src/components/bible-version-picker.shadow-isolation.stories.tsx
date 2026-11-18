@@ -11,7 +11,12 @@ import { ShadowRootHost } from '../lib/shadow-root-host';
 import mockBibles from '../test/mock-data/bibles.json';
 import mockLanguages from '../test/mock-data/languages.json';
 import mockOrganizations from '../test/mock-data/organizations.json';
-import { waitFor, waitForElement, waitForShadowRoot } from '../test/storybook-dom';
+import {
+  verifyNativeBrowserKey,
+  waitFor,
+  waitForElement,
+  waitForShadowRoot,
+} from '../test/storybook-dom';
 import { BibleVersionPicker } from './bible-version-picker';
 
 const VERSIONS = mockBibles.collections.default.data satisfies BibleVersion[];
@@ -376,25 +381,32 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
       'version button not rendered',
     );
     panel.focus({ preventScroll: true });
-    const { userEvent: browserUserEvent } = await import('vitest/browser');
     const forwardTraversalKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
       ? '{Alt>}{Tab}{/Alt}'
       : '{Tab}';
+    let nativeKeyboardAvailable = true;
     for (const expected of [closeButton, versionSearch, languageEntry, versionButton]) {
-      await browserUserEvent.keyboard(forwardTraversalKey);
-      await expect(root.activeElement).toBe(expected);
+      const nativeKeyAvailable = await verifyNativeBrowserKey(forwardTraversalKey, async () => {
+        await expect(root.activeElement).toBe(expected);
+      });
+      if (!nativeKeyAvailable) {
+        nativeKeyboardAvailable = false;
+        break;
+      }
     }
-    const focusedVersionRect = versionButton.getBoundingClientRect();
-    const constrainedPanelRect = panel.getBoundingClientRect();
-    const constrainedScrollRegion = versionButton.closest(
-      '[data-testid="version-list"]',
-    )?.parentElement;
-    if (!constrainedScrollRegion) throw new Error('constrained version scroll region not found');
-    const constrainedScrollRect = constrainedScrollRegion.getBoundingClientRect();
-    await expect(focusedVersionRect.top).toBeGreaterThanOrEqual(constrainedPanelRect.top - 1);
-    await expect(focusedVersionRect.bottom).toBeLessThanOrEqual(constrainedPanelRect.bottom + 1);
-    await expect(focusedVersionRect.top).toBeGreaterThanOrEqual(constrainedScrollRect.top - 1);
-    await expect(focusedVersionRect.bottom).toBeLessThanOrEqual(constrainedScrollRect.bottom + 1);
+    if (nativeKeyboardAvailable) {
+      const focusedVersionRect = versionButton.getBoundingClientRect();
+      const constrainedPanelRect = panel.getBoundingClientRect();
+      const constrainedScrollRegion = versionButton.closest(
+        '[data-testid="version-list"]',
+      )?.parentElement;
+      if (!constrainedScrollRegion) throw new Error('constrained version scroll region not found');
+      const constrainedScrollRect = constrainedScrollRegion.getBoundingClientRect();
+      await expect(focusedVersionRect.top).toBeGreaterThanOrEqual(constrainedPanelRect.top - 1);
+      await expect(focusedVersionRect.bottom).toBeLessThanOrEqual(constrainedPanelRect.bottom + 1);
+      await expect(focusedVersionRect.top).toBeGreaterThanOrEqual(constrainedScrollRect.top - 1);
+      await expect(focusedVersionRect.bottom).toBeLessThanOrEqual(constrainedScrollRect.bottom + 1);
+    }
 
     // SAFETY: The reflected-ARIA property is still a draft; verify browser support before use.
     const reflectedControls = (
