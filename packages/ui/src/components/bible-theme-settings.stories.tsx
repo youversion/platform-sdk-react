@@ -170,6 +170,16 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
     await userEvent.keyboard('{Enter}');
     void expect(canvas.getByTestId('settings-boundary')).toHaveAttribute('data-font-size', '14');
 
+    let focusedControlReceivedTab = false;
+    if (nativeKeyAvailable && forwardTraversalKey === '{Tab}') {
+      decreaseFontSizeButton.addEventListener(
+        'keydown',
+        (event) => {
+          if (event.key === 'Tab') focusedControlReceivedTab = true;
+        },
+        { once: true },
+      );
+    }
     for (const control of controls.slice(1)) {
       if (nativeKeyAvailable) {
         await verifyNativeBrowserKey(forwardTraversalKey, async () => {
@@ -181,6 +191,9 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
         await userEvent.tab();
         void expect(settingsRoot.activeElement).toBe(control);
       }
+    }
+    if (nativeKeyAvailable && forwardTraversalKey === '{Tab}') {
+      void expect(focusedControlReceivedTab).toBe(true);
     }
     await userEvent.keyboard('{Enter}');
     void expect(canvas.getByTestId('settings-boundary')).toHaveAttribute(

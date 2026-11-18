@@ -179,10 +179,12 @@ function RootImplementation({
     // SAFETY: A connected DOM element is rooted in either a Document or ShadowRoot.
     const focusRoot = element?.getRootNode() as Document | ShadowRoot | undefined;
     const activeElement = focusRoot?.activeElement;
-    const focusedBook = activeElement?.closest('[data-slot="accordion-item"]');
+    const accordion = element?.closest('[data-slot="accordion"]');
+    if (!accordion || !activeElement || !accordion.contains(activeElement)) return false;
+    const focusedBook = activeElement.closest('[data-slot="accordion-item"]');
     return Boolean(
       focusedBook &&
-        (focusedBook !== element || !activeElement?.matches('[data-slot="accordion-trigger"]')),
+        (focusedBook !== element || !activeElement.matches('[data-slot="accordion-trigger"]')),
     );
   }, []);
 

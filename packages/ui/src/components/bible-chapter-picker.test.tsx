@@ -124,6 +124,29 @@ it('does not scroll consumer ancestors again when only the callback identity cha
   }
 });
 
+it('does not let focus in a sibling accordion suppress the current-book reveal', async () => {
+  const scrollSpy = vi.spyOn(Element.prototype, 'scrollIntoView');
+  try {
+    render(
+      <>
+        <div data-slot="accordion">
+          <div data-slot="accordion-item">
+            <button type="button" data-slot="accordion-trigger">
+              Sibling accordion trigger
+            </button>
+          </div>
+        </div>
+        {standaloneContent(() => undefined)}
+      </>,
+    );
+    screen.getByRole('button', { name: 'Sibling accordion trigger' }).focus();
+
+    await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1));
+  } finally {
+    scrollSpy.mockRestore();
+  }
+});
+
 it('keeps standalone content usable when scrollIntoView is unavailable', async () => {
   const scrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(
     Element.prototype,
