@@ -245,6 +245,7 @@ export const SettingsCloseShowsFocusThroughToolbar: Story = {
     await userEvent.click(reader.getByRole('button', { name: /settings/i }));
     const settings = await getReaderOverlay(root);
     const closeButton = await settings.findByRole('button', { name: i18n.t('close') });
+    closeButton.focus();
     await waitFor(async () => await expect(root.activeElement).toBe(closeButton));
     const focusedStyle = getComputedStyle(closeButton);
     const focusedIndicator = {
