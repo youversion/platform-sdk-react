@@ -139,7 +139,9 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
     const unfocusedStyles = new Map(controls.map((control) => [control, focusStyle(control)]));
     await userEvent.click(decreaseFontSizeButton);
     if (settingsRoot.activeElement === decreaseFontSizeButton) {
-      void expect(focusStyle(decreaseFontSizeButton).boxShadow).not.toContain('inset');
+      void expect(focusStyle(decreaseFontSizeButton)).toEqual(
+        unfocusedStyles.get(decreaseFontSizeButton),
+      );
     }
     closeButton.focus();
     await userEvent.tab();
