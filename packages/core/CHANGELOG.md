@@ -1,5 +1,12 @@
 # @youversion/platform-core
 
+## 3.0.1
+
+### Patch Changes
+
+- 4dfb963: Update `zod` to 4.6.7. This clears security scanner warnings about zod 4.1.12 ([GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)). The SDK only checks data that comes from the YouVersion API, from your app, or from its own saved settings, so we don't expect any app to be affected in practice. No code changes are needed.
+- f4a3ddb: Align Bible typography with the Swift phase-three rendering contract: main and introduction titles, introduction outlines, stanza breaks, lists, right-aligned paragraphs, chapter descriptions, `\qd`, `\lf`, and the `\k`, `\sls`, and `\iqt` inline styles.
+
 ## 3.0.0
 
 ### Major Changes
