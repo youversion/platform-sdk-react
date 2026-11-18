@@ -12,6 +12,7 @@ Numbered records stay `NNNN-kebab-case.md` and ticket-keyed records stay `YPE-<i
 - [`0008-return-declarative-passage-display-models.md`](./0008-return-declarative-passage-display-models.md) — Return declarative passage display models from core
 - [`0009-follow-swift-phase-2-bible-rendering.md`](./0009-follow-swift-phase-2-bible-rendering.md) — Follow Swift phase 2 Bible rendering across web consumers
 - [`0010-automatic-shadow-dom-style-isolation.md`](./0010-automatic-shadow-dom-style-isolation.md) — Automatic Shadow DOM style isolation
+- [`0011-follow-swift-phase-3-bible-rendering.md`](./0011-follow-swift-phase-3-bible-rendering.md) — Follow Swift phase 3 Bible rendering across web consumers
 - [`YPE-642-verse-action-popover.md`](./YPE-642-verse-action-popover.md) — Verse Action Popover (highlights, copy, share)
 - [`YPE-1034-highlights-server-only.md`](./YPE-1034-highlights-server-only.md) — Wire the highlights API into BibleReader
 - [`YPE-3705-controlled-mode.md`](./YPE-3705-controlled-mode.md) — Controlled (headless) BibleReader highlights
