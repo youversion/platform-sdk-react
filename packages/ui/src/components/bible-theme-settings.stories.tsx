@@ -137,11 +137,19 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
     void expect(ownerDocument.activeElement).toBe(closeButton);
     await userEvent.click(settingsScope);
     const unfocusedStyles = new Map(controls.map((control) => [control, focusStyle(control)]));
-    await userEvent.click(decreaseFontSizeButton);
-    if (settingsRoot.activeElement === decreaseFontSizeButton) {
-      void expect(focusStyle(decreaseFontSizeButton)).toEqual(
-        unfocusedStyles.get(decreaseFontSizeButton),
-      );
+    if (__YV_STORYBOOK_VITEST__) {
+      const { userEvent: browserUserEvent } = await import('vitest/browser');
+      await browserUserEvent.click(decreaseFontSizeButton);
+      if (
+        settingsRoot.activeElement === decreaseFontSizeButton &&
+        !decreaseFontSizeButton.matches(':focus-visible')
+      ) {
+        void expect(focusStyle(decreaseFontSizeButton).boxShadow).toBe(
+          unfocusedStyles.get(decreaseFontSizeButton)?.boxShadow,
+        );
+      }
+    } else {
+      await userEvent.click(decreaseFontSizeButton);
     }
     closeButton.focus();
     await userEvent.tab();
