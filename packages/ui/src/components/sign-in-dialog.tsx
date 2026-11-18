@@ -74,7 +74,7 @@ export const SignInDialog: FC<SignInDialogProps> = ({
         <div className="yv:flex yv:w-full yv:flex-col yv:gap-2">
           <Button
             variant="default"
-            className="yv:w-full yv:rounded-full yv:focus-visible:ring-inset"
+            className="yv:w-full yv:rounded-full yv:focus-visible:ring-inset yv:focus-visible:ring-primary-foreground!"
             onClick={onConfirm}
           >
             {t('signInYesButton')}
