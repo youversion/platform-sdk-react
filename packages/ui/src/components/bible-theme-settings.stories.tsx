@@ -8,6 +8,7 @@ import { INTER_FONT, UNTITLED_SERIF_FONT, type FontFamily } from '../lib/verse-h
 import { BibleThemeSettingsContent } from './bible-reader';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { YvComponentStyles } from '../lib/yv-styles-components';
+import { verifyNativeBrowserKey } from '../test/storybook-dom';
 
 function ConstrainedSettings(): React.ReactNode {
   const [boundary, setBoundary] = useState<HTMLDivElement | null>(null);
@@ -152,30 +153,35 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
       await userEvent.click(decreaseFontSizeButton);
     }
     closeButton.focus();
-    await userEvent.tab();
-    void expect(settingsRoot.activeElement).toBe(decreaseFontSizeButton);
-    void expect(focusStyle(decreaseFontSizeButton)).not.toEqual(
-      unfocusedStyles.get(decreaseFontSizeButton),
-    );
-    void expect(focusStyle(decreaseFontSizeButton).boxShadow).toContain('inset');
+    const forwardTraversalKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      ? '{Alt>}{Tab}{/Alt}'
+      : '{Tab}';
+    const nativeKeyAvailable = await verifyNativeBrowserKey(forwardTraversalKey, async () => {
+      void expect(settingsRoot.activeElement).toBe(decreaseFontSizeButton);
+      void expect(focusStyle(decreaseFontSizeButton)).not.toEqual(
+        unfocusedStyles.get(decreaseFontSizeButton),
+      );
+      void expect(focusStyle(decreaseFontSizeButton).boxShadow).toContain('inset');
+    });
+    if (!nativeKeyAvailable) {
+      await userEvent.tab();
+      void expect(settingsRoot.activeElement).toBe(decreaseFontSizeButton);
+    }
     await userEvent.keyboard('{Enter}');
     void expect(canvas.getByTestId('settings-boundary')).toHaveAttribute('data-font-size', '14');
 
-    let focusedControlReceivedTab = false;
-    decreaseFontSizeButton.addEventListener(
-      'keydown',
-      (event) => {
-        if (event.key === 'Tab') focusedControlReceivedTab = true;
-      },
-      { once: true },
-    );
     for (const control of controls.slice(1)) {
-      await userEvent.tab();
-      void expect(settingsRoot.activeElement).toBe(control);
-      void expect(focusStyle(control)).not.toEqual(unfocusedStyles.get(control));
-      void expect(focusStyle(control).boxShadow).toContain('inset');
+      if (nativeKeyAvailable) {
+        await verifyNativeBrowserKey(forwardTraversalKey, async () => {
+          void expect(settingsRoot.activeElement).toBe(control);
+          void expect(focusStyle(control)).not.toEqual(unfocusedStyles.get(control));
+          void expect(focusStyle(control).boxShadow).toContain('inset');
+        });
+      } else {
+        await userEvent.tab();
+        void expect(settingsRoot.activeElement).toBe(control);
+      }
     }
-    void expect(focusedControlReceivedTab).toBe(true);
     await userEvent.keyboard('{Enter}');
     void expect(canvas.getByTestId('settings-boundary')).toHaveAttribute(
       'data-font-family',
