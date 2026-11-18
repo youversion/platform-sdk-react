@@ -6,7 +6,7 @@ import { useInterfaceDirection } from '@/lib/direction';
 import { cn } from '@/lib/utils';
 import { type BibleVersion } from '@youversion/platform-core';
 import { useLanguage, useOrganizations } from '@youversion/platform-react-hooks';
-import { useEffect, useRef, useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type FocusEvent, type ReactElement } from 'react';
 import { ChevronForwardIcon } from '../icons/chevron-forward';
 import { GlobeIcon } from '../icons/globe';
 import { LoaderIcon } from '../icons/loader';
@@ -225,7 +225,8 @@ export function VersionList({
     cn('yv:hover:bg-muted yv:rounded-lg', selected ? 'yv:bg-muted' : '');
   const versionListRootRef = useRef<HTMLDivElement>(null);
   const versionScrollRegionRef = useRef<HTMLDivElement>(null);
-  const revealFocusedVersion = (element: HTMLButtonElement) => {
+  const revealFocusedVersion = (event: FocusEvent<HTMLButtonElement>) => {
+    const element = event.currentTarget;
     for (const container of [versionScrollRegionRef.current, versionListRootRef.current]) {
       if (!container) continue;
       const elementRect = element.getBoundingClientRect();
@@ -294,7 +295,7 @@ export function VersionList({
                   <button
                     type="button"
                     className="yv:w-full yv:focus-visible:ring-inset"
-                    onFocus={(event) => revealFocusedVersion(event.currentTarget)}
+                    onFocus={revealFocusedVersion}
                     onClick={() => handleSelectVersion(version)}
                   >
                     <ItemMedia variant="icon" className={versionTileClassName}>
@@ -339,7 +340,7 @@ export function VersionList({
                 <button
                   type="button"
                   className="yv:w-full yv:focus-visible:ring-inset"
-                  onFocus={(event) => revealFocusedVersion(event.currentTarget)}
+                  onFocus={revealFocusedVersion}
                   onClick={() => handleSelectVersion(version)}
                 >
                   <ItemMedia variant="icon" className={versionTileClassName}>

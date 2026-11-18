@@ -371,6 +371,14 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
     const hit = root.elementFromPoint(sampleX, sampleY);
     await expect(hit === panel || (hit !== null && panel.contains(hit))).toBe(true);
 
+    // SAFETY: The reflected-ARIA property is still a draft; verify browser support before use.
+    const reflectedControls = (
+      trigger as HTMLElement & { ariaControlsElements?: readonly Element[] }
+    ).ariaControlsElements;
+    if (!reflectedControls) throw new Error('browser did not expose ariaControlsElements');
+    await expect(trigger.getAttribute('aria-controls')).toBe(panel.id);
+    await expect(reflectedControls).toEqual([panel]);
+
     panel.style.blockSize = '9.328125rem';
     const closeButton = within(panel).getByRole('button', { name: /close/i });
     const versionSearch = within(panel).getByRole('textbox', { name: i18n.t('searchVersions') });
@@ -384,37 +392,23 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
     const forwardTraversalKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
       ? '{Alt>}{Tab}{/Alt}'
       : '{Tab}';
-    let nativeKeyboardAvailable = true;
     for (const expected of [closeButton, versionSearch, languageEntry, versionButton]) {
       const nativeKeyAvailable = await verifyNativeBrowserKey(forwardTraversalKey, async () => {
         await expect(root.activeElement).toBe(expected);
       });
-      if (!nativeKeyAvailable) {
-        nativeKeyboardAvailable = false;
-        break;
-      }
+      if (!nativeKeyAvailable) return;
     }
-    if (nativeKeyboardAvailable) {
-      const focusedVersionRect = versionButton.getBoundingClientRect();
-      const constrainedPanelRect = panel.getBoundingClientRect();
-      const constrainedScrollRegion = versionButton.closest(
-        '[data-testid="version-list"]',
-      )?.parentElement;
-      if (!constrainedScrollRegion) throw new Error('constrained version scroll region not found');
-      const constrainedScrollRect = constrainedScrollRegion.getBoundingClientRect();
-      await expect(focusedVersionRect.top).toBeGreaterThanOrEqual(constrainedPanelRect.top - 1);
-      await expect(focusedVersionRect.bottom).toBeLessThanOrEqual(constrainedPanelRect.bottom + 1);
-      await expect(focusedVersionRect.top).toBeGreaterThanOrEqual(constrainedScrollRect.top - 1);
-      await expect(focusedVersionRect.bottom).toBeLessThanOrEqual(constrainedScrollRect.bottom + 1);
-    }
-
-    // SAFETY: The reflected-ARIA property is still a draft; verify browser support before use.
-    const reflectedControls = (
-      trigger as HTMLElement & { ariaControlsElements?: readonly Element[] }
-    ).ariaControlsElements;
-    if (!reflectedControls) throw new Error('browser did not expose ariaControlsElements');
-    await expect(trigger.getAttribute('aria-controls')).toBe(panel.id);
-    await expect(reflectedControls).toEqual([panel]);
+    const focusedVersionRect = versionButton.getBoundingClientRect();
+    const constrainedPanelRect = panel.getBoundingClientRect();
+    const constrainedScrollRegion = versionButton.closest(
+      '[data-testid="version-list"]',
+    )?.parentElement;
+    if (!constrainedScrollRegion) throw new Error('constrained version scroll region not found');
+    const constrainedScrollRect = constrainedScrollRegion.getBoundingClientRect();
+    await expect(focusedVersionRect.top).toBeGreaterThanOrEqual(constrainedPanelRect.top - 1);
+    await expect(focusedVersionRect.bottom).toBeLessThanOrEqual(constrainedPanelRect.bottom + 1);
+    await expect(focusedVersionRect.top).toBeGreaterThanOrEqual(constrainedScrollRect.top - 1);
+    await expect(focusedVersionRect.bottom).toBeLessThanOrEqual(constrainedScrollRect.bottom + 1);
   },
 };
 
@@ -437,8 +431,6 @@ export const ForwardTabSkipsScrollableVersionList: Story = {
     if (!lastVersion) throw new Error('last version row not rendered');
     const scrollRegion = firstVersion.closest('[data-testid="version-list"]')?.parentElement;
     if (!scrollRegion) throw new Error('version list scroll region not found');
-    const versionListRoot = scrollRegion.parentElement;
-    if (!versionListRoot) throw new Error('version list root not found');
     await expect(scrollRegion.scrollHeight).toBeGreaterThan(scrollRegion.clientHeight);
     scrollRegion.scrollTop = 0;
     const clippedVersionRect = lastVersion.getBoundingClientRect();
