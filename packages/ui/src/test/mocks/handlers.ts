@@ -19,20 +19,35 @@ function mockAvatar() {
   );
 }
 
+const browserTestFontSource = 'local("Arial"), local("Liberation Sans"), local("DejaVu Sans")';
+const browserTestBaseFontCss = `
+  @font-face { font-family: 'Inter'; font-style: normal; font-weight: 400 700; src: ${browserTestFontSource}; }
+  @font-face { font-family: 'Source Serif 4'; font-style: normal; font-weight: 400 700; src: ${browserTestFontSource}; }
+`;
+const browserTestBrandFontCss = `
+  @font-face { font-family: 'Untitled Serif'; font-style: normal; font-weight: 400 700; src: ${browserTestFontSource}; }
+`;
+
 export const globalHandlers = [
-  // React's hoisted stylesheet promise rejects when a story's mock app key
-  // reaches the real Fonts API. Keep browser tests independent of that service.
+  // Keep automated browser tests independent of the live Fonts API while
+  // exercising the same document stylesheet links used by consumers. Manual
+  // Storybook keeps the empty response used by its mock app key, so serif
+  // previews continue to fall back to Source Serif 4 instead of local sans.
   http.get(
     '*/v1/fonts/:id/stylesheet',
     () =>
-      new HttpResponse('', {
+      new HttpResponse(__YV_STORYBOOK_VITEST__ ? browserTestBrandFontCss : '', {
         headers: { 'Content-Type': 'text/css' },
       }),
   ),
   // Keep automated browser journeys off the public internet without changing
   // font loading in manual Storybook sessions.
   http.get('https://fonts.googleapis.com/*', () =>
-    __YV_STORYBOOK_VITEST__ ? new HttpResponse(null, { status: 204 }) : passthrough(),
+    __YV_STORYBOOK_VITEST__
+      ? HttpResponse.text(browserTestBaseFontCss, {
+          headers: { 'Content-Type': 'text/css' },
+        })
+      : passthrough(),
   ),
   http.get('https://fonts.gstatic.com/*', () =>
     __YV_STORYBOOK_VITEST__ ? new HttpResponse(null, { status: 204 }) : passthrough(),

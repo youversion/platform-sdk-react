@@ -3,6 +3,12 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { auditCustomProperties, auditShadowPropertyDefaults } from './custom-property-contract.js';
+import {
+  FONT_LAYER_ORDER,
+  GOOGLE_FONTS_IMPORT,
+  GOOGLE_FONTS_STYLESHEET,
+  PUBLIC_FONT_LAYER_ORDER,
+} from './font-resource-contract.js';
 import { stripLayerBlocks } from './strip-layer-blocks.js';
 
 const uiRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -10,6 +16,20 @@ const dist = resolve(uiRoot, 'dist');
 const errors = [];
 const packageJson = JSON.parse(readFileSync(resolve(uiRoot, 'package.json'), 'utf8'));
 const publicCssExport = packageJson.exports?.['./styles.css'];
+const forbiddenRuntimeImport = /@import\b/i;
+const publicStylesPrefix = `${PUBLIC_FONT_LAYER_ORDER}\n${GOOGLE_FONTS_IMPORT}`;
+
+const runtimeFontsSource = readFileSync(resolve(uiRoot, 'src/lib/yv-fonts.tsx'), 'utf8');
+if (!runtimeFontsSource.includes(`'${GOOGLE_FONTS_STYLESHEET}'`)) {
+  errors.push('yv-fonts.tsx Google Fonts URL has drifted from the public stylesheet contract');
+}
+
+for (const sourceFile of ['src/styles/global.css', 'src/styles/chrome.css']) {
+  const sourceCss = readFileSync(resolve(uiRoot, sourceFile), 'utf8');
+  if (!sourceCss.includes(FONT_LAYER_ORDER)) {
+    errors.push(`${sourceFile} layer order has drifted from the public stylesheet contract`);
+  }
+}
 
 // Tailwind --watch (and a concurrent build) can rewrite dist CSS after
 // build:css already ran preserve-host-revert-layer. Re-apply before gating.
@@ -26,6 +46,9 @@ const chromeCss = existsSync(chromeCssPath) ? readFileSync(chromeCssPath, 'utf-8
 if (!chromeCss.trim()) {
   errors.push('dist/chrome.css is missing or empty — did build:css run?');
 } else {
+  if (forbiddenRuntimeImport.test(chromeCss)) {
+    errors.push('dist/chrome.css contains an @import instead of a document resource');
+  }
   const unlayeredChrome = stripLayerBlocks(chromeCss);
   if (!unlayeredChrome.includes('revert-layer')) {
     errors.push(
@@ -42,6 +65,11 @@ const css = existsSync(cssPath) ? readFileSync(cssPath, 'utf-8') : '';
 if (!css.trim()) {
   errors.push('dist/tailwind.css is missing or empty — did build:css run?');
 } else {
+  if (forbiddenRuntimeImport.test(css)) {
+    errors.push(
+      'dist/tailwind.css contains an @import that would be passed to CSSStyleSheet.replaceSync()',
+    );
+  }
   const unlayered = stripLayerBlocks(css);
   if (!unlayered.includes('revert-layer')) {
     errors.push(
@@ -84,6 +112,11 @@ const readerCss = existsSync(readerCssPath) ? readFileSync(readerCssPath, 'utf-8
 if (!readerCss.trim()) {
   errors.push('dist/bible-reader.css is missing or empty — did build:css run?');
 } else {
+  if (forbiddenRuntimeImport.test(readerCss)) {
+    errors.push(
+      'dist/bible-reader.css contains an @import that would be passed to CSSStyleSheet.replaceSync()',
+    );
+  }
   const verseSelectionRule = readerCss.match(/\[data-yv-sdk\] \.yv-v-selected\{([^}]*)\}/)?.[1];
   const requiredDeclarations = [
     'text-decoration-line:underline',
@@ -113,6 +146,11 @@ const publicCss = existsSync(publicCssPath) ? readFileSync(publicCssPath, 'utf-8
 if (!publicCss.trim()) {
   errors.push('the public ./styles.css export is missing or empty — did build:css run?');
 } else {
+  if (!publicCss.startsWith(publicStylesPrefix)) {
+    errors.push(
+      'dist/styles.css must declare the public layer order before the Google Fonts import',
+    );
+  }
   if (!publicCss.includes('scrollbar-hide')) {
     errors.push('dist/styles.css missing full utility sheet');
   }

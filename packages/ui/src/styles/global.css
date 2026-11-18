@@ -40,13 +40,6 @@
  */
 @layer theme, base, components, utilities, yv-sdk-fonts, yv-sdk-styles, yv-sdk-theme, yv-sdk-utilities, yv-sdk-bible-reader;
 
-/**
-  * Why do this versus importing @youversion/platform-core/browser/styles/fonts.css?
-  * It's because you cannot nest @import inside a @layer block directly, of which that
-  * file has an @import in it, so since we're using layers, we have to do it this way.
-  */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap')
-layer(yv-sdk-fonts);
 @import '@youversion/platform-core/browser/styles/theme.css' layer(yv-sdk-styles);
 @import 'tailwindcss/theme.css' layer(yv-sdk-theme) prefix(yv);
 @import 'tailwindcss/utilities.css' layer(yv-sdk-utilities) prefix(yv) source(none);
@@ -186,8 +179,8 @@ layer(yv-sdk-fonts);
    build time. It is loaded instead by <YvFonts /> (src/lib/yv-fonts.tsx), rendered from
    YouVersionProvider, from the gated /v1/fonts/1/stylesheet endpoint. See
    docs/adr/0004-adopt-untitled-serif-via-fonts-api.md.
-   Sans stays Inter, and Source Serif 4 (Google Fonts @import above) stays loaded as the
-   serif fallback. */
+   Sans stays Inter, and Source Serif 4 (loaded at the document level by <YvFonts />)
+   stays available as the serif fallback. */
 
 /* #region shadcn UI theme */
 @custom-variant dark (&:is([data-yv-sdk][data-yv-theme='dark'] *));

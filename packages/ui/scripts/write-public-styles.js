@@ -3,6 +3,7 @@
 import { mkdirSync, readFileSync, watch, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { GOOGLE_FONTS_IMPORT, PUBLIC_FONT_LAYER_ORDER } from './font-resource-contract.js';
 
 const dist = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const inputs = ['tailwind.css', 'bible-reader.css'];
@@ -11,7 +12,8 @@ function writePublicStyles() {
   try {
     writeFileSync(
       resolve(dist, 'styles.css'),
-      inputs.map((file) => readFileSync(resolve(dist, file), 'utf8')).join(''),
+      `${PUBLIC_FONT_LAYER_ORDER}\n${GOOGLE_FONTS_IMPORT}\n` +
+        inputs.map((file) => readFileSync(resolve(dist, file), 'utf8')).join(''),
     );
   } catch (error) {
     if (error?.code !== 'ENOENT') throw error;
