@@ -59,7 +59,15 @@ type BibleChapterPickerContextType = {
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
 };
 
-function revealBookElement(element: HTMLElement, align: 'nearest' | 'start' = 'nearest'): void {
+function revealBookElement(
+  element: HTMLElement,
+  align: 'nearest' | 'start' = 'nearest',
+  includeConsumerAncestors = false,
+): void {
+  if (includeConsumerAncestors) {
+    element.scrollIntoView({ behavior: 'smooth', block: align });
+    return;
+  }
   const list = element.closest<HTMLElement>('[data-slot="accordion"]');
   if (!list) return;
   const elementRect = element.getBoundingClientRect();
@@ -185,7 +193,7 @@ function RootImplementation({
         if (bookFocusSequenceRef.current !== focusSequence) return;
         const element = bookElementsRef.current[book];
         if (shouldPreserveFocusedBook(element ?? undefined)) return;
-        if (element) revealBookElement(element, 'start');
+        if (element) revealBookElement(element, 'start', Boolean(onChapterPickerPress));
       }, 200);
     }
   };
@@ -200,7 +208,7 @@ function RootImplementation({
       if (!controller.signal.aborted && bookFocusSequenceRef.current === focusSequence) {
         const element = bookElementsRef.current[expandedBook];
         if (shouldPreserveFocusedBook(element ?? undefined)) return;
-        if (element) revealBookElement(element, 'start');
+        if (element) revealBookElement(element, 'start', Boolean(onChapterPickerPress));
       }
     }, 200);
 
@@ -208,7 +216,7 @@ function RootImplementation({
       controller.abort();
       clearTimeout(timeoutId);
     };
-  }, [expandedBook, shouldPreserveFocusedBook]);
+  }, [expandedBook, onChapterPickerPress, shouldPreserveFocusedBook]);
 
   const setIsPopoverOpen = (open: boolean) => {
     if (onChapterPickerPress) return;
@@ -444,6 +452,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
     setChapter,
     versionId,
     background,
+    onChapterPickerPress,
   } = useBibleChapterPickerContext();
 
   const handleChapterButtonClick = (bookId: string, passageId: string) => {
@@ -486,7 +495,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
                 className="yv:rounded-none yv:text-base yv:font-normal yv:leading-normal yv:text-foreground yv:focus-visible:ring-inset yv:data-[state=open]:font-bold yv:[@media(max-height:700px)]:[padding-block:0.375rem]"
                 onFocus={(event) => {
                   markBookFocused();
-                  revealBookElement(event.currentTarget);
+                  revealBookElement(event.currentTarget, 'nearest', Boolean(onChapterPickerPress));
                 }}
               >
                 <bdi dir="auto">{bookItem.title}</bdi>

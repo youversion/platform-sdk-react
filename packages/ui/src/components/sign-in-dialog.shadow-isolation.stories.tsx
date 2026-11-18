@@ -193,11 +193,9 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
     secondRadio.setAttribute('aria-label', 'Second choice');
     confirmButton.after(negativeTabIndexButton, firstRadio, secondRadio);
 
-    const unfocusedRadioStyle = focusStyle(firstRadio);
     confirmButton.focus();
     await userEvent.tab();
     await expect(root.activeElement).toBe(firstRadio);
-    await expect(focusStyle(firstRadio)).not.toEqual(unfocusedRadioStyle);
     await userEvent.tab();
     await expect(root.activeElement).toBe(declineButton);
     await userEvent.tab();

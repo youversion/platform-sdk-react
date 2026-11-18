@@ -164,6 +164,24 @@ function AutomaticBibleChapterPicker(): React.ReactNode {
   );
 }
 
+function StandaloneBibleChapterPicker(): React.ReactNode {
+  return (
+    <BibleChapterPicker.Root
+      defaultBook="GEN"
+      defaultChapter="1"
+      versionId={111}
+      onChapterPickerPress={() => undefined}
+    >
+      <div
+        data-testid="standalone-chapter-panel"
+        style={{ inlineSize: '20rem', maxBlockSize: '12rem', overflowY: 'auto' }}
+      >
+        <BibleChapterPicker.Content />
+      </div>
+    </BibleChapterPicker.Root>
+  );
+}
+
 const meta = {
   title: 'Components/BibleChapterPicker/Shadow isolation',
   component: AutomaticBibleChapterPicker,
@@ -329,6 +347,7 @@ export const PublicRootJourney: Story = {
       const listRect = bookList.getBoundingClientRect();
       await expect(bookRect.top).toBeGreaterThanOrEqual(listRect.top - 1);
       await expect(bookRect.bottom).toBeLessThanOrEqual(listRect.bottom + 1);
+      await expect(getComputedStyle(firstKingsBook).boxShadow).toContain('inset');
     });
     psalmsBook.focus({ preventScroll: true });
     await userEvent.keyboard('{Enter}');
@@ -395,6 +414,39 @@ export const PublicRootJourney: Story = {
       await expect(trigger).toHaveTextContent(/genesis 11/i);
       await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
       await expect(root.activeElement).toBe(trigger);
+    });
+  },
+};
+
+export const StandaloneContentRevealsFocusedBookInConsumerScroll: Story = {
+  render: () => (
+    <FixtureProviders>
+      <StandaloneBibleChapterPicker />
+    </FixtureProviders>
+  ),
+  play: async ({ canvasElement }) => {
+    const root = await waitForShadowRoot(canvasElement);
+    const shell = await waitForElement<HTMLElement>(
+      root,
+      '[data-testid="standalone-chapter-panel"]',
+      'standalone chapter panel not rendered',
+    );
+    const matthewBook = within(shell).getByRole('button', { name: /matthew/i });
+    shell.scrollTop = 0;
+    const initialShellRect = shell.getBoundingClientRect();
+    await expect(matthewBook.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      initialShellRect.bottom,
+    );
+
+    matthewBook.focus({ preventScroll: true });
+    await waitFor(async () => {
+      await expect(root.activeElement).toBe(matthewBook);
+      await expect(shell.scrollTop).toBeGreaterThan(0);
+      const bookRect = matthewBook.getBoundingClientRect();
+      const shellRect = shell.getBoundingClientRect();
+      await expect(bookRect.top).toBeGreaterThanOrEqual(shellRect.top - 1);
+      await expect(bookRect.bottom).toBeLessThanOrEqual(shellRect.bottom + 1);
+      await expect(getComputedStyle(matthewBook).boxShadow).toContain('inset');
     });
   },
 };

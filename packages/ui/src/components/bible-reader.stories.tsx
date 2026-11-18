@@ -228,6 +228,40 @@ export const Default: Story = {
   },
 };
 
+export const SettingsCloseShowsFocusThroughToolbar: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-fresh-process'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  render: (args) => (
+    <BibleReader.Root {...args}>
+      <BibleReader.Toolbar />
+    </BibleReader.Root>
+  ),
+  play: async ({ canvasElement }) => {
+    const { root, reader } = await getReaderStory(canvasElement);
+    await userEvent.click(reader.getByRole('button', { name: /settings/i }));
+    const settings = await getReaderOverlay(root);
+    const closeButton = await settings.findByRole('button', { name: i18n.t('close') });
+    await waitFor(async () => await expect(root.activeElement).toBe(closeButton));
+    const focusedStyle = getComputedStyle(closeButton);
+    const focusedIndicator = {
+      boxShadow: focusedStyle.boxShadow,
+      outline: focusedStyle.outline,
+    };
+    await expect(focusedIndicator.boxShadow).not.toBe('none');
+
+    await userEvent.click(settings.getByTestId('decrease-font-size'));
+    const unfocusedStyle = getComputedStyle(closeButton);
+    await expect({
+      boxShadow: unfocusedStyle.boxShadow,
+      outline: unfocusedStyle.outline,
+    }).not.toEqual(focusedIndicator);
+  },
+};
+
 export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
   tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-fresh-process'],
   args: {

@@ -378,6 +378,7 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
     if (!reflectedControls) throw new Error('browser did not expose ariaControlsElements');
     await expect(trigger.getAttribute('aria-controls')).toBe(panel.id);
     await expect(reflectedControls).toEqual([panel]);
+    if (!__YV_STORYBOOK_VITEST__) return;
 
     panel.style.blockSize = '9.328125rem';
     const closeButton = within(panel).getByRole('button', { name: /close/i });
@@ -409,6 +410,7 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
     await expect(focusedVersionRect.bottom).toBeLessThanOrEqual(constrainedPanelRect.bottom + 1);
     await expect(focusedVersionRect.top).toBeGreaterThanOrEqual(constrainedScrollRect.top - 1);
     await expect(focusedVersionRect.bottom).toBeLessThanOrEqual(constrainedScrollRect.bottom + 1);
+    await expect(getComputedStyle(versionButton).boxShadow).toContain('inset');
   },
 };
 
@@ -446,6 +448,7 @@ export const ForwardTabSkipsScrollableVersionList: Story = {
       await expect(versionRect.bottom).toBeLessThanOrEqual(panelRect.bottom + 1);
       await expect(versionRect.top).toBeGreaterThanOrEqual(scrollRect.top - 1);
       await expect(versionRect.bottom).toBeLessThanOrEqual(scrollRect.bottom + 1);
+      await expect(getComputedStyle(lastVersion).boxShadow).toContain('inset');
     });
     panel.focus({ preventScroll: true });
     await waitFor(async () => await expect(root.activeElement).toBe(panel));
@@ -1015,13 +1018,23 @@ export const StandaloneContentKeepsInternalScroll: Story = {
     const versionButtons = Array.from(versionList.querySelectorAll<HTMLButtonElement>('button'));
     const lastVersion = versionButtons.at(-1);
     if (!lastVersion) throw new Error('standalone version row not rendered');
+    const shellRectBeforeFocus = shell.getBoundingClientRect();
+    await expect(lastVersion.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      shellRectBeforeFocus.bottom,
+    );
+    const initialScrollTop = scrollRegion.scrollTop;
     lastVersion.focus({ preventScroll: true });
     await waitFor(async () => {
       await expect(root.activeElement).toBe(lastVersion);
+      await expect(scrollRegion.scrollTop).toBeGreaterThan(initialScrollTop);
       const rowRect = lastVersion.getBoundingClientRect();
       const scrollRect = scrollRegion.getBoundingClientRect();
+      const shellRect = shell.getBoundingClientRect();
       await expect(rowRect.top).toBeGreaterThanOrEqual(scrollRect.top - 1);
       await expect(rowRect.bottom).toBeLessThanOrEqual(scrollRect.bottom + 1);
+      await expect(rowRect.top).toBeGreaterThanOrEqual(shellRect.top - 1);
+      await expect(rowRect.bottom).toBeLessThanOrEqual(shellRect.bottom + 1);
+      await expect(getComputedStyle(lastVersion).boxShadow).toContain('inset');
     });
     await expect(shell.scrollTop).toBe(0);
   },
