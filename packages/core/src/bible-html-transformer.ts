@@ -6,45 +6,47 @@ const TRANSFORMED_ATTR = 'data-yv-transformed';
 
 const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"'»›]/;
 
+const HTML_NAMESPACE = 'http://www.w3.org/1999/xhtml';
+
 const ALLOWED_TAGS = new Set([
-  'DIV',
-  'P',
-  'SPAN',
-  'SUP',
-  'SUB',
-  'EM',
-  'STRONG',
-  'I',
-  'B',
-  'SMALL',
-  'BR',
-  'SECTION',
-  'TABLE',
-  'THEAD',
-  'TBODY',
-  'TR',
-  'TD',
-  'TH',
+  'div',
+  'p',
+  'span',
+  'sup',
+  'sub',
+  'em',
+  'strong',
+  'i',
+  'b',
+  'small',
+  'br',
+  'section',
+  'table',
+  'thead',
+  'tbody',
+  'tr',
+  'td',
+  'th',
 ]);
 
 const DROP_ENTIRELY_TAGS = new Set([
-  'SCRIPT',
-  'STYLE',
-  'IFRAME',
-  'OBJECT',
-  'EMBED',
-  'SVG',
-  'MATH',
-  'FORM',
-  'INPUT',
-  'BUTTON',
-  'TEXTAREA',
-  'SELECT',
-  'TEMPLATE',
-  'LINK',
-  'META',
-  'BASE',
-  'NOSCRIPT',
+  'script',
+  'style',
+  'iframe',
+  'object',
+  'embed',
+  'svg',
+  'math',
+  'form',
+  'input',
+  'button',
+  'textarea',
+  'select',
+  'template',
+  'link',
+  'meta',
+  'base',
+  'noscript',
 ]);
 
 const ALLOWED_ATTRS = new Set(['class', 'v', 'colspan', 'rowspan', 'dir', 'usfm']);
@@ -55,9 +57,13 @@ const FOOTNOTE_CONTENT_ATTR = 'data-verse-footnote-content';
 
 const FOOTNOTE_DATA_ATTRS = new Set([FOOTNOTE_ANCHOR_ATTR, FOOTNOTE_CONTENT_ATTR]);
 
-// SDK-internal names a passage must not be able to plant. The transformed
-// marker stays so re-transforming output is idempotent; footnote content is
-// re-sanitized as HTML instead of trusted.
+type SanitizeMode = 'passage' | 'footnote';
+
+// Other data-* attributes stay because consumers style and query them (for
+// example data-slot), and they carry no behavior. SDK-internal names are
+// reserved so a passage cannot plant them. The transformed marker stays so
+// re-transforming output is idempotent; footnote content is re-sanitized as
+// HTML instead of trusted, and cannot nest further footnote anchors.
 function isAllowedDataAttr(name: string, mode: SanitizeMode): boolean {
   if (!name.startsWith('data-')) return false;
   if (name === FOOTNOTE_KEY_ATTR) return false;
@@ -67,8 +73,6 @@ function isAllowedDataAttr(name: string, mode: SanitizeMode): boolean {
   }
   return true;
 }
-
-type SanitizeMode = 'passage' | 'footnote';
 
 export type TextDirection = 'ltr' | 'rtl';
 
@@ -85,21 +89,16 @@ function resolveTextDirection(roots: Element[]): TextDirection | undefined {
   return undefined;
 }
 
-function sanitizeBibleHtmlDocument(
-  doc: Document,
-  options: TransformBibleHtmlOptions,
-  mode: SanitizeMode = 'passage',
-): void {
-  const root = doc.body ?? doc.documentElement;
+function sanitizeBibleHtmlTree(root: ParentNode, mode: SanitizeMode): void {
   for (const el of Array.from(root.querySelectorAll('*'))) {
-    const tag = el.tagName;
-
-    if (DROP_ENTIRELY_TAGS.has(tag)) {
+    // SVG and MathML elements keep lowercase tag names and their own parsing
+    // rules, so anything outside the HTML namespace is dropped with its text.
+    if (el.namespaceURI !== HTML_NAMESPACE || DROP_ENTIRELY_TAGS.has(el.localName)) {
       el.remove();
       continue;
     }
 
-    if (!ALLOWED_TAGS.has(tag)) {
+    if (!ALLOWED_TAGS.has(el.localName)) {
       el.replaceWith(...Array.from(el.childNodes));
       continue;
     }
@@ -118,17 +117,21 @@ function sanitizeBibleHtmlDocument(
 
     const footnoteContent = el.getAttribute(FOOTNOTE_CONTENT_ATTR);
     if (footnoteContent !== null) {
-      el.setAttribute(FOOTNOTE_CONTENT_ATTR, sanitizeFootnoteHtml(footnoteContent, options));
+      el.setAttribute(
+        FOOTNOTE_CONTENT_ATTR,
+        sanitizeFootnoteHtml(footnoteContent, el.ownerDocument),
+      );
     }
   }
 }
 
-// Footnote content is rendered as HTML by consumers, so an attribute value
-// that arrived in input must pass the same allowlist as passage markup.
-function sanitizeFootnoteHtml(html: string, options: TransformBibleHtmlOptions): string {
-  const doc = options.parseHtml(html);
-  sanitizeBibleHtmlDocument(doc, options, 'footnote');
-  return options.serializeHtml(doc);
+// Footnote content is rendered as HTML by consumers, so it must pass the same
+// allowlist as passage markup. An inert template avoids a full parse per note.
+function sanitizeFootnoteHtml(html: string, doc: Document): string {
+  const template = doc.createElement('template');
+  template.innerHTML = html;
+  sanitizeBibleHtmlTree(template.content, 'footnote');
+  return template.innerHTML;
 }
 
 /**
@@ -151,6 +154,12 @@ export type TransformBibleHtmlOptions = {
  *
  * Consumers can access verse context by walking up from a footnote anchor
  * to `.closest('.yv-v[v]')`.
+ *
+ * Sanitization: `html` and every `data-verse-footnote-content` value pass the
+ * same tag and attribute allowlist, so both are safe to inject as HTML. Input
+ * `data-footnote-key` and `data-yv-*` attributes (except `data-yv-transformed`)
+ * are removed; footnote content also has no `data-verse-footnote`,
+ * `data-verse-footnote-content`, or `data-yv-transformed` attributes.
  */
 export type TransformedBibleHtml = {
   /** The transformed HTML with footnotes replaced by marker elements */
@@ -329,7 +338,7 @@ function replaceFootnotesWithAnchors(doc: Document, footnotes: Element[]): void 
 
     const anchor = doc.createElement('span');
     anchor.setAttribute(FOOTNOTE_ANCHOR_ATTR, key);
-    anchor.setAttribute(FOOTNOTE_CONTENT_ATTR, fn.innerHTML);
+    anchor.setAttribute(FOOTNOTE_CONTENT_ATTR, sanitizeFootnoteHtml(fn.innerHTML, doc));
     fn.replaceWith(anchor);
   }
 }
@@ -382,6 +391,13 @@ function fixIrregularTables(doc: Document): void {
  * Verse context is available by walking up from a footnote anchor:
  * `anchor.closest('.yv-v[v]')` returns the verse wrapper (null for intro footnotes).
  *
+ * Sanitization: input is treated as untrusted. Disallowed tags, SVG/MathML,
+ * `on*` handlers, and non-allowlisted attributes are removed. Footnote content
+ * already present in input (`data-verse-footnote-content`) is sanitized the same
+ * way, so the output and its footnote content are safe to inject as HTML. Input
+ * `data-footnote-key` and `data-yv-*` attributes (except `data-yv-transformed`)
+ * are removed. Other `data-*` attributes are kept.
+ *
  * @param html - The raw Bible HTML from the YouVersion API
  * @param options - DOM adapter options for parsing and serializing HTML
  * @returns The transformed HTML
@@ -404,7 +420,7 @@ export function transformBibleHtml(
 ): TransformedBibleHtml {
   const doc = options.parseHtml(html);
 
-  sanitizeBibleHtmlDocument(doc, options);
+  sanitizeBibleHtmlTree(doc.body ?? doc.documentElement, 'passage');
 
   // Only trust the marker when every top-level element carries it. A nested or
   // partially-marked fragment (transformed HTML concatenated with raw HTML, or

@@ -4,6 +4,20 @@
 import { describe, it, expect } from 'vitest';
 import { transformBibleHtml, transformBibleHtmlForBrowser } from './bible-html-transformer';
 
+function parse(html: string): Document {
+  return new DOMParser().parseFromString(html, 'text/html');
+}
+
+function toAttr(html: string): string {
+  return html.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function footnoteContent(doc: Document, key: string): string | null | undefined {
+  return doc
+    .querySelector(`[data-verse-footnote="${key}"]`)
+    ?.getAttribute('data-verse-footnote-content');
+}
+
 function createAdapters() {
   return {
     parseHtml: (html: string) => new DOMParser().parseFromString(html, 'text/html'),
@@ -445,58 +459,62 @@ describe('transformBibleHtml - sanitization', () => {
     expect(result.html).toContain('data-custom="value"');
   });
 
-  it('should strip SDK-internal data attributes from input', () => {
-    const html = '<div data-footnote-key="1" data-yv-sdk="" data-yv-shadow-host="">Content</div>';
-    const result = transformBibleHtml(html, createAdapters());
+  it('should sanitize planted footnote content and strip reserved attributes from raw and transformed input', () => {
+    const raw = `<div class="p" data-footnote-key="1" data-yv-sdk="" data-yv-shadow-host="" data-slot="keep"><span class="yv-v" v="1"></span>Text<span data-verse-footnote="1" data-verse-footnote-content="${toAttr('<img src=x onerror=alert(1)>Planted')}"></span></div>`;
+    const rawDoc = parse(transformBibleHtml(raw, createAdapters()).html);
+    const rawRoot = rawDoc.body.firstElementChild;
 
-    expect(result.html).not.toContain('data-footnote-key');
-    expect(result.html).not.toContain('data-yv-sdk');
-    expect(result.html).not.toContain('data-yv-shadow-host');
-    expect(result.html).toContain('Content');
+    expect(footnoteContent(rawDoc, '1')).toBe('Planted');
+    expect(rawRoot?.hasAttribute('data-footnote-key')).toBe(false);
+    expect(rawRoot?.hasAttribute('data-yv-sdk')).toBe(false);
+    expect(rawRoot?.hasAttribute('data-yv-shadow-host')).toBe(false);
+    expect(rawRoot?.getAttribute('data-slot')).toBe('keep');
+    expect(rawRoot?.hasAttribute('data-yv-transformed')).toBe(true);
+
+    const plantedNote =
+      '<span class="ft" onclick="alert(1)" data-yv-transformed="" data-slot="n">Note</span><script>alert(1)</script><img src=x onerror=alert(1)><span data-verse-footnote="2" data-verse-footnote-content="x" data-footnote-key="2">Nested</span>';
+    const transformed = `<div data-yv-transformed=""><span class="yv-v" v="1">Text<span data-verse-footnote="1" data-verse-footnote-content="${toAttr(plantedNote)}"></span></span></div>`;
+    const transformedDoc = parse(transformBibleHtml(transformed, createAdapters()).html);
+
+    expect(footnoteContent(transformedDoc, '1')).toBe(
+      '<span class="ft" data-slot="n">Note</span><span>Nested</span>',
+    );
+    expect(transformedDoc.querySelectorAll('[data-verse-footnote]')).toHaveLength(1);
   });
 
-  it('should sanitize planted data-verse-footnote-content in raw input', () => {
-    const html =
-      '<div class="p"><span data-verse-footnote="1" data-verse-footnote-content="&lt;img src=x onerror=alert(1)&gt;"></span></div>';
-    const result = transformBibleHtml(html, createAdapters());
+  it('should block footnote content bypasses and stay stable when transformed again', () => {
+    const bypasses: Array<[payload: string, expected: string]> = [
+      ['<svg><script>alert(1)</script></svg>Safe', 'Safe'],
+      ['<math><mtext><img src=x onerror=alert(1)></mtext><mi>x</mi></math>Safe', 'Safe'],
+      ['<span ONCLICK="alert(1)" OnMouseOver="alert(1)">Safe</span>', '<span>Safe</span>'],
+      ['<span &#111;nclick="alert(1)">Safe</span>', '<span>Safe</span>'],
+      ['&lt;img src=x onerror=alert(1)&gt;', '&lt;img src=x onerror=alert(1)&gt;'],
+      ['<a href="javascript:alert(1)">Safe</a>', 'Safe'],
+      [
+        '<span class="ft" style="background:url(javascript:alert(1))" href="javascript:alert(1)" src="data:text/html,x">Safe</span>',
+        '<span class="ft">Safe</span>',
+      ],
+      ['<img src="data:image/svg+xml,<svg onload=alert(1)>">Safe', 'Safe'],
+    ];
 
-    expect(result.html).not.toContain('onerror');
-    expect(result.html).not.toContain('img');
-    expect(result.html).not.toContain('&lt;img');
-  });
+    for (const [payload, expected] of bypasses) {
+      const html = `<div data-yv-transformed=""><span data-verse-footnote="1" data-verse-footnote-content="${toAttr(payload)}"></span></div>`;
+      const first = transformBibleHtml(html, createAdapters());
+      const second = transformBibleHtml(first.html, createAdapters());
 
-  it('should sanitize data-verse-footnote-content in already-transformed input', () => {
-    const html =
-      '<div data-yv-transformed=""><span class="yv-v" v="1">Text<span data-verse-footnote="1" data-verse-footnote-content="&lt;span class=&quot;ft&quot; onclick=&quot;alert(1)&quot;&gt;Note&lt;/span&gt;&lt;script&gt;alert(1)&lt;/script&gt;&lt;img src=x onerror=alert(1)&gt;"></span></span></div>';
-    const result = transformBibleHtml(html, createAdapters());
+      expect(footnoteContent(parse(first.html), '1'), payload).toBe(expected);
+      expect(second.html, payload).toBe(first.html);
+    }
 
-    const doc = new DOMParser().parseFromString(result.html, 'text/html');
-    const content = doc
-      .querySelector('[data-verse-footnote="1"]')
-      ?.getAttribute('data-verse-footnote-content');
-    expect(content).toBe('<span class="ft">Note</span>');
-  });
-
-  it('should drop footnote data attributes nested inside footnote content', () => {
-    const nested = '<span data-verse-footnote="2" data-verse-footnote-content="x">Note</span>';
-    const html = `<div data-yv-transformed=""><span data-verse-footnote="1" data-verse-footnote-content="${nested.replace(/"/g, '&quot;').replace(/</g, '&lt;')}"></span></div>`;
-    const result = transformBibleHtml(html, createAdapters());
-
-    const doc = new DOMParser().parseFromString(result.html, 'text/html');
-    const content = doc
-      .querySelector('[data-verse-footnote="1"]')
-      ?.getAttribute('data-verse-footnote-content');
-    expect(content).toBe('<span>Note</span>');
-  });
-
-  it('should keep transformer-generated footnote content intact on re-transform', () => {
-    const html =
-      '<div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text<span class="yv-n f"><span class="fr">1:1 </span><span class="ft">A <em>note</em></span></span>.</div>';
-    const first = transformBibleHtml(html, createAdapters());
+    const genuine =
+      '<div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text<span class="yv-n f"><span class="fr">1:1 </span><span class="ft">A <em>note</em> <span data-verse-footnote="9">n</span></span></span>.</div>';
+    const first = transformBibleHtml(genuine, createAdapters());
     const second = transformBibleHtml(first.html, createAdapters());
 
+    expect(footnoteContent(parse(first.html), '1')).toBe(
+      '<span class="fr">1:1 </span><span class="ft">A <em>note</em> <span>n</span></span>',
+    );
     expect(second.html).toBe(first.html);
-    expect(first.html).toContain('data-verse-footnote="1"');
   });
 
   it('should preserve dir attribute for RTL support', () => {
