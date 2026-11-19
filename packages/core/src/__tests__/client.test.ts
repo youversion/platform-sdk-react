@@ -138,6 +138,10 @@ describe('ApiClient contracts', () => {
           'https://test_placeholder.youversion.com/no-content',
           () => new HttpResponse(null, { status: 204 }),
         ),
+        http.get(
+          'https://test_placeholder.youversion.com/empty-success',
+          () => new HttpResponse(null, { status: 200 }),
+        ),
         http.get('https://test_placeholder.youversion.com/json-string', () =>
           HttpResponse.json(''),
         ),
@@ -150,9 +154,21 @@ describe('ApiClient contracts', () => {
       await expect(client.get('/no-content')).resolves.toBe('');
       await expect(client.getWithStatus('/no-content')).resolves.toEqual({
         data: '',
+        emptyBody: true,
         status: 204,
       });
+      await expect(client.get('/empty-success')).resolves.toBe('');
+      await expect(client.getWithStatus('/empty-success')).resolves.toEqual({
+        data: '',
+        emptyBody: true,
+        status: 200,
+      });
       await expect(client.get('/json-string')).resolves.toBe('');
+      await expect(client.getWithStatus('/json-string')).resolves.toEqual({
+        data: '',
+        emptyBody: false,
+        status: 200,
+      });
     } finally {
       if (process.env.INTEGRATION_TESTS) {
         server.resetHandlers();

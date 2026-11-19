@@ -10,7 +10,7 @@ type JsonPrimitive = string | number | boolean;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 type RequestData = Record<string, JsonValue>;
 type RequestHeaders = Record<string, string>;
-type ApiResponse<T> = Readonly<{ data: T; status: number }>;
+type ApiResponse<T> = Readonly<{ data: T; emptyBody: boolean; status: number }>;
 
 const HttpStatusCarrierSchema = object({
   status: z.number(),
@@ -153,16 +153,16 @@ export class ApiClient {
         if (!text) {
           // SAFETY: empty 2xx JSON bodies (DELETE 200 with no payload) are
           // treated as undefined for the caller-owned generic T.
-          return { data: undefined as T, status: response.status };
+          return { data: undefined as T, emptyBody: true, status: response.status };
         }
         // SAFETY: this client only decodes JSON text. Callers own T and parse
         // untrusted payloads with Zod at their boundary.
-        return { data: JSON.parse(text) as T, status: response.status };
+        return { data: JSON.parse(text) as T, emptyBody: false, status: response.status };
       } else {
         const text = await response.text();
         // SAFETY: non-JSON 2xx bodies are returned as raw text. Callers that
         // asked for T=string receive it; other T values are caller-owned.
-        return { data: text as T, status: response.status };
+        return { data: text as T, emptyBody: text.length === 0, status: response.status };
       }
     } catch (error) {
       clearTimeout(timeoutId);

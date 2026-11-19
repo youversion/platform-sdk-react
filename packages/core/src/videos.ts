@@ -101,7 +101,7 @@ export class VideosClient {
       query,
       { 'Accept-Language': parsedOptions.accept_language ?? 'en' },
     );
-    if (response.status === 204 || response.data === undefined) {
+    if (response.status === 204 || response.emptyBody) {
       return { data: [], next_page_token: null };
     }
     const body = response.data;

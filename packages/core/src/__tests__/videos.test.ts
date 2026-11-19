@@ -118,7 +118,7 @@ describe('VideosClient', () => {
     expect(video.id).toBe('52186');
   });
 
-  it('gets a full playlist with an explicit language and maps a no-catalog 204 to an empty page', async () => {
+  it('gets a full playlist and maps responses without a representation to an empty page', async () => {
     const videos = createVideosClient();
     const organizationId = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -163,6 +163,7 @@ describe('VideosClient', () => {
               next_page_token: '',
             });
           }
+          if (language === 'it') return new HttpResponse(null, { status: 200 });
           expect(language).toBe('de');
           return new HttpResponse(null, { status: 204 });
         },
@@ -193,6 +194,10 @@ describe('VideosClient', () => {
       next_page_token: '',
     });
     await expect(videos.getPlaylists(organizationId, { accept_language: 'de' })).resolves.toEqual({
+      data: [],
+      next_page_token: null,
+    });
+    await expect(videos.getPlaylists(organizationId, { accept_language: 'it' })).resolves.toEqual({
       data: [],
       next_page_token: null,
     });
