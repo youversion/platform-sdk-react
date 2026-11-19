@@ -445,6 +445,60 @@ describe('transformBibleHtml - sanitization', () => {
     expect(result.html).toContain('data-custom="value"');
   });
 
+  it('should strip SDK-internal data attributes from input', () => {
+    const html = '<div data-footnote-key="1" data-yv-sdk="" data-yv-shadow-host="">Content</div>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).not.toContain('data-footnote-key');
+    expect(result.html).not.toContain('data-yv-sdk');
+    expect(result.html).not.toContain('data-yv-shadow-host');
+    expect(result.html).toContain('Content');
+  });
+
+  it('should sanitize planted data-verse-footnote-content in raw input', () => {
+    const html =
+      '<div class="p"><span data-verse-footnote="1" data-verse-footnote-content="&lt;img src=x onerror=alert(1)&gt;"></span></div>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).not.toContain('onerror');
+    expect(result.html).not.toContain('img');
+    expect(result.html).not.toContain('&lt;img');
+  });
+
+  it('should sanitize data-verse-footnote-content in already-transformed input', () => {
+    const html =
+      '<div data-yv-transformed=""><span class="yv-v" v="1">Text<span data-verse-footnote="1" data-verse-footnote-content="&lt;span class=&quot;ft&quot; onclick=&quot;alert(1)&quot;&gt;Note&lt;/span&gt;&lt;script&gt;alert(1)&lt;/script&gt;&lt;img src=x onerror=alert(1)&gt;"></span></span></div>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    const content = doc
+      .querySelector('[data-verse-footnote="1"]')
+      ?.getAttribute('data-verse-footnote-content');
+    expect(content).toBe('<span class="ft">Note</span>');
+  });
+
+  it('should drop footnote data attributes nested inside footnote content', () => {
+    const nested = '<span data-verse-footnote="2" data-verse-footnote-content="x">Note</span>';
+    const html = `<div data-yv-transformed=""><span data-verse-footnote="1" data-verse-footnote-content="${nested.replace(/"/g, '&quot;').replace(/</g, '&lt;')}"></span></div>`;
+    const result = transformBibleHtml(html, createAdapters());
+
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    const content = doc
+      .querySelector('[data-verse-footnote="1"]')
+      ?.getAttribute('data-verse-footnote-content');
+    expect(content).toBe('<span>Note</span>');
+  });
+
+  it('should keep transformer-generated footnote content intact on re-transform', () => {
+    const html =
+      '<div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text<span class="yv-n f"><span class="fr">1:1 </span><span class="ft">A <em>note</em></span></span>.</div>';
+    const first = transformBibleHtml(html, createAdapters());
+    const second = transformBibleHtml(first.html, createAdapters());
+
+    expect(second.html).toBe(first.html);
+    expect(first.html).toContain('data-verse-footnote="1"');
+  });
+
   it('should preserve dir attribute for RTL support', () => {
     const html = '<div dir="rtl"><p class="p">Hebrew text</p></div>';
     const result = transformBibleHtml(html, createAdapters());

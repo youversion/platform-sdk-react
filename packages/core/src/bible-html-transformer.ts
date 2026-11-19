@@ -49,6 +49,27 @@ const DROP_ENTIRELY_TAGS = new Set([
 
 const ALLOWED_ATTRS = new Set(['class', 'v', 'colspan', 'rowspan', 'dir', 'usfm']);
 
+const FOOTNOTE_ANCHOR_ATTR = 'data-verse-footnote';
+
+const FOOTNOTE_CONTENT_ATTR = 'data-verse-footnote-content';
+
+const FOOTNOTE_DATA_ATTRS = new Set([FOOTNOTE_ANCHOR_ATTR, FOOTNOTE_CONTENT_ATTR]);
+
+// SDK-internal names a passage must not be able to plant. The transformed
+// marker stays so re-transforming output is idempotent; footnote content is
+// re-sanitized as HTML instead of trusted.
+function isAllowedDataAttr(name: string, mode: SanitizeMode): boolean {
+  if (!name.startsWith('data-')) return false;
+  if (name === FOOTNOTE_KEY_ATTR) return false;
+  if (name.startsWith('data-yv-') && name !== TRANSFORMED_ATTR) return false;
+  if (mode === 'footnote' && (FOOTNOTE_DATA_ATTRS.has(name) || name === TRANSFORMED_ATTR)) {
+    return false;
+  }
+  return true;
+}
+
+type SanitizeMode = 'passage' | 'footnote';
+
 export type TextDirection = 'ltr' | 'rtl';
 
 function topLevelElements(doc: Document): Element[] {
@@ -64,7 +85,11 @@ function resolveTextDirection(roots: Element[]): TextDirection | undefined {
   return undefined;
 }
 
-function sanitizeBibleHtmlDocument(doc: Document): void {
+function sanitizeBibleHtmlDocument(
+  doc: Document,
+  options: TransformBibleHtmlOptions,
+  mode: SanitizeMode = 'passage',
+): void {
   const root = doc.body ?? doc.documentElement;
   for (const el of Array.from(root.querySelectorAll('*'))) {
     const tag = el.tagName;
@@ -86,11 +111,24 @@ function sanitizeBibleHtmlDocument(doc: Document): void {
         continue;
       }
 
-      if (!ALLOWED_ATTRS.has(name) && !name.startsWith('data-')) {
+      if (!ALLOWED_ATTRS.has(name) && !isAllowedDataAttr(name, mode)) {
         el.removeAttribute(attr.name);
       }
     }
+
+    const footnoteContent = el.getAttribute(FOOTNOTE_CONTENT_ATTR);
+    if (footnoteContent !== null) {
+      el.setAttribute(FOOTNOTE_CONTENT_ATTR, sanitizeFootnoteHtml(footnoteContent, options));
+    }
   }
+}
+
+// Footnote content is rendered as HTML by consumers, so an attribute value
+// that arrived in input must pass the same allowlist as passage markup.
+function sanitizeFootnoteHtml(html: string, options: TransformBibleHtmlOptions): string {
+  const doc = options.parseHtml(html);
+  sanitizeBibleHtmlDocument(doc, options, 'footnote');
+  return options.serializeHtml(doc);
 }
 
 /**
@@ -290,8 +328,8 @@ function replaceFootnotesWithAnchors(doc: Document, footnotes: Element[]): void 
     }
 
     const anchor = doc.createElement('span');
-    anchor.setAttribute('data-verse-footnote', key);
-    anchor.setAttribute('data-verse-footnote-content', fn.innerHTML);
+    anchor.setAttribute(FOOTNOTE_ANCHOR_ATTR, key);
+    anchor.setAttribute(FOOTNOTE_CONTENT_ATTR, fn.innerHTML);
     fn.replaceWith(anchor);
   }
 }
@@ -366,7 +404,7 @@ export function transformBibleHtml(
 ): TransformedBibleHtml {
   const doc = options.parseHtml(html);
 
-  sanitizeBibleHtmlDocument(doc);
+  sanitizeBibleHtmlDocument(doc, options);
 
   // Only trust the marker when every top-level element carries it. A nested or
   // partially-marked fragment (transformed HTML concatenated with raw HTML, or

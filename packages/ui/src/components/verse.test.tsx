@@ -367,6 +367,29 @@ describe('Verse.Html - Footnotes', () => {
     });
   });
 
+  it('should not render HTML planted in data-verse-footnote-content', async () => {
+    const plantedHtml =
+      '<div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text<span data-verse-footnote="1" data-verse-footnote-content="&lt;img src=x onerror=alert(1)&gt;Planted"></span></div>';
+
+    const { container } = render(<Verse.Html html={plantedHtml} renderNotes={true} />);
+
+    const footnoteButton = await waitFor(() => {
+      const button = container.querySelector('[data-verse-footnote="1"] button');
+      expect(button).not.toBeNull();
+      return requireHtmlButton(button);
+    });
+
+    await userEvent.click(footnoteButton);
+
+    await waitFor(() => {
+      const popover = document.body.querySelector('[role="dialog"]');
+      expect(popover).not.toBeNull();
+      expect(popover?.textContent).toContain('Planted');
+      expect(popover?.querySelector('img')).toBeNull();
+      expect(popover?.innerHTML).not.toContain('onerror');
+    });
+  });
+
   it('should use alphabetic markers beyond z in the popover list', async () => {
     const repeatedFootnotes = Array.from({ length: 27 }, () => {
       return '<span class="yv-n f"><span class="fr">1:1 </span><span class="ft">Footnote text</span></span>';
