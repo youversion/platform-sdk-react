@@ -16,6 +16,28 @@ function createSearchClient(): SearchClient {
 }
 
 describe('SearchClient.searchUnified', () => {
+  it('requests stable unified video hits as opaque ids', async () => {
+    const searchClient = createSearchClient();
+
+    server.use(
+      http.get(`https://${apiHost}/v1/search-unified`, ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.getAll('fields[]')).toEqual(['videos']);
+        return HttpResponse.json({
+          videos: [{ id: '52186' }, { id: '' }, { nope: true }],
+          did_you_mean: [],
+          search_instead_for: null,
+        });
+      }),
+    );
+
+    const result = await searchClient.searchUnified('faith', 111, 'en', {
+      fields: ['videos'],
+    });
+
+    expect(result.videos).toEqual([{ id: '52186' }]);
+  });
+
   it('requests images only, maps passage_id, and sends no paging params', async () => {
     const searchClient = createSearchClient();
 
@@ -47,6 +69,7 @@ describe('SearchClient.searchUnified', () => {
       verses: [],
       topics: [],
       images: [{ id: 'img-9', passageId: 'PSA.23.1' }],
+      videos: [],
       didYouMean: ['psalm'],
       searchInsteadFor: 'psalm 23',
     });
@@ -78,6 +101,7 @@ describe('SearchClient.searchUnified', () => {
       verses: [],
       topics: [{ id: null, text: 'hope', subtopics: [] }],
       images: [],
+      videos: [],
       didYouMean: [],
       searchInsteadFor: null,
     });
@@ -112,6 +136,7 @@ describe('SearchClient.searchUnified', () => {
       verses: [{ id: 'JHN.6.35' }],
       topics: [],
       images: [{ id: 'img-1', passageId: 'PSA.23.1' }],
+      videos: [],
       userIntent: 'topical',
       didYouMean: [],
       searchInsteadFor: null,
@@ -148,6 +173,7 @@ describe('SearchClient.searchUnified', () => {
       verses: [],
       topics: [{ id: 42, text: 'hope', subtopics: ['trust'] }],
       images: [],
+      videos: [],
       didYouMean: [],
       searchInsteadFor: null,
     });
@@ -180,6 +206,7 @@ describe('SearchClient.searchUnified', () => {
       verses: [],
       topics: [],
       images: [],
+      videos: [],
       didYouMean: [],
       searchInsteadFor: null,
     });
@@ -217,7 +244,7 @@ describe('SearchClient.searchUnified', () => {
         // @ts-expect-error - verifies runtime validation for unsafe JavaScript callers
         fields: ['nope'],
       }),
-    ).rejects.toThrow('Search field must be verses, topics, or images');
+    ).rejects.toThrow('Search field must be verses, topics, images, or videos');
     await expect(
       searchClient.searchUnified('faith', 111, 'en', {
         // @ts-expect-error - verifies runtime validation for unsafe JavaScript callers
@@ -275,6 +302,7 @@ describe('SearchClient.searchUnified', () => {
           { id: 'img-good', passageId: 'PSA.23.1' },
           { id: 'img-good-last', passageId: 'JHN.6.35' },
         ],
+        videos: [],
         didYouMean: [],
         searchInsteadFor: null,
       });
@@ -297,6 +325,7 @@ describe('SearchClient.searchUnified', () => {
       verses: [{ id: 'JHN.3.16' }],
       topics: [{ id: null, text: 'love', subtopics: [] }],
       images: [],
+      videos: [],
       userIntent: 'future-intent',
       didYouMean: [],
       searchInsteadFor: null,
@@ -349,6 +378,7 @@ describe('SearchClient.searchUnified', () => {
       verses: [{ id: 'JHN.3.16' }],
       topics: [{ id: null, text: 'love', subtopics: [] }],
       images: [{ id: 'img-love', passageId: 'JHN.3.16' }],
+      videos: [],
       didYouMean: [],
       searchInsteadFor: null,
     });
@@ -370,6 +400,7 @@ describe('SearchClient.searchUnified', () => {
       verses: [],
       topics: [],
       images: [],
+      videos: [],
       didYouMean: [],
       searchInsteadFor: null,
     });

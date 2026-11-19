@@ -1,6 +1,8 @@
 import * as z from 'zod/mini';
 import { object } from './object';
 import { parseUsfmReference } from '../usfm-reference';
+import { OrganizationIdSchema } from './organization';
+import { VideoSchema } from './video';
 
 export const MAX_SEARCH_QUERY_GRAPHEMES = 100;
 
@@ -228,12 +230,12 @@ export const SearchVersesOptionsSchema = object({
 
 export type SearchVersesOptions = z.infer<typeof SearchVersesOptionsSchema>;
 
-const SEARCH_UNIFIED_FIELDS = ['verses', 'topics', 'images'] as const;
+const SEARCH_UNIFIED_FIELDS = ['verses', 'topics', 'images', 'videos'] as const;
 
 export type SearchUnifiedField = (typeof SEARCH_UNIFIED_FIELDS)[number];
 
 const SearchUnifiedFieldSchema = z.enum(SEARCH_UNIFIED_FIELDS, {
-  error: 'Search field must be verses, topics, or images',
+  error: 'Search field must be verses, topics, images, or videos',
 });
 
 const SearchUnifiedFieldsSchema = z.pipe(
@@ -275,6 +277,15 @@ const SearchImageHitWireSchema = object({
 
 type SearchImageHitWire = z.infer<typeof SearchImageHitWireSchema>;
 
+/** Lightweight video hit. Resolve the opaque id with `VideosClient.getVideo`. */
+export const SearchVideoHitSchema = object({
+  id: z.string().check(z.minLength(1)),
+});
+
+export type SearchVideoHit = Readonly<z.infer<typeof SearchVideoHitSchema>>;
+
+const SearchVideoHitWireSchema = object({ id: z.string() });
+
 export const SearchUnifiedWireSchema = object({
   verses: z.optional(z.array(z.unknown())),
   topics: z.optional(z.array(z.unknown())),
@@ -282,6 +293,7 @@ export const SearchUnifiedWireSchema = object({
   did_you_mean: z.optional(z.array(z.string())),
   search_instead_for: z.optional(z.nullable(z.string())),
   images: z.optional(z.array(z.unknown())),
+  videos: z.optional(z.array(z.unknown())),
 });
 
 export type SearchUnifiedWire = z.infer<typeof SearchUnifiedWireSchema>;
@@ -292,6 +304,8 @@ export const SearchUnifiedResponseSchema = object({
   topics: z.array(SearchTopicSchema),
   /** Image hits. Empty id or invalid `passageId` entries are removed. */
   images: z.array(SearchImageHitSchema),
+  /** Video hits containing only opaque ids. */
+  videos: z.array(SearchVideoHitSchema),
   /** Set only when the API returns a non-null user intent. */
   userIntent: z.optional(z.string()),
   didYouMean: z.array(z.string()),
@@ -334,6 +348,37 @@ export const SearchImagesOptionsSchema = object({
 
 export type SearchImagesOptions = z.infer<typeof SearchImagesOptionsSchema>;
 
+export const SearchVideosOptionsSchema = object({
+  /** Publisher filters combined with OR. */
+  organizationIds: z.optional(z.readonly(z.array(OrganizationIdSchema).check(z.minLength(1)))),
+  /** Language preference. Defaults to English. */
+  acceptLanguage: z.optional(z.string().check(z.minLength(1))),
+  pageSize: z.optional(z.int().check(z.gte(1), z.lte(99))),
+  pageToken: z.optional(z.string().check(z.minLength(1))),
+});
+
+export type SearchVideosOptions = z.infer<typeof SearchVideosOptionsSchema>;
+
+export const SearchVideosWireSchema = object({
+  videos: z.array(VideoSchema),
+  user_intent: z.nullable(z.string()),
+  did_you_mean: z.array(z.string()),
+  search_instead_for: z.nullable(z.string()),
+  next_page_token: z.optional(z.nullable(z.string())),
+});
+
+export type SearchVideosWire = z.infer<typeof SearchVideosWireSchema>;
+
+export const SearchVideosResponseSchema = object({
+  videos: z.array(VideoSchema),
+  userIntent: z.optional(z.string()),
+  didYouMean: z.array(z.string()),
+  searchInsteadFor: z.nullable(z.string()),
+  nextPageToken: z.nullable(z.string()),
+});
+
+export type SearchVideosResponse = Readonly<z.infer<typeof SearchVideosResponseSchema>>;
+
 export const SearchImagesWireSchema = object({
   images: z.array(z.unknown()),
   next_page_token: z.optional(z.nullable(z.string())),
@@ -373,6 +418,10 @@ export function toSearchUnifiedResponse(wire: SearchUnifiedWire): SearchUnifiedR
       return [toSearchTopic(parsed.data)];
     }),
     images: searchImageHits(wire.images ?? []),
+    videos: (wire.videos ?? []).flatMap((hit) => {
+      const parsed = SearchVideoHitWireSchema.safeParse(hit);
+      return parsed.success && parsed.data.id.length > 0 ? [parsed.data] : [];
+    }),
     didYouMean: wire.did_you_mean ?? [],
     searchInsteadFor: wire.search_instead_for ?? null,
   };

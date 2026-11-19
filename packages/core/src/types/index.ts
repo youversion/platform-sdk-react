@@ -41,11 +41,24 @@ export type {
   SearchVerseHit,
   SearchVersesOptions,
   SearchVersesResponse,
+  SearchVideosOptions,
+  SearchVideosResponse,
+  SearchVideoHit,
 } from '../schemas/search';
 export type { Collection } from '../schemas/collection';
 export type { Organization, OrganizationAddress } from '../schemas/organization';
 export type { VerseImage, GetImagesOptions } from '../schemas/image';
-export type { Video, VideoPlaybackSource, VideoThumbnail } from '../schemas/video';
+export type {
+  GetVideoOptions,
+  GetPlaylistOptions,
+  GetPlaylistsOptions,
+  Video,
+  VideoPlaylist,
+  VideoPlaylistField,
+  VideoPlaybackSource,
+  VideoThumbnail,
+  VideoThumbnailSize,
+} from '../schemas/video';
 export type { Font, FontVariant, FontSource } from '../schemas/font';
 export type { License } from '../schemas/license';
 export type { AppSummary } from '../schemas/app';

@@ -32,14 +32,14 @@ export type VideoThumbnail = Readonly<z.infer<typeof VideoThumbnailSchema>>;
 
 /** A dark-launched video resource approved for Platform consumers. */
 export const VideoSchema = object({
-  /** Video identifier. */
-  id: z.int(),
+  /** Opaque video identifier. Pass it to `VideosClient.getVideo` unchanged. */
+  id: z.string(),
   /** Video title. */
   title: z.optional(z.nullable(z.string())),
   /** Video description. */
   description: z.optional(z.nullable(z.string())),
-  /** Bible references associated with the video (e.g., ["1SA.17.45"]). */
-  references: z.optional(z.nullable(z.array(z.string()))),
+  /** Bible passage associated with the video (e.g., `1SA.17.45`). */
+  passage_id: z.optional(z.nullable(z.string())),
   /** BCP 47 language tag for the video. */
   language_tag: z.optional(z.nullable(z.string())),
   /** Runtime in seconds. */
@@ -57,3 +57,107 @@ export const VideoSchema = object({
 });
 
 export type Video = Readonly<z.infer<typeof VideoSchema>>;
+
+/** Opaque video id. Blank rejected; value otherwise sent unchanged (no trim). */
+export const VideoIdSchema = z.string().check(
+  z.minLength(1, 'Video ID must be a non-empty string'),
+  z.refine((value) => value.trim().length > 0, 'Video ID must be a non-empty string'),
+);
+
+/** Supported thumbnail renditions. Omit the option for the full-size image. */
+export const VideoThumbnailSizeSchema = z.enum(['thumb', 'card', 'full']);
+
+export type VideoThumbnailSize = z.infer<typeof VideoThumbnailSizeSchema>;
+
+export const GetVideoOptionsSchema = object({
+  /** Language preference sent as `Accept-Language`. Omit to use the runtime's default. */
+  acceptLanguage: z.optional(z.string().check(z.minLength(1))),
+  /** Requested thumbnail rendition. Omit for the full-size image. */
+  thumbnailSize: z.optional(VideoThumbnailSizeSchema),
+});
+
+export type GetVideoOptions = z.infer<typeof GetVideoOptionsSchema>;
+
+/** A video playlist. Fields are optional because collection field selection can omit any field. */
+export const VideoPlaylistSchema = object({
+  /** Playlist identifier. */
+  id: z.optional(z.int()),
+  /** Localized playlist title. */
+  title: z.optional(z.string()),
+  /** Localized description, or null when the playlist has none. */
+  description: z.optional(z.nullable(z.string())),
+  /** Upstream playlist type. */
+  type: z.optional(z.string()),
+  /** Number of videos in the playlist. */
+  total: z.optional(z.int()),
+  /** Ordered opaque video ids. */
+  videos: z.optional(z.array(z.string())),
+});
+
+export type VideoPlaylist = Readonly<z.infer<typeof VideoPlaylistSchema>>;
+
+/** Full playlist wire shape used when field selection is not active. */
+export const VideoPlaylistFullSchema = object({
+  id: z.int(),
+  title: z.string(),
+  description: z.nullable(z.string()),
+  type: z.string(),
+  total: z.int(),
+  videos: z.array(z.string()),
+});
+
+export const VideoPlaylistFieldSchema = z.keyof(VideoPlaylistSchema);
+export type VideoPlaylistField = z.infer<typeof VideoPlaylistFieldSchema>;
+
+const PlaylistNextPageTokenSchema = z.pipe(
+  z.optional(z.nullable(z.string())),
+  z.transform((token): string | null => (token == null || token === '' ? null : token)),
+);
+
+export const VideoPlaylistCollectionSchema = object({
+  data: z.array(VideoPlaylistSchema),
+  next_page_token: PlaylistNextPageTokenSchema,
+});
+
+export const VideoPlaylistFullCollectionSchema = object({
+  data: z.array(VideoPlaylistFullSchema),
+  next_page_token: PlaylistNextPageTokenSchema,
+});
+
+const PLAYLIST_PAGE_SIZE_ERROR = 'Page size must be an integer from 1 to 99, or "*"';
+
+export const GetPlaylistsOptionsSchema = object({
+  fields: z.optional(z.array(VideoPlaylistFieldSchema).check(z.minLength(1))),
+  page_size: z.optional(
+    z.union([
+      z
+        .int({ error: PLAYLIST_PAGE_SIZE_ERROR })
+        .check(z.gte(1, PLAYLIST_PAGE_SIZE_ERROR), z.lte(99, PLAYLIST_PAGE_SIZE_ERROR)),
+      z.literal('*'),
+    ]),
+  ),
+  page_token: z.optional(z.string().check(z.minLength(1))),
+  accept_language: z.optional(z.string().check(z.minLength(1))),
+}).check(
+  z.refine(
+    (options) =>
+      options.page_size !== '*' ||
+      (options.fields !== undefined && options.fields.length >= 1 && options.fields.length <= 3),
+    {
+      error: 'page_size="*" requires 1-3 fields to be specified',
+      path: ['page_size', 'fields'],
+    },
+  ),
+);
+
+export type GetPlaylistsOptions = z.infer<typeof GetPlaylistsOptionsSchema>;
+
+export const GetPlaylistOptionsSchema = object({
+  accept_language: z.optional(z.string().check(z.minLength(1))),
+});
+
+export type GetPlaylistOptions = z.infer<typeof GetPlaylistOptionsSchema>;
+
+export const VideoPlaylistIdSchema = z
+  .int({ error: 'Playlist ID must be a positive integer' })
+  .check(z.positive('Playlist ID must be a positive integer'));

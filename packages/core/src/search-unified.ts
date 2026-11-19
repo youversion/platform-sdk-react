@@ -22,11 +22,11 @@ type SearchUnifiedQuery = {
 };
 
 /**
- * Searches verses and topics in one unpaginated request.
+ * Searches verses, topics, images, and lightweight video ids in one unpaginated request.
  * @param query Search text (1 to 100 graphemes).
  * @param versionId Bible version identifier (sent to the API as `bible_id`).
  * @param languageRanges Ordered language ranges (`en_US` is normalized to `en-us` on the wire).
- * @param options Optional `userIntent` and nonempty `fields` selection (`verses` or `topics`).
+ * @param options Optional `userIntent` and nonempty `fields` selection.
  */
 export async function searchUnified(
   client: ApiClient,
