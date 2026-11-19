@@ -75,9 +75,15 @@ export const GetVideoOptionsSchema = object({
 
 export type GetVideoOptions = z.infer<typeof GetVideoOptionsSchema>;
 
+const PLAYLIST_ID_ERROR = 'Playlist ID must be a 32-bit integer';
+
+export const VideoPlaylistIdSchema = z
+  .int({ error: PLAYLIST_ID_ERROR })
+  .check(z.gte(-2_147_483_648, PLAYLIST_ID_ERROR), z.lte(2_147_483_647, PLAYLIST_ID_ERROR));
+
 /** Full playlist wire shape used when field selection is not active. */
 const VideoPlaylistFields = {
-  id: z.int(),
+  id: VideoPlaylistIdSchema,
   title: z.string(),
   description: z.nullable(z.string()),
   type: z.string(),
@@ -146,9 +152,3 @@ export const GetPlaylistOptionsSchema = object({
 });
 
 export type GetPlaylistOptions = z.infer<typeof GetPlaylistOptionsSchema>;
-
-const PLAYLIST_ID_ERROR = 'Playlist ID must be a 32-bit integer';
-
-export const VideoPlaylistIdSchema = z
-  .int({ error: PLAYLIST_ID_ERROR })
-  .check(z.gte(-2_147_483_648, PLAYLIST_ID_ERROR), z.lte(2_147_483_647, PLAYLIST_ID_ERROR));

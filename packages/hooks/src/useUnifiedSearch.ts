@@ -54,9 +54,10 @@ function isUnifiedSearchInputReady(
 }
 
 /**
- * Reads one unpaginated snapshot of top verses, topics, and image hits.
+ * Reads one unpaginated snapshot of top verses, topics, image hits, and video hits.
  * Image selection requires backend support. Does not load suggestions or debounce.
  * Omit `fields` for all kinds, or provide a nonempty selection.
+ * Video hits contain opaque IDs that can be passed to `VideosClient.getVideo`.
  * `useBibleSearch` remains the separate, paginated verse-search flow.
  */
 export function useUnifiedSearch(

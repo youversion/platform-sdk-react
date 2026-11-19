@@ -251,6 +251,23 @@ describe('VideosClient', () => {
             return HttpResponse.json({ id: 3669 });
           },
         ),
+        http.get(`https://${apiHost}/v1/organizations/:organizationId/playlists`, ({ request }) => {
+          const pageToken = new URL(request.url).searchParams.get('page_token');
+          if (pageToken === 'null-body') return HttpResponse.json(null);
+          return HttpResponse.json({
+            data: [
+              {
+                id: 2_147_483_648,
+                title: 'Out of range',
+                description: null,
+                type: 'TEACHING_CLIPS',
+                total: 0,
+                videos: [],
+              },
+            ],
+            next_page_token: null,
+          });
+        }),
         http.get(`https://${apiHost}/v1/videos/missing`, () =>
           HttpResponse.json({ message: 'not found' }, { status: 404 }),
         ),
@@ -269,11 +286,22 @@ describe('VideosClient', () => {
         'Playlist ID must be a 32-bit integer',
       );
       // @ts-expect-error verifies runtime validation for unsafe JavaScript callers
-      await expect(videos.getPlaylists(organizationId, null)).rejects.toThrow();
+      await expect(videos.getPlaylists(organizationId, null)).rejects.toMatchObject({
+        name: '$ZodError',
+      });
       await expect(videos.getVideo('   ')).rejects.toThrow('Video ID must be a non-empty string');
       await expect(videos.getVideo('..')).rejects.toThrow('Video ID must not be a URL dot segment');
+      await expect(videos.getVideo('\ud800')).rejects.toThrow(
+        'Video ID must contain valid Unicode',
+      );
       expect(fetchSpy).not.toHaveBeenCalled();
 
+      await expect(
+        videos.getPlaylists(organizationId, { page_token: 'out-of-range' }),
+      ).rejects.toThrow('Unexpected playlists API response');
+      await expect(
+        videos.getPlaylists(organizationId, { page_token: 'null-body' }),
+      ).rejects.toThrow('Unexpected playlists API response');
       await expect(videos.getPlaylist(organizationId, 3669)).rejects.toThrow(
         'Unexpected playlists API response',
       );
