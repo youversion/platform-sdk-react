@@ -73,8 +73,12 @@ function revealExpandedBook(element: HTMLElement, usesConsumerScroll: boolean): 
   if (!list) return;
   revealElementWithinScrollContainer(element, list, 'start');
   const panel = list.closest<HTMLElement>('[data-slot="popover-content"]');
+  if (!panel) return;
   const firstChapter = element.querySelector('[data-slot="accordion-content"] button');
-  if (panel && firstChapter) revealElementWithinScrollContainer(firstChapter, panel);
+  if (firstChapter) revealElementWithinScrollContainer(firstChapter, panel);
+  // Preserve the book trigger when the panel cannot fit both targets.
+  const trigger = element.querySelector('[data-slot="accordion-trigger"]');
+  if (trigger) revealElementWithinScrollContainer(trigger, panel);
 }
 
 type TriggerElementProps = React.HTMLAttributes<HTMLButtonElement> & {

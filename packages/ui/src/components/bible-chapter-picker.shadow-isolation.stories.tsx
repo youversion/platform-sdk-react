@@ -229,8 +229,13 @@ export const PublicRootJourney: Story = {
     });
     const triggerStyle = getComputedStyle(trigger);
     const embeddedBorderRadius = triggerStyle.borderRadius;
-    await expect(triggerStyle.paddingBlockStart).toBe('8px');
-    await expect(triggerStyle.paddingInlineStart).toBe('16px');
+    const paddingUnit = trigger.ownerDocument.createElement('div');
+    paddingUnit.style.blockSize = '1rem';
+    root.append(paddingUnit);
+    const rem = Number.parseFloat(getComputedStyle(paddingUnit).blockSize);
+    paddingUnit.remove();
+    await expect(Number.parseFloat(triggerStyle.paddingBlockStart)).toBeCloseTo(rem / 2);
+    await expect(Number.parseFloat(triggerStyle.paddingInlineStart)).toBeCloseTo(rem);
     await expect(embeddedBorderRadius).not.toBe('0px');
 
     const hostileStyle = canvasElement.ownerDocument.createElement('style');
