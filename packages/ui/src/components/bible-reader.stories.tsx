@@ -237,33 +237,43 @@ export const SettingsCloseShowsFocusThroughToolbar: Story = {
   },
   render: (args) => (
     <BibleReader.Root {...args}>
-      <BibleReader.Toolbar />
+      <BibleReader.Toolbar search="none" />
     </BibleReader.Root>
   ),
   play: async ({ canvasElement }) => {
     const { root, reader } = await getReaderStory(canvasElement);
-    await userEvent.click(reader.getByRole('button', { name: /settings/i }));
+    const versionButton = await reader.findByRole('button', {
+      name: i18n.t('changeBibleVersionAriaLabel'),
+    });
+    const settingsButton = reader.getByRole('button', { name: i18n.t('settingsAriaLabel') });
+    versionButton.focus({ preventScroll: true });
+    const forwardKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      ? '{Alt>}{Tab}{/Alt}'
+      : '{Tab}';
+    const nativeKeyAvailable = await verifyNativeBrowserKey(forwardKey, async () => {
+      await expect(root.activeElement).toBe(settingsButton);
+      await expect(settingsButton.matches(':focus-visible')).toBe(true);
+    });
+    if (!nativeKeyAvailable) return;
+    await verifyNativeBrowserKey('{Enter}', () => undefined);
     const settings = await getReaderOverlay(root);
     const closeButton = await settings.findByRole('button', { name: i18n.t('close') });
     const dialog = closeButton.closest<HTMLElement>('[role="dialog"]');
     if (!dialog) throw new Error('reader settings dialog not rendered');
     dialog.focus({ preventScroll: true });
-    const nativeKeyAvailable = await verifyNativeBrowserKey('{Tab}', async () => {
+    await verifyNativeBrowserKey(forwardKey, async () => {
       await expect(root.activeElement).toBe(closeButton);
     });
-    if (!nativeKeyAvailable) return;
-    const focusedStyle = getComputedStyle(closeButton);
-    const focusedIndicator = {
-      boxShadow: focusedStyle.boxShadow,
-      outline: focusedStyle.outline,
-    };
-    await waitFor(async () => {
+    const focusedIndicator = await waitFor(async () => {
+      await expect(root.activeElement).toBe(closeButton);
+      await expect(closeButton.matches(':focus-visible')).toBe(true);
       const style = getComputedStyle(closeButton);
       await expect(style.boxShadow).toContain('inset');
       await expect(style.boxShadow).toContain('0px 0px 0px 3px');
       await expect(style.getPropertyValue('--tw-ring-color').trim()).toBe(
         style.getPropertyValue('--yv-ring').trim(),
       );
+      return { boxShadow: style.boxShadow, outline: style.outline };
     });
 
     await userEvent.click(settings.getByTestId('decrease-font-size'));
