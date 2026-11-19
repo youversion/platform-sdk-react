@@ -10,6 +10,7 @@ type JsonPrimitive = string | number | boolean;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 type RequestData = Record<string, JsonValue>;
 type RequestHeaders = Record<string, string>;
+type ApiResponse<T> = Readonly<{ data: T; status: number }>;
 
 const HttpStatusCarrierSchema = object({
   status: z.number(),
@@ -88,7 +89,7 @@ export class ApiClient {
   /**
    * Makes an HTTP request with timeout support
    */
-  private async request<T>(url: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(url: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
@@ -140,15 +141,6 @@ export class ApiClient {
         throw error;
       }
 
-      // Keep a no-content response distinct from a decoded JSON string. Without
-      // this sentinel, both HTTP 204 and a JSON payload of `""` become `''`, so
-      // callers cannot validate the malformed JSON value at their boundary.
-      if (response.status === 204) {
-        // SAFETY: HTTP 204 has no representation; undefined is the client's
-        // established no-data value for the caller-owned generic T.
-        return undefined as T;
-      }
-
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
         // A successful (2xx) response can legitimately carry an EMPTY body even
@@ -161,16 +153,16 @@ export class ApiClient {
         if (!text) {
           // SAFETY: empty 2xx JSON bodies (DELETE 200 with no payload) are
           // treated as undefined for the caller-owned generic T.
-          return undefined as T;
+          return { data: undefined as T, status: response.status };
         }
         // SAFETY: this client only decodes JSON text. Callers own T and parse
         // untrusted payloads with Zod at their boundary.
-        return JSON.parse(text) as T;
+        return { data: JSON.parse(text) as T, status: response.status };
       } else {
         const text = await response.text();
         // SAFETY: non-JSON 2xx bodies are returned as raw text. Callers that
         // asked for T=string receive it; other T values are caller-owned.
-        return text as T;
+        return { data: text as T, status: response.status };
       }
     } catch (error) {
       clearTimeout(timeoutId);
@@ -190,6 +182,20 @@ export class ApiClient {
    * @returns A promise resolving to the response data of type T.
    */
   async get<T>(path: string, params?: QueryParams, headers?: RequestHeaders): Promise<T> {
+    const url = `${this.baseURL}${path}${this.buildQueryString(params)}`;
+    const response = await this.request<T>(url, {
+      method: 'GET',
+      headers,
+    });
+    return response.data;
+  }
+
+  /** @internal GET variant for endpoint clients that must inspect a successful status. */
+  async getWithStatus<T>(
+    path: string,
+    params?: QueryParams,
+    headers?: RequestHeaders,
+  ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${path}${this.buildQueryString(params)}`;
     return this.request<T>(url, {
       method: 'GET',
@@ -214,11 +220,12 @@ export class ApiClient {
     headers?: RequestHeaders,
   ): Promise<T> {
     const url = `${this.baseURL}${path}${this.buildQueryString(params)}`;
-    return this.request<T>(url, {
+    const response = await this.request<T>(url, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
       headers,
     });
+    return response.data;
   }
 
   /**
@@ -232,9 +239,10 @@ export class ApiClient {
    */
   async delete<T>(path: string, params?: QueryParams, headers?: RequestHeaders): Promise<T> {
     const url = `${this.baseURL}${path}${this.buildQueryString(params)}`;
-    return this.request<T>(url, {
+    const response = await this.request<T>(url, {
       method: 'DELETE',
       headers,
     });
+    return response.data;
   }
 }

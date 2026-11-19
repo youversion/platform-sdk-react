@@ -96,14 +96,15 @@ export class VideosClient {
     if (parsedOptions.page_size !== undefined) query.page_size = parsedOptions.page_size;
     if (parsedOptions.page_token !== undefined) query.page_token = parsedOptions.page_token;
 
-    const body = await this.client.get<unknown>(
+    const response = await this.client.getWithStatus<unknown>(
       `/v1/organizations/${encodeURIComponent(id)}/playlists`,
       query,
       { 'Accept-Language': parsedOptions.accept_language ?? 'en' },
     );
-    if (body === undefined) {
+    if (response.status === 204 || response.data === undefined) {
       return { data: [], next_page_token: null };
     }
+    const body = response.data;
     const parsed = (
       parsedOptions.fields === undefined
         ? VideoPlaylistFullCollectionSchema

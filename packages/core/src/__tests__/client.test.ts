@@ -130,7 +130,7 @@ describe('ApiClient contracts', () => {
     }
   });
 
-  it('keeps HTTP 204 distinct from a decoded empty JSON string', async () => {
+  it('exposes successful status without changing the legacy body-only result', async () => {
     if (process.env.INTEGRATION_TESTS) server.listen();
     try {
       server.use(
@@ -147,7 +147,11 @@ describe('ApiClient contracts', () => {
         appKey: 'test-app',
       });
 
-      await expect(client.get('/no-content')).resolves.toBeUndefined();
+      await expect(client.get('/no-content')).resolves.toBe('');
+      await expect(client.getWithStatus('/no-content')).resolves.toEqual({
+        data: '',
+        status: 204,
+      });
       await expect(client.get('/json-string')).resolves.toBe('');
     } finally {
       if (process.env.INTEGRATION_TESTS) {
