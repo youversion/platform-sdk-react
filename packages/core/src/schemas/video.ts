@@ -59,10 +59,9 @@ export const VideoSchema = object({
 export type Video = Readonly<z.infer<typeof VideoSchema>>;
 
 /** Opaque video id. Blank rejected; value otherwise sent unchanged (no trim). */
-export const VideoIdSchema = z.string().check(
-  z.minLength(1, 'Video ID must be a non-empty string'),
-  z.refine((value) => value.trim().length > 0, 'Video ID must be a non-empty string'),
-);
+export const VideoIdSchema = z
+  .string()
+  .check(z.refine((value) => value.trim().length > 0, 'Video ID must be a non-empty string'));
 
 /** Supported thumbnail renditions. Omit the option for the full-size image. */
 export const VideoThumbnailSizeSchema = z.enum(['thumb', 'card', 'full']);
@@ -78,33 +77,35 @@ export const GetVideoOptionsSchema = object({
 
 export type GetVideoOptions = z.infer<typeof GetVideoOptionsSchema>;
 
-/** A video playlist. Fields are optional because collection field selection can omit any field. */
-export const VideoPlaylistSchema = object({
-  /** Playlist identifier. */
-  id: z.optional(z.int()),
-  /** Localized playlist title. */
-  title: z.optional(z.string()),
-  /** Localized description, or null when the playlist has none. */
-  description: z.optional(z.nullable(z.string())),
-  /** Upstream playlist type. */
-  type: z.optional(z.string()),
-  /** Number of videos in the playlist. */
-  total: z.optional(z.int()),
-  /** Ordered opaque video ids. */
-  videos: z.optional(z.array(z.string())),
-});
-
-export type VideoPlaylist = Readonly<z.infer<typeof VideoPlaylistSchema>>;
-
 /** Full playlist wire shape used when field selection is not active. */
-export const VideoPlaylistFullSchema = object({
+const VideoPlaylistFields = {
   id: z.int(),
   title: z.string(),
   description: z.nullable(z.string()),
   type: z.string(),
   total: z.int(),
   videos: z.array(z.string()),
+};
+
+export const VideoPlaylistFullSchema = object(VideoPlaylistFields);
+
+/** A video playlist. Fields are optional because collection field selection can omit any field. */
+export const VideoPlaylistSchema = object({
+  /** Playlist identifier. */
+  id: z.optional(VideoPlaylistFields.id),
+  /** Localized playlist title. */
+  title: z.optional(VideoPlaylistFields.title),
+  /** Localized description, or null when the playlist has none. */
+  description: z.optional(VideoPlaylistFields.description),
+  /** Upstream playlist type. */
+  type: z.optional(VideoPlaylistFields.type),
+  /** Number of videos in the playlist. */
+  total: z.optional(VideoPlaylistFields.total),
+  /** Ordered opaque video ids. */
+  videos: z.optional(VideoPlaylistFields.videos),
 });
+
+export type VideoPlaylist = Readonly<z.infer<typeof VideoPlaylistSchema>>;
 
 export const VideoPlaylistFieldSchema = z.keyof(VideoPlaylistSchema);
 export type VideoPlaylistField = z.infer<typeof VideoPlaylistFieldSchema>;
@@ -138,17 +139,7 @@ export const GetPlaylistsOptionsSchema = object({
   ),
   page_token: z.optional(z.string().check(z.minLength(1))),
   accept_language: z.optional(z.string().check(z.minLength(1))),
-}).check(
-  z.refine(
-    (options) =>
-      options.page_size !== '*' ||
-      (options.fields !== undefined && options.fields.length >= 1 && options.fields.length <= 3),
-    {
-      error: 'page_size="*" requires 1-3 fields to be specified',
-      path: ['page_size', 'fields'],
-    },
-  ),
-);
+});
 
 export type GetPlaylistsOptions = z.infer<typeof GetPlaylistsOptionsSchema>;
 

@@ -1,11 +1,11 @@
 import type { ApiClient } from './client';
 import {
-  SearchTextQuerySchema,
   SearchVideosOptionsSchema,
   SearchVideosWireSchema,
   type SearchVideosOptions,
   type SearchVideosResponse,
-} from './schemas/search';
+} from './schemas/search-videos';
+import { SearchTextQuerySchema } from './schemas/search';
 import { resolveVideoThumbnail } from './video-thumbnail';
 
 export type { SearchVideosOptions };

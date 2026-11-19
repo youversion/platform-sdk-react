@@ -41,10 +41,9 @@ export type {
   SearchVerseHit,
   SearchVersesOptions,
   SearchVersesResponse,
-  SearchVideosOptions,
-  SearchVideosResponse,
   SearchVideoHit,
 } from '../schemas/search';
+export type { SearchVideosOptions, SearchVideosResponse } from '../schemas/search-videos';
 export type { Collection } from '../schemas/collection';
 export type { Organization, OrganizationAddress } from '../schemas/organization';
 export type { VerseImage, GetImagesOptions } from '../schemas/image';

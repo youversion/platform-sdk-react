@@ -11,8 +11,8 @@ import type {
   SearchTopicsResponse,
   SearchUnifiedResponse,
   SearchVersesResponse,
-  SearchVideosResponse,
 } from './schemas/search';
+import type { SearchVideosResponse } from './schemas/search-videos';
 
 export type { SearchImagesOptions, SearchUnifiedOptions, SearchVersesOptions, SearchVideosOptions };
 

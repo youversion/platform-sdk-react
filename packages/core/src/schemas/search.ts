@@ -1,8 +1,6 @@
 import * as z from 'zod/mini';
 import { object } from './object';
 import { parseUsfmReference } from '../usfm-reference';
-import { OrganizationIdSchema } from './organization';
-import { VideoSchema } from './video';
 
 export const MAX_SEARCH_QUERY_GRAPHEMES = 100;
 
@@ -284,8 +282,6 @@ export const SearchVideoHitSchema = object({
 
 export type SearchVideoHit = Readonly<z.infer<typeof SearchVideoHitSchema>>;
 
-const SearchVideoHitWireSchema = object({ id: z.string() });
-
 export const SearchUnifiedWireSchema = object({
   verses: z.optional(z.array(z.unknown())),
   topics: z.optional(z.array(z.unknown())),
@@ -348,37 +344,6 @@ export const SearchImagesOptionsSchema = object({
 
 export type SearchImagesOptions = z.infer<typeof SearchImagesOptionsSchema>;
 
-export const SearchVideosOptionsSchema = object({
-  /** Publisher filters combined with OR. */
-  organizationIds: z.optional(z.readonly(z.array(OrganizationIdSchema).check(z.minLength(1)))),
-  /** Language preference. Defaults to English. */
-  acceptLanguage: z.optional(z.string().check(z.minLength(1))),
-  pageSize: z.optional(z.int().check(z.gte(1), z.lte(99))),
-  pageToken: z.optional(z.string().check(z.minLength(1))),
-});
-
-export type SearchVideosOptions = z.infer<typeof SearchVideosOptionsSchema>;
-
-export const SearchVideosWireSchema = object({
-  videos: z.array(VideoSchema),
-  user_intent: z.nullable(z.string()),
-  did_you_mean: z.array(z.string()),
-  search_instead_for: z.nullable(z.string()),
-  next_page_token: z.optional(z.nullable(z.string())),
-});
-
-export type SearchVideosWire = z.infer<typeof SearchVideosWireSchema>;
-
-export const SearchVideosResponseSchema = object({
-  videos: z.array(VideoSchema),
-  userIntent: z.optional(z.string()),
-  didYouMean: z.array(z.string()),
-  searchInsteadFor: z.nullable(z.string()),
-  nextPageToken: z.nullable(z.string()),
-});
-
-export type SearchVideosResponse = Readonly<z.infer<typeof SearchVideosResponseSchema>>;
-
 export const SearchImagesWireSchema = object({
   images: z.array(z.unknown()),
   next_page_token: z.optional(z.nullable(z.string())),
@@ -419,8 +384,8 @@ export function toSearchUnifiedResponse(wire: SearchUnifiedWire): SearchUnifiedR
     }),
     images: searchImageHits(wire.images ?? []),
     videos: (wire.videos ?? []).flatMap((hit) => {
-      const parsed = SearchVideoHitWireSchema.safeParse(hit);
-      return parsed.success && parsed.data.id.length > 0 ? [parsed.data] : [];
+      const parsed = SearchVideoHitSchema.safeParse(hit);
+      return parsed.success ? [parsed.data] : [];
     }),
     didYouMean: wire.did_you_mean ?? [],
     searchInsteadFor: wire.search_instead_for ?? null,
