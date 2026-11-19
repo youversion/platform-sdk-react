@@ -25,7 +25,13 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
 import { InputGroup, InputGroupInput, InputGroupAddon } from './ui/input-group';
 import { useInterfaceDirection } from '@/lib/direction';
+import { prefersReducedMotion } from '@/lib/reduced-motion';
+import { cn } from '@/lib/utils';
 import { ShadowIsolationBoundary } from '@/lib/shadow-isolation';
+import {
+  findNearestVerticalScrollContainer,
+  revealElementWithinScrollContainer,
+} from '@/lib/scroll-reveal';
 
 export interface BibleChapterPickerPressData {
   book: string;
@@ -55,8 +61,29 @@ type BibleChapterPickerContextType = {
   setExpandedBook: (bookId: string) => void;
   filteredBooks: BibleBook[] | null;
   registerBookElement: (bookId: string, node: HTMLDivElement | null) => void;
+  markBookFocused: (button: HTMLButtonElement) => void;
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
 };
+
+function revealExpandedBook(element: HTMLElement, usesConsumerScroll: boolean): void {
+  if (usesConsumerScroll) {
+    element.scrollIntoView?.({
+      block: 'start',
+      behavior: prefersReducedMotion(element.ownerDocument.defaultView) ? 'instant' : 'smooth',
+    });
+    return;
+  }
+  const list = element.closest<HTMLElement>('[data-slot="accordion"]');
+  if (!list) return;
+  revealElementWithinScrollContainer(element, list, 'start');
+  const panel = list.closest<HTMLElement>('[data-slot="popover-content"]');
+  if (!panel) return;
+  const firstChapter = element.querySelector('[data-slot="accordion-content"] button');
+  if (firstChapter) revealElementWithinScrollContainer(firstChapter, panel);
+  // Preserve the book trigger when the panel cannot fit both targets.
+  const trigger = element.querySelector('[data-slot="accordion-trigger"]');
+  if (trigger) revealElementWithinScrollContainer(trigger, panel);
+}
 
 type TriggerElementProps = React.HTMLAttributes<HTMLButtonElement> & {
   'data-yv-sdk'?: boolean;
@@ -141,6 +168,11 @@ function RootImplementation({
   }, [books?.data, searchQuery]);
 
   const bookElementsRef = useRef<Record<string, HTMLDivElement | null>>({});
+  const bookFocusSequenceRef = useRef(0);
+  const usesConsumerScroll = Boolean(onChapterPickerPress);
+  const openRevealTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => () => clearTimeout(openRevealTimeout.current), [usesConsumerScroll]);
 
   const registerBookElement = (bookId: string, node: HTMLDivElement | null) => {
     if (node) {
@@ -150,39 +182,44 @@ function RootImplementation({
     }
   };
 
-  const scrollToCurrentBook = () => {
-    if (book) {
-      setExpandedBook(book);
-      setTimeout(() => {
-        const element = bookElementsRef.current[book];
-        element?.scrollIntoView?.({
-          behavior: 'smooth',
-          block: 'start',
-        });
+  const shouldPreserveFocusedBook = useCallback((element: HTMLElement | undefined) => {
+    // SAFETY: A connected DOM element is rooted in either a Document or ShadowRoot.
+    const focusRoot = element?.getRootNode() as Document | ShadowRoot | undefined;
+    const activeElement = focusRoot?.activeElement;
+    const accordion = element?.closest('[data-slot="accordion"]');
+    if (!accordion || !activeElement || !accordion.contains(activeElement)) return false;
+    const focusedBook = activeElement.closest('[data-slot="accordion-item"]');
+    return Boolean(
+      focusedBook &&
+        (focusedBook !== element || !activeElement.matches('[data-slot="accordion-trigger"]')),
+    );
+  }, []);
+
+  const scheduleBookReveal = useCallback(
+    (bookId: string) => {
+      const focusSequence = bookFocusSequenceRef.current;
+      return setTimeout(() => {
+        if (bookFocusSequenceRef.current !== focusSequence) return;
+        const element = bookElementsRef.current[bookId];
+        if (!element || shouldPreserveFocusedBook(element)) return;
+        revealExpandedBook(element, usesConsumerScroll);
       }, 200);
-    }
+    },
+    [shouldPreserveFocusedBook, usesConsumerScroll],
+  );
+
+  const scrollToCurrentBook = () => {
+    if (!book) return;
+    setExpandedBook(book);
+    clearTimeout(openRevealTimeout.current);
+    openRevealTimeout.current = scheduleBookReveal(book);
   };
 
-  // When an accordion is expanded, scroll that book into view
   useEffect(() => {
     if (!expandedBook) return;
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      if (!controller.signal.aborted) {
-        const element = bookElementsRef.current[expandedBook];
-        element?.scrollIntoView?.({
-          behavior: 'smooth',
-          block: 'start',
-        });
-      }
-    }, 200);
-
-    return () => {
-      controller.abort();
-      clearTimeout(timeoutId);
-    };
-  }, [expandedBook]);
+    const timeout = scheduleBookReveal(expandedBook);
+    return () => clearTimeout(timeout);
+  }, [expandedBook, scheduleBookReveal]);
 
   const setIsPopoverOpen = (open: boolean) => {
     if (onChapterPickerPress) return;
@@ -240,6 +277,17 @@ function RootImplementation({
     setExpandedBook,
     filteredBooks,
     registerBookElement,
+    markBookFocused: (button) => {
+      bookFocusSequenceRef.current += 1;
+      const list = usesConsumerScroll
+        ? findNearestVerticalScrollContainer(button)
+        : button.closest<HTMLElement>('[data-slot="accordion"]');
+      if (!list) return;
+      revealElementWithinScrollContainer(button, list);
+      if (usesConsumerScroll) return;
+      const panel = panelRef.current;
+      if (panel) revealElementWithinScrollContainer(button, panel);
+    },
     onChapterPickerPress,
   };
 
@@ -257,6 +305,7 @@ function RootImplementation({
         {/* data-yv-sdk for styles is needed because the popover gets rendered outside of the providers scope **/}
         <PopoverContent
           sideOffset={16}
+          className="yv:overflow-y-auto"
           heading={t('booksHeading')}
           theme={theme}
           side="top"
@@ -410,10 +459,12 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
     searchQuery,
     setSearchQuery,
     registerBookElement,
+    markBookFocused,
     setBook,
     setChapter,
     versionId,
     background,
+    onChapterPickerPress,
   } = useBibleChapterPickerContext();
 
   const handleChapterButtonClick = (bookId: string, passageId: string) => {
@@ -432,7 +483,11 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
       data-yv-sdk
       data-yv-theme={background}
       dir={interfaceDirection}
-      className="yv:flex yv:h-full yv:min-h-0 yv:flex-col"
+      // Keep room for a book and the first chapter above search in the built-in picker.
+      className={cn(
+        'yv:flex yv:h-full yv:flex-col',
+        onChapterPickerPress ? 'yv:min-h-0' : 'yv:[min-block-size:12.5rem]',
+      )}
     >
       <Accordion
         className="yv:relative yv:min-h-0 yv:flex-1 yv:overflow-y-auto yv:bg-background yv:px-6"
@@ -452,7 +507,10 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
               id={bookItem.id}
               ref={(node) => registerBookElement(bookItem.id, node)}
             >
-              <AccordionTrigger className="yv:rounded-none yv:text-base yv:font-normal yv:leading-normal yv:text-foreground yv:data-[state=open]:font-bold">
+              <AccordionTrigger
+                className="yv:rounded-none yv:text-base yv:font-normal yv:leading-normal yv:text-foreground yv:focus-visible:ring-inset yv:focus-visible:ring-ring yv:-mx-1 yv:px-1 yv:data-[state=open]:font-bold"
+                onFocus={(event) => markBookFocused(event.currentTarget)}
+              >
                 <bdi dir="auto">{bookItem.title}</bdi>
               </AccordionTrigger>
               <AccordionContent>

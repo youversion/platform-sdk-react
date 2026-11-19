@@ -67,6 +67,14 @@ function styleSnapshot(element: HTMLElement) {
   };
 }
 
+function focusStyle(element: HTMLElement) {
+  const style = getComputedStyle(element);
+  return {
+    boxShadow: style.boxShadow,
+    outline: style.outline,
+  };
+}
+
 async function expectOutsideFocusRedirectedInto(
   root: ShadowRoot,
   outsideControl: HTMLElement,
@@ -159,6 +167,32 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
     await expect(dialogButtons).toHaveLength(2);
     const [confirmButton, declineButton] = dialogButtons;
     if (!confirmButton || !declineButton) throw new Error('sign-in dialog actions not rendered');
+    await userEvent.click(dialog);
+    const unfocusedButtonStyles = new Map(
+      dialogButtons.map((button) => [button, focusStyle(button)]),
+    );
+    dialog.focus({ preventScroll: true });
+    await userEvent.tab();
+    await expect(root.activeElement).toBe(confirmButton);
+    await expect(focusStyle(confirmButton)).not.toEqual(unfocusedButtonStyles.get(confirmButton));
+    await waitFor(async () => {
+      const style = getComputedStyle(confirmButton);
+      await expect(style.boxShadow).toContain('0px 0px 0px 3px');
+      await expect(style.getPropertyValue('--tw-ring-color').trim()).toBe(
+        style.getPropertyValue('--yv-primary-foreground').trim(),
+      );
+    });
+    await userEvent.tab();
+    await expect(root.activeElement).toBe(declineButton);
+    await expect(focusStyle(declineButton)).not.toEqual(unfocusedButtonStyles.get(declineButton));
+    await waitFor(async () => {
+      const style = getComputedStyle(declineButton);
+      await expect(style.boxShadow).toContain('inset');
+      await expect(style.boxShadow).toContain('0px 0px 0px 3px');
+      await expect(style.getPropertyValue('--tw-ring-color').trim()).toBe(
+        style.getPropertyValue('--yv-ring').trim(),
+      );
+    });
 
     const negativeTabIndexButton = canvasElement.ownerDocument.createElement('button');
     negativeTabIndexButton.tabIndex = -2;

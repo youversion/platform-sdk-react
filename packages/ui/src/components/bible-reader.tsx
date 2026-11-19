@@ -1507,7 +1507,7 @@ function BibleThemeSettingsBody({
         <div className="yv:flex yv:justify-between yv:items-stretch yv:gap-4">
           <div className="yv:flex yv:flex-1">
             <Button
-              className="yv:flex-1 yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-s-[8px] yv:rounded-e-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
+              className="yv:flex-1 yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-s-[8px] yv:rounded-e-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2 yv:focus-visible:ring-inset"
               onClick={onFontDecreased}
               size="lg"
               variant="secondary"
@@ -1519,7 +1519,7 @@ function BibleThemeSettingsBody({
               A
             </Button>
             <Button
-              className="yv:flex-1 yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-e-[8px] yv:rounded-s-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
+              className="yv:flex-1 yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-e-[8px] yv:rounded-s-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2 yv:focus-visible:ring-inset"
               onClick={onFontIncreased}
               size="lg"
               variant="secondary"
@@ -1532,7 +1532,7 @@ function BibleThemeSettingsBody({
             </Button>
           </div>
           <Button
-            className="yv:h-auto yv:border yv:border-white yv:dark:border-border yv:rounded-[8px]"
+            className="yv:h-auto yv:border yv:border-white yv:dark:border-border yv:rounded-[8px] yv:focus-visible:ring-inset"
             variant="secondary"
             data-testid="line-spacing"
             onClick={onChangeLineSpacing}
@@ -1549,9 +1549,9 @@ function BibleThemeSettingsBody({
         <div className="yv:grid yv:grid-cols-2">
           <Button
             className={cn(
-              'yv:group yv:dark:bg-muted yv:rounded-e-none yv:border-e-0.5 yv:dark:border-border yv:rounded-s-[8px] yv:h-auto',
+              'yv:group yv:dark:bg-muted yv:rounded-e-none yv:border-e-0.5 yv:dark:border-border yv:rounded-s-[8px] yv:h-auto yv:focus-visible:ring-inset',
               fontFamily === INTER_FONT
-                ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
+                ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80 yv:focus-visible:ring-primary-foreground yv:dark:focus-visible:ring-ring'
                 : '',
             )}
             onClick={() => onFontSelected(INTER_FONT)}
@@ -1573,9 +1573,9 @@ function BibleThemeSettingsBody({
           </Button>
           <Button
             className={cn(
-              'yv:group yv:dark:bg-muted yv:border-s-0.5 yv:rounded-s-none yv:rounded-e-[8px] yv:h-auto',
+              'yv:group yv:dark:bg-muted yv:border-s-0.5 yv:rounded-s-none yv:rounded-e-[8px] yv:h-auto yv:focus-visible:ring-inset',
               fontFamily === UNTITLED_SERIF_FONT
-                ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
+                ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80 yv:focus-visible:ring-primary-foreground yv:dark:focus-visible:ring-ring'
                 : '',
             )}
             onClick={() => onFontSelected(UNTITLED_SERIF_FONT)}
@@ -1868,7 +1868,12 @@ function Toolbar({
               </Button>
             </PopoverTrigger>
 
-            <PopoverContent sideOffset={16} heading={t('readerSettingsHeading')} theme={background}>
+            <PopoverContent
+              sideOffset={16}
+              heading={t('readerSettingsHeading')}
+              theme={background}
+              closeButtonClassName="yv:focus-visible:ring-inset yv:focus-visible:ring-ring"
+            >
               <ReuseShadowBoundary>
                 <BibleThemeSettingsContent
                   theme={background}

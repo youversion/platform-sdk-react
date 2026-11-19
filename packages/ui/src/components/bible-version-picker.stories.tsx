@@ -175,6 +175,10 @@ const tabletJourney: Story = {
       await expect(bounds.top).toBeGreaterThanOrEqual(15);
       await expect(bounds.bottom).toBeLessThanOrEqual(window.innerHeight - 15);
       await expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth);
+      const ownerDocument = canvasElement.ownerDocument;
+      await expect(ownerDocument.documentElement.scrollWidth).toBeLessThanOrEqual(
+        ownerDocument.documentElement.clientWidth,
+      );
     });
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(overlay.queryByRole('dialog')).not.toBeInTheDocument());
