@@ -1,5 +1,8 @@
 import * as z from 'zod/mini';
 import { object } from './object';
+import { VideoIdSchema } from './video-id';
+
+export { VideoIdSchema };
 
 /** A playable video or audio source. */
 export const VideoPlaybackSourceSchema = object({
@@ -21,7 +24,7 @@ export type VideoPlaybackSource = Readonly<z.infer<typeof VideoPlaybackSourceSch
 /** A thumbnail image for a video. */
 export const VideoThumbnailSchema = object({
   /** URL for the thumbnail image. */
-  url: z.optional(z.nullable(z.string())),
+  url: z.optional(z.nullable(z.url())),
   /** Thumbnail width in pixels. */
   width: z.optional(z.nullable(z.int())),
   /** Thumbnail height in pixels. */
@@ -33,7 +36,7 @@ export type VideoThumbnail = Readonly<z.infer<typeof VideoThumbnailSchema>>;
 /** A dark-launched video resource approved for Platform consumers. */
 export const VideoSchema = object({
   /** Opaque video identifier. Pass it to `VideosClient.getVideo` unchanged. */
-  id: z.string(),
+  id: VideoIdSchema,
   /** Video title. */
   title: z.optional(z.nullable(z.string())),
   /** Video description. */
@@ -58,11 +61,6 @@ export const VideoSchema = object({
 
 export type Video = Readonly<z.infer<typeof VideoSchema>>;
 
-/** Opaque video id. Blank rejected; value otherwise sent unchanged (no trim). */
-export const VideoIdSchema = z
-  .string()
-  .check(z.refine((value) => value.trim().length > 0, 'Video ID must be a non-empty string'));
-
 /** Supported thumbnail renditions. Omit the option for the full-size image. */
 export const VideoThumbnailSizeSchema = z.enum(['thumb', 'card', 'full']);
 
@@ -84,7 +82,7 @@ const VideoPlaylistFields = {
   description: z.nullable(z.string()),
   type: z.string(),
   total: z.int(),
-  videos: z.array(z.string()),
+  videos: z.array(VideoIdSchema),
 };
 
 export const VideoPlaylistFullSchema = object(VideoPlaylistFields);
@@ -112,7 +110,7 @@ export type VideoPlaylistField = z.infer<typeof VideoPlaylistFieldSchema>;
 
 const PlaylistNextPageTokenSchema = z.pipe(
   z.optional(z.nullable(z.string())),
-  z.transform((token): string | null => (token == null || token === '' ? null : token)),
+  z.transform((token): string | null => token ?? null),
 );
 
 export const VideoPlaylistCollectionSchema = object({
@@ -137,7 +135,7 @@ export const GetPlaylistsOptionsSchema = object({
       z.literal('*'),
     ]),
   ),
-  page_token: z.optional(z.string().check(z.minLength(1))),
+  page_token: z.optional(z.string()),
   accept_language: z.optional(z.string().check(z.minLength(1))),
 });
 
@@ -149,6 +147,8 @@ export const GetPlaylistOptionsSchema = object({
 
 export type GetPlaylistOptions = z.infer<typeof GetPlaylistOptionsSchema>;
 
+const PLAYLIST_ID_ERROR = 'Playlist ID must be a 32-bit integer';
+
 export const VideoPlaylistIdSchema = z
-  .int({ error: 'Playlist ID must be a positive integer' })
-  .check(z.positive('Playlist ID must be a positive integer'));
+  .int({ error: PLAYLIST_ID_ERROR })
+  .check(z.gte(-2_147_483_648, PLAYLIST_ID_ERROR), z.lte(2_147_483_647, PLAYLIST_ID_ERROR));

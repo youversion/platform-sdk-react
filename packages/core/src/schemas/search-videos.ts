@@ -3,13 +3,22 @@ import { object } from './object';
 import { OrganizationIdSchema } from './organization';
 import { VideoSchema } from './video';
 
+export const SearchVideosQuerySchema = z.string().check(
+  z.trim(),
+  z.minLength(1, 'Query must be between 1 and 100 characters'),
+  z.refine(
+    (value) => Array.from(value).length <= 100,
+    'Query must be between 1 and 100 characters',
+  ),
+);
+
 export const SearchVideosOptionsSchema = object({
   /** Publisher filters combined with OR. */
   organizationIds: z.optional(z.readonly(z.array(OrganizationIdSchema).check(z.minLength(1)))),
   /** Language preference. Defaults to English. */
   acceptLanguage: z.optional(z.string().check(z.minLength(1))),
   pageSize: z.optional(z.int().check(z.gte(1), z.lte(99))),
-  pageToken: z.optional(z.string().check(z.minLength(1))),
+  pageToken: z.optional(z.string()),
 });
 
 export type SearchVideosOptions = z.infer<typeof SearchVideosOptionsSchema>;

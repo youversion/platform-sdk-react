@@ -74,6 +74,7 @@ export class VideosClient {
    * Lists an organization's localized video playlists.
    * @param organizationId Organization UUID.
    * @param options Field selection, pagination, and language. Language defaults to English.
+   *   `page_size: '*'` requires one to three selected fields.
    * @returns One page, or an empty page when no language catalog matches.
    */
   async getPlaylists(
@@ -81,13 +82,15 @@ export class VideosClient {
     options: GetPlaylistsOptions = {},
   ): Promise<Collection<VideoPlaylist>> {
     const id = OrganizationIdSchema.parse(organizationId);
+    const parsedOptions = GetPlaylistsOptionsSchema.parse(options);
     if (
-      options.page_size === '*' &&
-      (options.fields === undefined || options.fields.length < 1 || options.fields.length > 3)
+      parsedOptions.page_size === '*' &&
+      (parsedOptions.fields === undefined ||
+        parsedOptions.fields.length < 1 ||
+        parsedOptions.fields.length > 3)
     ) {
       throw new Error('page_size="*" requires 1-3 fields to be specified');
     }
-    const parsedOptions = GetPlaylistsOptionsSchema.parse(options);
     const query: PlaylistsQuery = {};
     if (parsedOptions.fields !== undefined) query['fields[]'] = parsedOptions.fields;
     if (parsedOptions.page_size !== undefined) query.page_size = parsedOptions.page_size;
@@ -117,7 +120,7 @@ export class VideosClient {
     organizationId: string,
     playlistId: number,
     options: GetPlaylistOptions = {},
-  ): Promise<VideoPlaylist> {
+  ): Promise<Readonly<Required<VideoPlaylist>>> {
     const organization = OrganizationIdSchema.parse(organizationId);
     const playlist = VideoPlaylistIdSchema.parse(playlistId);
     const parsedOptions = GetPlaylistOptionsSchema.parse(options);

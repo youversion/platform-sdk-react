@@ -1,9 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { ApiClient, getHttpStatus, VideosClient } from '../index';
 import { server } from './setup';
 
 const apiHost = process.env.YVP_API_HOST;
+
+interface ThumbnailFixtures {
+  readonly [videoId: string]: string | null;
+}
 
 function createVideosClient(): VideosClient {
   return new VideosClient(
@@ -37,7 +41,7 @@ describe('VideosClient', () => {
             height: 720,
           },
           playback_sources: [{ url: 'https://cdn.example/video.m3u8', format: 'hls' }],
-          playback_preview_sources: [],
+          playback_preview_sources: [{ url: 'https://cdn.example/preview.mp4', format: 'mp4' }],
           share_url: 'https://www.bible.com/videos/video-id',
           ignored: true,
         });
@@ -63,7 +67,7 @@ describe('VideosClient', () => {
         height: 720,
       },
       playback_sources: [{ url: 'https://cdn.example/video.m3u8', format: 'hls' }],
-      playback_preview_sources: [],
+      playback_preview_sources: [{ url: 'https://cdn.example/preview.mp4', format: 'mp4' }],
       share_url: 'https://www.bible.com/videos/video-id',
     });
     expect(video.thumbnail?.url).not.toContain('app_key');
@@ -74,17 +78,21 @@ describe('VideosClient', () => {
     const organizationId = '550e8400-e29b-41d4-a716-446655440000';
 
     server.use(
-      http.get(`https://${apiHost}/v1/organizations/:organizationId/playlists`, ({ request }) => {
-        const url = new URL(request.url);
-        expect(request.headers.get('Accept-Language')).toBe('en');
-        expect(url.searchParams.getAll('fields[]')).toEqual(['id', 'videos', 'title']);
-        expect(url.searchParams.get('page_size')).toBe('*');
-        expect(url.searchParams.get('page_token')).toBe('playlist-page');
-        return HttpResponse.json({
-          data: [{ id: 3669, title: 'Teaching Clips', videos: ['52186'] }],
-          next_page_token: null,
-        });
-      }),
+      http.get(
+        `https://${apiHost}/v1/organizations/:organizationId/playlists`,
+        ({ params, request }) => {
+          expect(params.organizationId).toBe(organizationId);
+          const url = new URL(request.url);
+          expect(request.headers.get('Accept-Language')).toBe('en');
+          expect(url.searchParams.getAll('fields[]')).toEqual(['id', 'videos', 'title']);
+          expect(url.searchParams.get('page_size')).toBe('*');
+          expect(url.searchParams.get('page_token')).toBe('playlist-page');
+          return HttpResponse.json({
+            data: [{ id: 3669, title: 'Teaching Clips', videos: ['52186'] }],
+            next_page_token: null,
+          });
+        },
+      ),
       http.get(`https://${apiHost}/v1/videos/52186`, ({ request }) => {
         expect(request.headers.get('Accept-Language')).toBe('fr');
         return HttpResponse.json({
@@ -118,6 +126,7 @@ describe('VideosClient', () => {
       http.get(
         `https://${apiHost}/v1/organizations/:organizationId/playlists/:playlistId`,
         ({ params, request }) => {
+          expect(params.organizationId).toBe(organizationId);
           expect(params.playlistId).toBe('3669');
           expect(request.headers.get('Accept-Language')).toBe('es');
           return HttpResponse.json({
@@ -130,10 +139,34 @@ describe('VideosClient', () => {
           });
         },
       ),
-      http.get(`https://${apiHost}/v1/organizations/:organizationId/playlists`, ({ request }) => {
-        expect(request.headers.get('Accept-Language')).toBe('de');
-        return new HttpResponse(null, { status: 204 });
-      }),
+      http.get(
+        `https://${apiHost}/v1/organizations/:organizationId/playlists`,
+        ({ params, request }) => {
+          expect(params.organizationId).toBe(organizationId);
+          const language = request.headers.get('Accept-Language');
+          if (language === 'en') {
+            const url = new URL(request.url);
+            expect(url.searchParams.has('fields[]')).toBe(false);
+            expect(url.searchParams.has('page_token')).toBe(true);
+            expect(url.searchParams.get('page_token')).toBe('');
+            return HttpResponse.json({
+              data: [
+                {
+                  id: 3669,
+                  title: 'Teaching Clips',
+                  description: null,
+                  type: 'TEACHING_CLIPS',
+                  total: 1,
+                  videos: ['52186'],
+                },
+              ],
+              next_page_token: '',
+            });
+          }
+          expect(language).toBe('de');
+          return new HttpResponse(null, { status: 204 });
+        },
+      ),
     );
 
     await expect(
@@ -146,77 +179,112 @@ describe('VideosClient', () => {
       total: 1,
       videos: ['52186'],
     });
+    await expect(videos.getPlaylists(organizationId, { page_token: '' })).resolves.toEqual({
+      data: [
+        {
+          id: 3669,
+          title: 'Teaching Clips',
+          description: null,
+          type: 'TEACHING_CLIPS',
+          total: 1,
+          videos: ['52186'],
+        },
+      ],
+      next_page_token: '',
+    });
     await expect(videos.getPlaylists(organizationId, { accept_language: 'de' })).resolves.toEqual({
       data: [],
       next_page_token: null,
     });
   });
 
-  it('returns full-size thumbnails by default and leaves null thumbnail URLs alone', async () => {
+  it('preserves thumbnail query bytes while selecting every supported rendition', async () => {
     const videos = createVideosClient();
-    let requestCount = 0;
+    const thumbnailUrls: ThumbnailFixtures = {
+      untouched: 'https://cdn.example/video.jpg?signature=a%20b&flag#frame',
+      default: 'https://cdn.example/video.jpg?size=thumb&size=card&token=one#frame',
+      thumb: 'https://cdn.example/video.jpg?size=card&signature=a%20b&flag#frame',
+      full: 'https://cdn.example/video.jpg?size=thumb&token=one#frame',
+      null: null,
+    };
 
     server.use(
-      http.get(`https://${apiHost}/v1/videos/:videoId`, () => {
-        requestCount += 1;
+      http.get(`https://${apiHost}/v1/videos/:videoId`, ({ params }) => {
+        const videoId = String(params.videoId);
         return HttpResponse.json({
-          id: `video-${requestCount}`,
-          thumbnail:
-            requestCount === 1
-              ? { url: 'https://cdn.example/video.jpg?size=thumb&size=card&token=one#frame' }
-              : { url: null, width: null, height: null },
+          id: `returned-${videoId}`,
+          thumbnail: { url: thumbnailUrls[videoId], width: null, height: null },
           playback_sources: [],
           playback_preview_sources: [],
         });
       }),
     );
 
-    const full = await videos.getVideo('first');
-    const noThumbnailUrl = await videos.getVideo('second');
+    const untouched = await videos.getVideo('untouched');
+    const defaultSize = await videos.getVideo('default');
+    const thumbnail = await videos.getVideo('thumb', { thumbnailSize: 'thumb' });
+    const full = await videos.getVideo('full', { thumbnailSize: 'full' });
+    const noThumbnailUrl = await videos.getVideo('null');
 
-    expect(full.thumbnail?.url).toBe('https://cdn.example/video.jpg?token=one#frame');
+    expect(untouched.thumbnail?.url).toBe(
+      'https://cdn.example/video.jpg?signature=a%20b&flag#frame',
+    );
+    expect(defaultSize.thumbnail?.url).toBe('https://cdn.example/video.jpg?token=one#frame');
+    expect(thumbnail.thumbnail?.url).toBe(
+      'https://cdn.example/video.jpg?signature=a%20b&flag&size=thumb#frame',
+    );
+    expect(full.thumbnail?.url).toBe('https://cdn.example/video.jpg?token=one&size=full#frame');
     expect(noThumbnailUrl.thumbnail).toEqual({ url: null, width: null, height: null });
   });
 
   it('validates playlist inputs and full detail responses while preserving HTTP status errors', async () => {
     const videos = createVideosClient();
     const organizationId = '550e8400-e29b-41d4-a716-446655440000';
-    let requests = 0;
+    const fetchSpy = vi.spyOn(global, 'fetch');
 
-    server.use(
-      http.get(`https://${apiHost}/v1/organizations/:organizationId/playlists/:playlistId`, () => {
-        requests += 1;
-        return HttpResponse.json({ id: 3669 });
-      }),
-      http.get(`https://${apiHost}/v1/videos/missing`, () => {
-        requests += 1;
-        return HttpResponse.json({ message: 'not found' }, { status: 404 });
-      }),
-    );
-
-    await expect(videos.getPlaylists('not-a-uuid')).rejects.toThrow(
-      'Organization ID must be a valid UUID',
-    );
-    await expect(videos.getPlaylists(organizationId, { page_size: '*' })).rejects.toThrow(
-      'page_size="*" requires 1-3 fields to be specified',
-    );
-    await expect(videos.getPlaylists(organizationId, { page_size: 100 })).rejects.toThrow(
-      'Page size must be an integer from 1 to 99',
-    );
-    await expect(videos.getPlaylist(organizationId, 0)).rejects.toThrow(
-      'Playlist ID must be a positive integer',
-    );
-    await expect(videos.getVideo('   ')).rejects.toThrow('Video ID must be a non-empty string');
-    expect(requests).toBe(0);
-
-    await expect(videos.getPlaylist(organizationId, 3669)).rejects.toThrow(
-      'Unexpected playlists API response',
-    );
     try {
-      await videos.getVideo('missing');
-      throw new Error('expected getVideo to reject');
-    } catch (error) {
-      expect(getHttpStatus(error)).toBe(404);
+      server.use(
+        http.get(
+          `https://${apiHost}/v1/organizations/:organizationId/playlists/:playlistId`,
+          ({ params }) => {
+            expect(params.organizationId).toBe(organizationId);
+            return HttpResponse.json({ id: 3669 });
+          },
+        ),
+        http.get(`https://${apiHost}/v1/videos/missing`, () =>
+          HttpResponse.json({ message: 'not found' }, { status: 404 }),
+        ),
+      );
+
+      await expect(videos.getPlaylists('not-a-uuid')).rejects.toThrow(
+        'Organization ID must be a valid UUID',
+      );
+      await expect(videos.getPlaylists(organizationId, { page_size: '*' })).rejects.toThrow(
+        'page_size="*" requires 1-3 fields to be specified',
+      );
+      await expect(videos.getPlaylists(organizationId, { page_size: 100 })).rejects.toThrow(
+        'Page size must be an integer from 1 to 99',
+      );
+      await expect(videos.getPlaylist(organizationId, 2_147_483_648)).rejects.toThrow(
+        'Playlist ID must be a 32-bit integer',
+      );
+      // @ts-expect-error verifies runtime validation for unsafe JavaScript callers
+      await expect(videos.getPlaylists(organizationId, null)).rejects.toThrow();
+      await expect(videos.getVideo('   ')).rejects.toThrow('Video ID must be a non-empty string');
+      await expect(videos.getVideo('..')).rejects.toThrow('Video ID must not be a URL dot segment');
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      await expect(videos.getPlaylist(organizationId, 3669)).rejects.toThrow(
+        'Unexpected playlists API response',
+      );
+      try {
+        await videos.getVideo('missing');
+        throw new Error('expected getVideo to reject');
+      } catch (error) {
+        expect(getHttpStatus(error)).toBe(404);
+      }
+    } finally {
+      fetchSpy.mockRestore();
     }
   });
 });

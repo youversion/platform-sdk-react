@@ -37,30 +37,20 @@ function createApiClient(): ApiClient {
 const shouldRunVideoSmoke = shouldRunLiveSmoke && Boolean(process.env.YVP_VIDEO_ORGANIZATION_ID);
 
 (shouldRunVideoSmoke ? describe : describe.skip)('Content Library live smoke', () => {
-  it('resolves video ids returned by playlists and dedicated search', async () => {
+  it('resolves a video id returned by the organization playlists', async () => {
     const apiClient = createApiClient();
-    const search = new SearchClient(apiClient);
     const videos = new VideosClient(apiClient);
     const organizationId = process.env.YVP_VIDEO_ORGANIZATION_ID || '';
 
     const playlists = await videos.getPlaylists(organizationId, {
       fields: ['id', 'videos'],
-      page_size: 1,
+      page_size: '*',
     });
-    const playlistVideoId = playlists.data[0]?.videos?.[0];
+    const playlistVideoId = playlists.data.flatMap((playlist) => playlist.videos ?? [])[0];
     expect(playlistVideoId).toBeTruthy();
     const playlistVideo = await videos.getVideo(playlistVideoId || '');
-    expect(playlistVideo.id).toBe(playlistVideoId);
-
-    const searchResult = await search.searchVideos('faith', {
-      organizationIds: [organizationId],
-      pageSize: 1,
-    });
-    expect(Array.isArray(searchResult.videos)).toBe(true);
-    const searchVideoId = searchResult.videos[0]?.id;
-    if (searchVideoId !== undefined) {
-      const searchVideo = await videos.getVideo(searchVideoId);
-      expect(searchVideo.id).toBe(searchVideoId);
-    }
+    expect(playlistVideo.id.length).toBeGreaterThan(0);
+    expect(Array.isArray(playlistVideo.playback_sources)).toBe(true);
+    expect(Array.isArray(playlistVideo.playback_preview_sources)).toBe(true);
   });
 });

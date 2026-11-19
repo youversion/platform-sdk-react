@@ -17,7 +17,7 @@ import type { SearchVideosResponse } from './schemas/search-videos';
 export type { SearchImagesOptions, SearchUnifiedOptions, SearchVersesOptions, SearchVideosOptions };
 
 /**
- * Client for YouVersion Platform Search API endpoints (`/v1/*`).
+ * Client for YouVersion Platform Search API endpoints (`/v1/*` and `/v1-beta/*`).
  */
 export class SearchClient {
   private client: ApiClient;

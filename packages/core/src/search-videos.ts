@@ -1,11 +1,11 @@
 import type { ApiClient } from './client';
 import {
   SearchVideosOptionsSchema,
+  SearchVideosQuerySchema,
   SearchVideosWireSchema,
   type SearchVideosOptions,
   type SearchVideosResponse,
 } from './schemas/search-videos';
-import { SearchTextQuerySchema } from './schemas/search';
 import { resolveVideoThumbnail } from './video-thumbnail';
 
 export type { SearchVideosOptions };
@@ -23,7 +23,7 @@ export async function searchVideos(
   query: string,
   options: SearchVideosOptions = {},
 ): Promise<SearchVideosResponse> {
-  const parsedQuery = SearchTextQuerySchema.parse(query);
+  const parsedQuery = SearchVideosQuerySchema.parse(query);
   const parsedOptions = SearchVideosOptionsSchema.parse(options);
   const params: SearchVideosQuery = { query: parsedQuery };
   if (parsedOptions.organizationIds !== undefined) {
@@ -35,14 +35,6 @@ export async function searchVideos(
   const body = await client.get<unknown>('/v1-beta/search-videos', params, {
     'Accept-Language': parsedOptions.acceptLanguage ?? 'en',
   });
-  if (body === '' || body == null) {
-    return {
-      videos: [],
-      didYouMean: [],
-      searchInsteadFor: null,
-      nextPageToken: null,
-    };
-  }
   const parsed = SearchVideosWireSchema.safeParse(body);
   if (!parsed.success) {
     throw new Error(`Unexpected search-videos API response: ${parsed.error.message}`);

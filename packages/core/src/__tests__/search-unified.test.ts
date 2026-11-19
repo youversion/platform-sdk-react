@@ -2,40 +2,59 @@ import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { ApiClient } from '../client';
 import { SearchClient } from '../search';
+import { VideosClient } from '../videos';
 import { server } from './setup';
 
 const apiHost = process.env.YVP_API_HOST;
 
-function createSearchClient(): SearchClient {
-  const apiClient = new ApiClient({
+function createApiClient(): ApiClient {
+  return new ApiClient({
     apiHost,
     appKey: 'test-app',
     installationId: 'test-installation',
   });
-  return new SearchClient(apiClient);
+}
+
+function createSearchClient(): SearchClient {
+  return new SearchClient(createApiClient());
 }
 
 describe('SearchClient.searchUnified', () => {
   it('requests stable unified video hits as opaque ids', async () => {
-    const searchClient = createSearchClient();
+    const apiClient = createApiClient();
+    const searchClient = new SearchClient(apiClient);
+    const videos = new VideosClient(apiClient);
 
     server.use(
       http.get(`https://${apiHost}/v1/search-unified`, ({ request }) => {
         const url = new URL(request.url);
         expect(url.searchParams.getAll('fields[]')).toEqual(['videos']);
         return HttpResponse.json({
-          videos: [{ id: '52186' }, { id: '' }, { nope: true }],
+          videos: [
+            { id: 'search-issued-id', title: 'not part of a unified hit' },
+            { id: '' },
+            { nope: true },
+          ],
           did_you_mean: [],
           search_instead_for: null,
         });
       }),
+      http.get(`https://${apiHost}/v1/videos/search-issued-id`, () =>
+        HttpResponse.json({
+          id: 'detail-issued-id',
+          playback_sources: [],
+          playback_preview_sources: [],
+        }),
+      ),
     );
 
     const result = await searchClient.searchUnified('faith', 111, 'en', {
       fields: ['videos'],
     });
 
-    expect(result.videos).toEqual([{ id: '52186' }]);
+    expect(result.videos).toEqual([{ id: 'search-issued-id' }]);
+    const detail = await videos.getVideo(result.videos[0]?.id ?? '');
+    expect(detail.id).toBe('detail-issued-id');
   });
 
   it('requests images only, maps passage_id, and sends no paging params', async () => {

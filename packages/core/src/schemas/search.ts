@@ -1,6 +1,7 @@
 import * as z from 'zod/mini';
 import { object } from './object';
 import { parseUsfmReference } from '../usfm-reference';
+import { VideoIdSchema } from './video-id';
 
 export const MAX_SEARCH_QUERY_GRAPHEMES = 100;
 
@@ -277,7 +278,7 @@ type SearchImageHitWire = z.infer<typeof SearchImageHitWireSchema>;
 
 /** Lightweight video hit. Resolve the opaque id with `VideosClient.getVideo`. */
 export const SearchVideoHitSchema = object({
-  id: z.string().check(z.minLength(1)),
+  id: VideoIdSchema,
 });
 
 export type SearchVideoHit = Readonly<z.infer<typeof SearchVideoHitSchema>>;

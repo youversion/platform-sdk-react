@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { ApiClient, getHttpStatus, SearchClient } from '../index';
 import { server } from './setup';
@@ -80,32 +80,70 @@ describe('SearchClient.searchVideos', () => {
     });
   });
 
-  it('honors an explicit language, maps an empty response, and validates before networking', async () => {
+  it('preserves an empty-page token and validates parameters before networking', async () => {
     const search = createSearchClient();
     let requests = 0;
+    const fetchSpy = vi.spyOn(global, 'fetch');
 
-    server.use(
-      http.get(`https://${apiHost}/v1-beta/search-videos`, ({ request }) => {
-        requests += 1;
-        expect(request.headers.get('Accept-Language')).toBe('es-MX');
-        return new HttpResponse(null, { status: 204 });
-      }),
-    );
+    try {
+      server.use(
+        http.get(`https://${apiHost}/v1-beta/search-videos`, ({ request }) => {
+          requests += 1;
+          const url = new URL(request.url);
+          expect(request.headers.get('Accept-Language')).toBe('es-MX');
+          if (requests === 1) {
+            expect(url.searchParams.has('page_token')).toBe(false);
+            return HttpResponse.json({
+              videos: [],
+              user_intent: null,
+              did_you_mean: [],
+              search_instead_for: null,
+              next_page_token: '',
+            });
+          }
+          expect(url.searchParams.has('page_token')).toBe(true);
+          expect(url.searchParams.get('page_token')).toBe('');
+          expect(url.searchParams.get('page_size')).toBe('99');
+          return HttpResponse.json({
+            videos: [],
+            user_intent: null,
+            did_you_mean: [],
+            search_instead_for: null,
+            next_page_token: null,
+          });
+        }),
+      );
 
-    await expect(search.searchVideos('hope', { acceptLanguage: 'es-MX' })).resolves.toEqual({
-      videos: [],
-      didYouMean: [],
-      searchInsteadFor: null,
-      nextPageToken: null,
-    });
-    await expect(search.searchVideos('', {})).rejects.toThrow(
-      'Query must be between 1 and 100 characters',
-    );
-    await expect(search.searchVideos('hope', { pageSize: 100 })).rejects.toThrow();
-    await expect(search.searchVideos('hope', { organizationIds: ['not-a-uuid'] })).rejects.toThrow(
-      'Organization ID must be a valid UUID',
-    );
-    expect(requests).toBe(1);
+      const emptyPage = await search.searchVideos('hope', { acceptLanguage: 'es-MX' });
+      expect(emptyPage).toEqual({
+        videos: [],
+        didYouMean: [],
+        searchInsteadFor: null,
+        nextPageToken: '',
+      });
+      await expect(
+        search.searchVideos('hope', {
+          acceptLanguage: 'es-MX',
+          pageSize: 99,
+          pageToken: emptyPage.nextPageToken ?? undefined,
+        }),
+      ).resolves.toMatchObject({ nextPageToken: null });
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+
+      await expect(search.searchVideos('', {})).rejects.toThrow(
+        'Query must be between 1 and 100 characters',
+      );
+      await expect(search.searchVideos('é'.repeat(51))).rejects.toThrow(
+        'Query must be between 1 and 100 characters',
+      );
+      await expect(search.searchVideos('hope', { pageSize: 100 })).rejects.toThrow();
+      await expect(
+        search.searchVideos('hope', { organizationIds: ['not-a-uuid'] }),
+      ).rejects.toThrow('Organization ID must be a valid UUID');
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 
   it('rejects malformed responses and preserves service failure status', async () => {
@@ -114,8 +152,17 @@ describe('SearchClient.searchVideos', () => {
     server.use(
       http.get(`https://${apiHost}/v1-beta/search-videos`, ({ request }) => {
         const query = new URL(request.url).searchParams.get('query');
-        return query === 'malformed'
-          ? HttpResponse.json({ videos: [{ id: 42 }] })
+        if (query === 'malformed') {
+          return HttpResponse.json({
+            videos: [{ id: '', playback_sources: [], playback_preview_sources: [] }],
+            user_intent: null,
+            did_you_mean: [],
+            search_instead_for: null,
+            next_page_token: null,
+          });
+        }
+        return query === 'empty-body'
+          ? new HttpResponse(null, { status: 204 })
           : HttpResponse.json({ message: 'catalog unavailable' }, { status: 424 });
       }),
     );
@@ -123,11 +170,34 @@ describe('SearchClient.searchVideos', () => {
     await expect(search.searchVideos('malformed')).rejects.toThrow(
       'Unexpected search-videos API response',
     );
+    await expect(search.searchVideos('empty-body')).rejects.toThrow(
+      'Unexpected search-videos API response',
+    );
     try {
       await search.searchVideos('unavailable');
       throw new Error('expected searchVideos to reject');
     } catch (error) {
       expect(getHttpStatus(error)).toBe(424);
+    }
+  });
+
+  it('preserves a missing-app-key response as an HTTP status error', async () => {
+    const search = new SearchClient(
+      new ApiClient({ apiHost, appKey: '', installationId: 'test-installation' }),
+    );
+
+    server.use(
+      http.get(`https://${apiHost}/v1-beta/search-videos`, ({ request }) => {
+        expect(request.headers.get('X-YVP-App-Key')).toBe('');
+        return HttpResponse.json({ message: 'missing app key' }, { status: 401 });
+      }),
+    );
+
+    try {
+      await search.searchVideos('faith');
+      throw new Error('expected searchVideos to reject');
+    } catch (error) {
+      expect(getHttpStatus(error)).toBe(401);
     }
   });
 });
