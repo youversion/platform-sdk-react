@@ -242,6 +242,9 @@ jobs:
       - name: Verify tree-shaking
         run: pnpm check:tree-shaking
 
+      - name: Verify packed UI and headless consumers
+        run: pnpm check:ui-consumer
+
       - name: Bundle size summary
         if: always()
         run: |

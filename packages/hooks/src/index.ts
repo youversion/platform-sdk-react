@@ -25,6 +25,8 @@ export * from './useLanguages';
 export * from './useLanguage';
 export * from './useTheme';
 
+export type { UseApiDataOptions } from './useApiData';
+
 // Auth hooks
 export * from './useYVAuth';
 export * from './types/auth';

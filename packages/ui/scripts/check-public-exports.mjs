@@ -6,10 +6,44 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 const uiRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const coreRoot = resolve(uiRoot, '../core');
 const require = createRequire(import.meta.url);
+const hooks = require('@youversion/platform-react-hooks');
+const hooksEsm = await import('@youversion/platform-react-hooks');
+
+const dataHooks = [
+  'useBibleSearch',
+  'useBook',
+  'useBooks',
+  'useChapter',
+  'useChapters',
+  'useFilteredVersions',
+  'useHighlights',
+  'useLanguage',
+  'useLanguages',
+  'useOrganization',
+  'useOrganizations',
+  'usePassage',
+  'useUnifiedSearch',
+  'useVerse',
+  'useVerseOfTheDay',
+  'useVerses',
+  'useVersion',
+  'useVersions',
+];
 
 const coreEsm = await import(pathToFileURL(join(coreRoot, 'dist/index.js')).href);
 const uiEsm = await import(pathToFileURL(join(uiRoot, 'dist/index.js')).href);
 const uiCjs = require(join(uiRoot, 'dist/index.cjs'));
+
+for (const name of [...dataHooks, 'useYVAuth', 'BaseYouVersionProvider']) {
+  const hooksName = name === 'BaseYouVersionProvider' ? 'YouVersionProvider' : name;
+  if (
+    typeof uiEsm[name] !== 'function' ||
+    uiEsm[name] !== hooksEsm[hooksName] ||
+    uiCjs[name] !== hooks[hooksName]
+  ) {
+    throw new Error(`UI must re-export the original hooks implementation: ${name}`);
+  }
+}
 
 const coreNames = Object.keys(coreEsm).sort();
 const uiEsmNames = Object.keys(uiEsm).sort();

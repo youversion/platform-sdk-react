@@ -37,6 +37,7 @@
     "size:why": "node scripts/bundle-visualize.mjs",
     "size:visualize": "node scripts/bundle-visualize.mjs",
     "check:tree-shaking": "node scripts/check-tree-shaking.mjs",
+    "check:ui-consumer": "node scripts/check-ui-consumer.mjs",
     "check:cdn-css-major": "node scripts/check-cdn-css-major.mjs",
     "analyze": "node scripts/analyze.mjs",
     "analyze:select": "node scripts/analyze-select.mjs",
