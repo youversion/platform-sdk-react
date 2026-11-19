@@ -60,6 +60,13 @@ export type FootnoteData = {
   reference?: string;
 };
 
+/**
+ * Props for {@link FootnoteContent}.
+ *
+ * Security: `notes` and `verseHtml` are injected as HTML without further
+ * sanitization. Pass only output from `transformBibleHtml` (or HTML that went
+ * through an equivalent allowlist sanitizer); never pass raw API or user HTML.
+ */
 export type FootnoteContentProps = FootnoteData & {
   scriptureDirection?: TextDirection;
   fontSize?: number;
@@ -95,7 +102,7 @@ function FootnoteContentImplementation({
               <div
                 className="yv:mb-3 yv:font-serif yv:*:font-serif"
                 style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe
+                // Caller must pass sanitized HTML; see FootnoteContentProps.
                 dangerouslySetInnerHTML={{ __html: verseHtml }}
               />
             </>
@@ -109,7 +116,7 @@ function FootnoteContentImplementation({
                   className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-solid yv:border-border yv:py-2"
                 >
                   <span>{marker}.</span>
-                  {/** biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe */}
+                  {/* Caller must pass sanitized HTML; see FootnoteContentProps. */}
                   <span data-slot="yv-bible-note" dangerouslySetInnerHTML={{ __html: note }} />
                 </li>
               );
