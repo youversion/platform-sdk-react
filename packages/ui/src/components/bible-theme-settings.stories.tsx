@@ -196,6 +196,17 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
       'data-font-family',
       UNTITLED_SERIF_FONT,
     );
+    if (nativeKeyAvailable) {
+      await waitFor(async () => {
+        await expect(settingsRoot.activeElement).toBe(serifButton);
+        const style = getComputedStyle(serifButton);
+        await expect(style.boxShadow).toContain('inset');
+        await expect(style.boxShadow).toContain('0px 0px 0px 3px');
+        await expect(style.getPropertyValue('--tw-ring-color').trim()).toBe(
+          style.getPropertyValue('--yv-primary-foreground').trim(),
+        );
+      });
+    }
     await userEvent.tab();
     void expect(ownerDocument.activeElement).toBe(closeButton);
     for (const control of [...controls].reverse()) {

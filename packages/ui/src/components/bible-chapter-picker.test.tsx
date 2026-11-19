@@ -200,7 +200,33 @@ it('does not let focus in a sibling accordion suppress the current-book reveal',
   }
 });
 
+it.each([
+  { prefersReduced: false, behavior: 'smooth' },
+  { prefersReduced: true, behavior: 'instant' },
+])(
+  'reveals the current book with $behavior scrolling based on motion preference',
+  async ({ prefersReduced, behavior }) => {
+    vi.useFakeTimers();
+    const matchMedia = vi.fn(() => ({ matches: prefersReduced }));
+    vi.stubGlobal('matchMedia', matchMedia);
+    const scrollSpy = vi.spyOn(Element.prototype, 'scrollIntoView');
+    try {
+      render(standaloneContent(() => undefined));
+      await act(async () => {
+        await vi.runOnlyPendingTimersAsync();
+      });
+      expect(matchMedia).toHaveBeenCalledWith('(prefers-reduced-motion: reduce)');
+      expect(scrollSpy).toHaveBeenCalledExactlyOnceWith({ block: 'start', behavior });
+    } finally {
+      scrollSpy.mockRestore();
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  },
+);
+
 it('keeps standalone content usable when scrollIntoView is unavailable', async () => {
+  vi.useFakeTimers();
   const scrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(
     Element.prototype,
     'scrollIntoView',
@@ -211,7 +237,9 @@ it('keeps standalone content usable when scrollIntoView is unavailable', async (
   });
   try {
     render(standaloneContent(() => undefined));
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
     expect(findAccordionTrigger(/Genesis/i)).toBeInTheDocument();
   } finally {
     if (scrollIntoViewDescriptor) {
@@ -219,6 +247,7 @@ it('keeps standalone content usable when scrollIntoView is unavailable', async (
     } else {
       Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
     }
+    vi.useRealTimers();
   }
 });
 

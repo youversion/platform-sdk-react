@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
 import { InputGroup, InputGroupInput, InputGroupAddon } from './ui/input-group';
 import { useInterfaceDirection } from '@/lib/direction';
+import { prefersReducedMotion } from '@/lib/reduced-motion';
 import { cn } from '@/lib/utils';
 import { ShadowIsolationBoundary } from '@/lib/shadow-isolation';
 import {
@@ -66,7 +67,10 @@ type BibleChapterPickerContextType = {
 
 function revealExpandedBook(element: HTMLElement, usesConsumerScroll: boolean): void {
   if (usesConsumerScroll) {
-    element.scrollIntoView?.({ block: 'start', behavior: 'instant' });
+    element.scrollIntoView?.({
+      block: 'start',
+      behavior: prefersReducedMotion(element.ownerDocument.defaultView) ? 'instant' : 'smooth',
+    });
     return;
   }
   const list = element.closest<HTMLElement>('[data-slot="accordion"]');
