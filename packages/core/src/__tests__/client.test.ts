@@ -130,6 +130,33 @@ describe('ApiClient contracts', () => {
     }
   });
 
+  it('keeps HTTP 204 distinct from a decoded empty JSON string', async () => {
+    if (process.env.INTEGRATION_TESTS) server.listen();
+    try {
+      server.use(
+        http.get(
+          'https://test_placeholder.youversion.com/no-content',
+          () => new HttpResponse(null, { status: 204 }),
+        ),
+        http.get('https://test_placeholder.youversion.com/json-string', () =>
+          HttpResponse.json(''),
+        ),
+      );
+      const client = new ApiClient({
+        apiHost: 'test_placeholder.youversion.com',
+        appKey: 'test-app',
+      });
+
+      await expect(client.get('/no-content')).resolves.toBeUndefined();
+      await expect(client.get('/json-string')).resolves.toBe('');
+    } finally {
+      if (process.env.INTEGRATION_TESTS) {
+        server.resetHandlers();
+        server.close();
+      }
+    }
+  });
+
   it('only exposes numeric status values from unknown failures', () => {
     expect(getHttpStatus(Object.assign(new Error('forbidden'), { status: 403 }))).toBe(403);
     expect(getHttpStatus({ status: '403' })).toBeUndefined();

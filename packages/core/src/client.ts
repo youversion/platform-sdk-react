@@ -140,6 +140,15 @@ export class ApiClient {
         throw error;
       }
 
+      // Keep a no-content response distinct from a decoded JSON string. Without
+      // this sentinel, both HTTP 204 and a JSON payload of `""` become `''`, so
+      // callers cannot validate the malformed JSON value at their boundary.
+      if (response.status === 204) {
+        // SAFETY: HTTP 204 has no representation; undefined is the client's
+        // established no-data value for the caller-owned generic T.
+        return undefined as T;
+      }
+
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
         // A successful (2xx) response can legitimately carry an EMPTY body even

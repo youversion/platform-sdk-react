@@ -254,6 +254,7 @@ describe('VideosClient', () => {
         http.get(`https://${apiHost}/v1/organizations/:organizationId/playlists`, ({ request }) => {
           const pageToken = new URL(request.url).searchParams.get('page_token');
           if (pageToken === 'null-body') return HttpResponse.json(null);
+          if (pageToken === 'json-string') return HttpResponse.json('');
           return HttpResponse.json({
             data: [
               {
@@ -301,6 +302,9 @@ describe('VideosClient', () => {
       ).rejects.toThrow('Unexpected playlists API response');
       await expect(
         videos.getPlaylists(organizationId, { page_token: 'null-body' }),
+      ).rejects.toThrow('Unexpected playlists API response');
+      await expect(
+        videos.getPlaylists(organizationId, { page_token: 'json-string' }),
       ).rejects.toThrow('Unexpected playlists API response');
       await expect(videos.getPlaylist(organizationId, 3669)).rejects.toThrow(
         'Unexpected playlists API response',
