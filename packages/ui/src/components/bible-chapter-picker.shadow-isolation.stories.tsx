@@ -172,11 +172,14 @@ function StandaloneBibleChapterPicker(): React.ReactNode {
       versionId={111}
       onChapterPickerPress={() => undefined}
     >
-      <div
-        data-testid="standalone-chapter-panel"
-        style={{ inlineSize: '20rem', maxBlockSize: '12rem', overflowY: 'auto' }}
-      >
-        <BibleChapterPicker.Content />
+      <div data-testid="standalone-chapter-host" style={{ blockSize: '9rem', overflowY: 'auto' }}>
+        <div style={{ blockSize: '4rem' }} />
+        <div
+          data-testid="standalone-chapter-panel"
+          style={{ inlineSize: '20rem', maxBlockSize: '12rem', overflowY: 'auto' }}
+        >
+          <BibleChapterPicker.Content />
+        </div>
       </div>
     </BibleChapterPicker.Root>
   );
@@ -324,7 +327,6 @@ export const PublicRootJourney: Story = {
     genesisBook.focus({ preventScroll: true });
     const focusedBookListScrollTop = bookList.scrollTop;
     const focusedPanelScrollTop = panel.scrollTop;
-    await new Promise((resolve) => setTimeout(resolve, 250));
     await expect(root.activeElement).toBe(genesisBook);
     await expect(bookList.scrollTop).toBe(focusedBookListScrollTop);
     await expect(panel.scrollTop).toBe(focusedPanelScrollTop);
@@ -336,12 +338,19 @@ export const PublicRootJourney: Story = {
     await expect(tabOrder.at(-2)).toBe(lastChapterButton);
     await expect(tabOrder.at(-1)).toBe(initialSearch);
     await expect(bookList.scrollHeight).toBeGreaterThan(bookList.clientHeight);
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    panel.style.blockSize = '10rem';
     bookList.scrollTop = 0;
     const clippedBookRect = firstKingsBook.getBoundingClientRect();
     const initialListRect = bookList.getBoundingClientRect();
     await expect(clippedBookRect.bottom).toBeGreaterThan(initialListRect.bottom);
-    firstKingsBook.focus({ preventScroll: true });
+    const { userEvent: browserUserEvent } = await import('vitest/browser');
+    const bookTriggers = Array.from(
+      panel.querySelectorAll<HTMLElement>('[data-slot="accordion-trigger"]'),
+    );
+    genesisBook.focus();
+    for (let index = 0; index < bookTriggers.indexOf(firstKingsBook); index += 1) {
+      await browserUserEvent.keyboard('{ArrowDown}');
+    }
     await waitFor(async () => {
       await expect(root.activeElement).toBe(firstKingsBook);
       const bookRect = firstKingsBook.getBoundingClientRect();
@@ -350,8 +359,9 @@ export const PublicRootJourney: Story = {
       await expect(bookRect.bottom).toBeLessThanOrEqual(listRect.bottom + 1);
       await expect(getComputedStyle(firstKingsBook).boxShadow).toContain('inset');
     });
-    psalmsBook.focus({ preventScroll: true });
-    await userEvent.keyboard('{Enter}');
+    await browserUserEvent.keyboard('{ArrowDown}');
+    await expect(root.activeElement).toBe(psalmsBook);
+    await browserUserEvent.keyboard('{Enter}');
     await waitFor(async () => await expect(psalmsBook).toHaveAttribute('aria-expanded', 'true'));
     const expandedPsalms = psalmsBook.closest<HTMLElement>('[data-slot="accordion-item"]');
     if (!expandedPsalms) throw new Error('expanded Psalms item not rendered');
@@ -359,21 +369,24 @@ export const PublicRootJourney: Story = {
     await waitFor(async () => {
       await expect(expandedPsalms.scrollHeight).toBeGreaterThan(bookList.clientHeight);
     });
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    await expect(root.activeElement).toBe(psalmsBook);
-    const expandedTriggerRect = psalmsBook.getBoundingClientRect();
-    const expandedListRect = bookList.getBoundingClientRect();
-    await expect(expandedTriggerRect.top).toBeGreaterThanOrEqual(expandedListRect.top - 1);
-    await expect(expandedTriggerRect.bottom).toBeLessThanOrEqual(expandedListRect.bottom + 1);
-    const firstChapterRect = firstPsalmsChapter.getBoundingClientRect();
-    await expect(firstChapterRect.top).toBeGreaterThanOrEqual(expandedListRect.top - 1);
-    await expect(firstChapterRect.bottom).toBeLessThanOrEqual(expandedListRect.bottom + 1);
-    await userEvent.keyboard('{Enter}');
+    const compactPanel = panel;
+    await waitFor(async () => {
+      await expect(root.activeElement).toBe(psalmsBook);
+      const panelRect = compactPanel.getBoundingClientRect();
+      const listRect = bookList.getBoundingClientRect();
+      await expect(psalmsBook.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+        Math.max(panelRect.top, listRect.top) - 1,
+      );
+      await expect(firstPsalmsChapter.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+        Math.min(panelRect.bottom, listRect.bottom) + 1,
+      );
+    });
+    panel.style.blockSize = '24rem';
+    await browserUserEvent.keyboard('{Enter}');
     await waitFor(async () => await expect(psalmsBook).toHaveAttribute('aria-expanded', 'false'));
     panel.focus({ preventScroll: true });
     await userEvent.tab();
     await expect(root.activeElement).toBe(closeButton);
-    const { userEvent: browserUserEvent } = await import('vitest/browser');
     const forwardTraversalKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
       ? '{Alt>}{Tab}{/Alt}'
       : '{Tab}';
@@ -434,8 +447,12 @@ export const StandaloneContentRevealsFocusedBookInConsumerScroll: Story = {
       '[data-testid="standalone-chapter-panel"]',
       'standalone chapter panel not rendered',
     );
+    const host = shell.parentElement;
+    if (!host) throw new Error('standalone chapter host not rendered');
     const matthewBook = within(shell).getByRole('button', { name: /matthew/i });
+    host.scrollTop = 0;
     shell.scrollTop = 0;
+    const pageScrollTop = canvasElement.ownerDocument.scrollingElement?.scrollTop;
     const initialShellRect = shell.getBoundingClientRect();
     await expect(matthewBook.getBoundingClientRect().top).toBeGreaterThanOrEqual(
       initialShellRect.bottom,
@@ -445,6 +462,8 @@ export const StandaloneContentRevealsFocusedBookInConsumerScroll: Story = {
     await waitFor(async () => {
       await expect(root.activeElement).toBe(matthewBook);
       await expect(shell.scrollTop).toBeGreaterThan(0);
+      await expect(host.scrollTop).toBe(0);
+      await expect(canvasElement.ownerDocument.scrollingElement?.scrollTop).toBe(pageScrollTop);
       const bookRect = matthewBook.getBoundingClientRect();
       const shellRect = shell.getBoundingClientRect();
       await expect(bookRect.top).toBeGreaterThanOrEqual(shellRect.top - 1);

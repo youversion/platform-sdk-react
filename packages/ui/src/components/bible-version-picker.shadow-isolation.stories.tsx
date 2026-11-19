@@ -380,26 +380,40 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
     await expect(reflectedControls).toEqual([panel]);
     if (!__YV_STORYBOOK_VITEST__) return;
 
-    panel.style.blockSize = '9.328125rem';
+    panel.style.blockSize = '8rem';
+    panel.style.inlineSize = '18rem';
     const closeButton = within(panel).getByRole('button', { name: /close/i });
     const versionSearch = within(panel).getByRole('textbox', { name: i18n.t('searchVersions') });
     const languageEntry = within(panel).getByRole('button', { name: /^language /i });
-    const versionButton = await waitForElement<HTMLButtonElement>(
+    const list = await waitForElement(
       panel,
-      '[data-testid="version-list"] button',
-      'version button not rendered',
+      '[data-testid="version-list"]',
+      'version list not rendered',
     );
+    await waitFor(async () => await expect(list.querySelector('button')).not.toBeNull());
+    const buttons = Array.from(list.querySelectorAll('button'));
+    const versionButton = buttons.find((button) =>
+      button.textContent?.includes('New International Version (Anglicized) 2011'),
+    );
+    if (!versionButton) throw new Error('two-line version row not rendered');
     panel.focus({ preventScroll: true });
     const forwardTraversalKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
       ? '{Alt>}{Tab}{/Alt}'
       : '{Tab}';
-    for (const expected of [closeButton, versionSearch, languageEntry, versionButton]) {
+    for (const expected of [
+      closeButton,
+      versionSearch,
+      languageEntry,
+      ...buttons.slice(0, buttons.indexOf(versionButton) + 1),
+    ]) {
       const nativeKeyAvailable = await verifyNativeBrowserKey(forwardTraversalKey, async () => {
         await expect(root.activeElement).toBe(expected);
       });
       if (!nativeKeyAvailable) return;
     }
+    await expect(panel.scrollTop).toBeGreaterThan(0);
     const focusedVersionRect = versionButton.getBoundingClientRect();
+    await expect(focusedVersionRect.height).toBeGreaterThan(74);
     const constrainedPanelRect = panel.getBoundingClientRect();
     const constrainedScrollRegion = versionButton.closest(
       '[data-testid="version-list"]',
@@ -438,7 +452,14 @@ export const ForwardTabSkipsScrollableVersionList: Story = {
     const clippedVersionRect = lastVersion.getBoundingClientRect();
     const initialPanelRect = panel.getBoundingClientRect();
     await expect(clippedVersionRect.top).toBeGreaterThanOrEqual(initialPanelRect.bottom);
-    lastVersion.focus({ preventScroll: true });
+    const forwardKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      ? '{Alt>}{Tab}{/Alt}'
+      : '{Tab}';
+    await userEvent.click(versionSearch);
+    for (const control of [languageEntry, ...versionButtons]) {
+      await browserUserEvent.keyboard(forwardKey);
+      await expect(root.activeElement).toBe(control);
+    }
     await waitFor(async () => {
       await expect(root.activeElement).toBe(lastVersion);
       const versionRect = lastVersion.getBoundingClientRect();
@@ -1023,7 +1044,17 @@ export const StandaloneContentKeepsInternalScroll: Story = {
       shellRectBeforeFocus.bottom,
     );
     const initialScrollTop = scrollRegion.scrollTop;
-    lastVersion.focus({ preventScroll: true });
+    const forwardKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      ? '{Alt>}{Tab}{/Alt}'
+      : '{Tab}';
+    const search = within(shell).getByRole('textbox', { name: i18n.t('searchVersions') });
+    await userEvent.click(search);
+    for (const control of versionButtons) {
+      const nativeKeyAvailable = await verifyNativeBrowserKey(forwardKey, async () => {
+        await expect(root.activeElement).toBe(control);
+      });
+      if (!nativeKeyAvailable) return;
+    }
     await waitFor(async () => {
       await expect(root.activeElement).toBe(lastVersion);
       await expect(scrollRegion.scrollTop).toBeGreaterThan(initialScrollTop);

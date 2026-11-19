@@ -7,7 +7,14 @@ import { revealElementWithinScrollContainer } from '@/lib/scroll-reveal';
 import { cn } from '@/lib/utils';
 import { type BibleVersion } from '@youversion/platform-core';
 import { useLanguage, useOrganizations } from '@youversion/platform-react-hooks';
-import { useEffect, useRef, useState, type FocusEvent, type ReactElement } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type ReactElement,
+  type RefObject,
+} from 'react';
 import { ChevronForwardIcon } from '../icons/chevron-forward';
 import { GlobeIcon } from '../icons/globe';
 import { LoaderIcon } from '../icons/loader';
@@ -161,10 +168,16 @@ function LanguageEntry({ name }: { name: string }): ReactElement {
   );
 }
 
+// Publisher line, two title lines, row padding, and borders.
+const versionRowMinBlockSize = 'yv:[min-block-size:calc(2.8125rem+34.5px)]';
+
 export function VersionList({
   open,
   onRequestClose,
-}: BibleVersionPickerContentProps = {}): ReactElement {
+  scrollPanelRef,
+}: BibleVersionPickerContentProps & {
+  scrollPanelRef?: RefObject<HTMLDivElement | null>;
+} = {}): ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   const interfaceDirection = useInterfaceDirection();
   const {
@@ -227,17 +240,23 @@ export function VersionList({
   const versionListRootRef = useRef<HTMLDivElement>(null);
   const versionScrollRegionRef = useRef<HTMLDivElement>(null);
   const revealFocusedVersion = (event: FocusEvent<HTMLButtonElement>) => {
-    const element = event.currentTarget;
-    for (const container of [versionScrollRegionRef.current, versionListRootRef.current]) {
-      if (!container) continue;
-      revealElementWithinScrollContainer(element, container);
+    const containers = [
+      versionScrollRegionRef.current,
+      versionListRootRef.current,
+      scrollPanelRef?.current,
+    ];
+    for (const container of containers) {
+      if (container) revealElementWithinScrollContainer(event.currentTarget, container);
     }
   };
 
   return (
     <div
       ref={versionListRootRef}
-      className="yv:overflow-y-auto yv:h-full yv:min-h-0 yv:flex yv:flex-col yv:font-sans yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center"
+      className={cn(
+        'yv:overflow-y-auto yv:h-full yv:flex yv:flex-col yv:font-sans yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center',
+        headerOwnsChrome ? versionRowMinBlockSize : 'yv:min-h-0',
+      )}
       data-yv-sdk
       data-yv-theme={background}
       dir={interfaceDirection}
@@ -264,7 +283,7 @@ export function VersionList({
       {/* Firefox makes scroll containers a Tab stop; the version rows are the keyboard targets. */}
       <div
         ref={versionScrollRegionRef}
-        className="yv:flex-1 yv:min-h-[4.625rem] yv:overflow-y-auto yv:[padding-block-start:0.5rem] yv:[padding-block-end:0.5rem]"
+        className={cn('yv:flex-1 yv:overflow-y-auto yv:py-2', versionRowMinBlockSize)}
         tabIndex={-1}
       >
         {filteredRecentVersions.length > 0 && (

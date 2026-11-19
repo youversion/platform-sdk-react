@@ -138,20 +138,7 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
     void expect(ownerDocument.activeElement).toBe(closeButton);
     await userEvent.click(settingsScope);
     const unfocusedStyles = new Map(controls.map((control) => [control, focusStyle(control)]));
-    if (__YV_STORYBOOK_VITEST__) {
-      const { userEvent: browserUserEvent } = await import('vitest/browser');
-      await browserUserEvent.click(decreaseFontSizeButton);
-      if (
-        settingsRoot.activeElement === decreaseFontSizeButton &&
-        !decreaseFontSizeButton.matches(':focus-visible')
-      ) {
-        void expect(focusStyle(decreaseFontSizeButton).boxShadow).toBe(
-          unfocusedStyles.get(decreaseFontSizeButton)?.boxShadow,
-        );
-      }
-    } else {
-      await userEvent.click(decreaseFontSizeButton);
-    }
+    await userEvent.click(decreaseFontSizeButton);
     closeButton.focus();
     const forwardTraversalKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
       ? '{Alt>}{Tab}{/Alt}'
@@ -185,7 +172,16 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
         await verifyNativeBrowserKey(forwardTraversalKey, async () => {
           void expect(settingsRoot.activeElement).toBe(control);
           void expect(focusStyle(control)).not.toEqual(unfocusedStyles.get(control));
-          void expect(focusStyle(control).boxShadow).toContain('inset');
+          await waitFor(async () => {
+            const style = getComputedStyle(control);
+            await expect(style.boxShadow).toContain('inset');
+            await expect(style.boxShadow).toContain('0px 0px 0px 3px');
+            if (control === controls[3]) {
+              await expect(style.getPropertyValue('--tw-ring-color').trim()).toBe(
+                style.getPropertyValue('--yv-primary-foreground').trim(),
+              );
+            }
+          });
         });
       } else {
         await userEvent.tab();

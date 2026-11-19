@@ -1551,7 +1551,7 @@ function BibleThemeSettingsBody({
             className={cn(
               'yv:group yv:dark:bg-muted yv:rounded-e-none yv:border-e-0.5 yv:dark:border-border yv:rounded-s-[8px] yv:h-auto yv:focus-visible:ring-inset',
               fontFamily === INTER_FONT
-                ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
+                ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80 yv:focus-visible:ring-primary-foreground yv:dark:focus-visible:ring-ring'
                 : '',
             )}
             onClick={() => onFontSelected(INTER_FONT)}
@@ -1575,7 +1575,7 @@ function BibleThemeSettingsBody({
             className={cn(
               'yv:group yv:dark:bg-muted yv:border-s-0.5 yv:rounded-s-none yv:rounded-e-[8px] yv:h-auto yv:focus-visible:ring-inset',
               fontFamily === UNTITLED_SERIF_FONT
-                ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
+                ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80 yv:focus-visible:ring-primary-foreground yv:dark:focus-visible:ring-ring'
                 : '',
             )}
             onClick={() => onFontSelected(UNTITLED_SERIF_FONT)}
@@ -1872,7 +1872,7 @@ function Toolbar({
               sideOffset={16}
               heading={t('readerSettingsHeading')}
               theme={background}
-              closeButtonClassName="yv:focus-visible:ring-inset"
+              closeButtonClassName="yv:focus-visible:ring-inset yv:focus-visible:ring-ring"
             >
               <ReuseShadowBoundary>
                 <BibleThemeSettingsContent

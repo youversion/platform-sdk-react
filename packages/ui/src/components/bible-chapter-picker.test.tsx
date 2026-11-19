@@ -4,7 +4,7 @@
 // We stub ResizeObserver for jsdom (used by Radix/@floating-ui). The stub methods are intentionally no-ops.
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { useEffect, useState, type ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 
@@ -109,18 +109,71 @@ function standaloneContent(onChapterPickerPress: () => void): ReactElement {
   );
 }
 
+it('keeps a newly focused book visible when the initial reveal was already scheduled', async () => {
+  vi.useFakeTimers();
+  const scrollSpy = vi.spyOn(Element.prototype, 'scrollIntoView');
+  try {
+    render(
+      <>
+        <button type="button">Host control</button>
+        {standaloneContent(() => undefined)}
+      </>,
+    );
+    findAccordionTrigger(/Exodus/i)?.focus();
+    const hostControl = screen.getByRole('button', { name: 'Host control' });
+    hostControl.focus();
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(hostControl).toHaveFocus();
+    expect(scrollSpy).not.toHaveBeenCalled();
+  } finally {
+    scrollSpy.mockRestore();
+    vi.useRealTimers();
+  }
+});
+
+it('keeps the focused chapter visible when a book reveal is pending', async () => {
+  vi.useFakeTimers();
+  const scrollSpy = vi.spyOn(Element.prototype, 'scrollIntoView');
+  try {
+    render(standaloneContent(() => undefined));
+    const chapter = screen.getByRole('button', { name: '2' });
+    chapter.focus();
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(chapter).toHaveFocus();
+    expect(scrollSpy).not.toHaveBeenCalled();
+  } finally {
+    scrollSpy.mockRestore();
+    vi.useRealTimers();
+  }
+});
+
 it('does not scroll consumer ancestors again when only the callback identity changes', async () => {
+  vi.useFakeTimers();
   const scrollSpy = vi.spyOn(Element.prototype, 'scrollIntoView');
   try {
     const { rerender } = render(standaloneContent(() => undefined));
-    await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    expect(scrollSpy).toHaveBeenCalledTimes(1);
 
     rerender(standaloneContent(() => undefined));
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
 
     expect(scrollSpy).toHaveBeenCalledTimes(1);
   } finally {
     scrollSpy.mockRestore();
+    vi.useRealTimers();
   }
 });
 
