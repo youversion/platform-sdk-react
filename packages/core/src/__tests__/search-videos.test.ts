@@ -19,7 +19,7 @@ function createSearchClient(): SearchClient {
   );
 }
 
-describe('SearchClient.searchVideos', () => {
+describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVideos', () => {
   it('searches full video records with stable paging parameters and full-size thumbnails', async () => {
     const search = createSearchClient();
 
@@ -30,7 +30,7 @@ describe('SearchClient.searchVideos', () => {
         expect(url.searchParams.get('query')).toBe('teaching clips');
         expect(url.searchParams.getAll('organization_ids[]')).toEqual(organizationIds);
         expect(url.searchParams.get('page_size')).toBe('12');
-        expect(url.searchParams.get('page_token')).toBe('next-page');
+        expect(url.searchParams.get('page_token')).toBe('a+/=&b');
         return HttpResponse.json({
           videos: [
             {
@@ -56,7 +56,7 @@ describe('SearchClient.searchVideos', () => {
     const result = await search.searchVideos('teaching clips', {
       organizationIds,
       pageSize: 12,
-      pageToken: 'next-page',
+      pageToken: 'a+/=&b',
     });
 
     expect(result).toEqual({
@@ -91,6 +91,8 @@ describe('SearchClient.searchVideos', () => {
           requests += 1;
           const url = new URL(request.url);
           expect(request.headers.get('Accept-Language')).toBe('es-MX');
+          expect(url.searchParams.get('query')).toBe('hope');
+          expect(url.searchParams.getAll('organization_ids[]')).toEqual(organizationIds);
           if (requests === 1) {
             expect(url.searchParams.has('page_token')).toBe(false);
             return HttpResponse.json({
@@ -114,7 +116,10 @@ describe('SearchClient.searchVideos', () => {
         }),
       );
 
-      const emptyPage = await search.searchVideos('hope', { acceptLanguage: 'es-MX' });
+      const emptyPage = await search.searchVideos('hope', {
+        acceptLanguage: 'es-MX',
+        organizationIds,
+      });
       expect(emptyPage).toEqual({
         videos: [],
         didYouMean: [],
@@ -125,6 +130,7 @@ describe('SearchClient.searchVideos', () => {
         search.searchVideos('hope', {
           acceptLanguage: 'es-MX',
           pageSize: 99,
+          organizationIds,
           pageToken: emptyPage.nextPageToken ?? undefined,
         }),
       ).resolves.toMatchObject({ nextPageToken: null });

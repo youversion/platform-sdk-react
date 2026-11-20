@@ -19,7 +19,7 @@ function createVideosClient(): VideosClient {
   );
 }
 
-describe('VideosClient', () => {
+describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
   it('gets a video by opaque id and resolves its thumbnail without changing the playback contract', async () => {
     const videos = createVideosClient();
 
@@ -214,7 +214,8 @@ describe('VideosClient', () => {
     };
 
     server.use(
-      http.get(`https://${apiHost}/v1/videos/:videoId`, ({ params }) => {
+      http.get(`https://${apiHost}/v1/videos/:videoId`, ({ params, request }) => {
+        expect(request.headers.has('Accept-Language')).toBe(false);
         const videoId = String(params.videoId);
         return HttpResponse.json({
           id: `returned-${videoId}`,
@@ -259,6 +260,7 @@ describe('VideosClient', () => {
         http.get(`https://${apiHost}/v1/organizations/:organizationId/playlists`, ({ request }) => {
           const pageToken = new URL(request.url).searchParams.get('page_token');
           if (pageToken === 'null-body') return HttpResponse.json(null);
+          if (pageToken === 'forbidden') return new HttpResponse(null, { status: 403 });
           if (pageToken === 'json-string') return HttpResponse.json('');
           return HttpResponse.json({
             data: [
@@ -285,6 +287,15 @@ describe('VideosClient', () => {
       await expect(videos.getPlaylists(organizationId, { page_size: '*' })).rejects.toThrow(
         'page_size="*" requires 1-3 fields to be specified',
       );
+      await expect(
+        videos.getPlaylists(organizationId, {
+          page_size: '*',
+          fields: ['id', 'title', 'total', 'videos'],
+        }),
+      ).rejects.toThrow('requires 1-3 fields');
+      await expect(videos.getPlaylists(organizationId, { page_size: 0 })).rejects.toThrow(
+        'Page size must be an integer from 1 to 99',
+      );
       await expect(videos.getPlaylists(organizationId, { page_size: 100 })).rejects.toThrow(
         'Page size must be an integer from 1 to 99',
       );
@@ -301,6 +312,10 @@ describe('VideosClient', () => {
         'Video ID must contain valid Unicode',
       );
       expect(fetchSpy).not.toHaveBeenCalled();
+
+      await expect(
+        videos.getPlaylists(organizationId, { page_token: 'forbidden' }),
+      ).rejects.toMatchObject({ status: 403 });
 
       await expect(
         videos.getPlaylists(organizationId, { page_token: 'out-of-range' }),

@@ -17,7 +17,11 @@ type SearchVideosQuery = {
   page_token?: string;
 };
 
-/** Searches the beta video catalog and returns full video resource records. */
+/**
+ * Searches the beta video catalog and returns full video resource records.
+ * When continuing with a page token, repeat the query, organization filters, and
+ * language from the previous request. The page size may change.
+ */
 export async function searchVideos(
   client: ApiClient,
   query: string,
