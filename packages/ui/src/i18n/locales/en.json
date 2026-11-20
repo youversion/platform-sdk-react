@@ -124,5 +124,21 @@
   "bibleSearchTrendingHeading": "Trending Searches",
   "bibleLanguagesHeading": "Bible Languages",
   "languageVersionsHeading": "{{language}} Versions",
-  "versionsStatistics": "{{versionsCount}} Versions in {{languagesCount}} Languages"
+  "versionsStatistics": "{{versionsCount}} Versions in {{languagesCount}} Languages",
+  "notesPreviouslySaved": "Previously Saved",
+  "notesAddedNoteOn": "You added a note on {{date}}",
+  "notesReplaceTitle": "Replace unsaved changes?",
+  "notesReplaceMessage": "Your unsaved changes will be discarded when you open this saved note.",
+  "notesReplace": "Replace",
+  "notesDelete": "Delete",
+  "notesDeleteTitle": "Delete saved note?",
+  "notesDeleteMessage": "This note will be permanently deleted. Your unsaved note text will be kept.",
+  "notesSave": "Save",
+  "notesPrivate": "Private",
+  "notesPublic": "Public",
+  "notesPlaceholder": "Add Note…",
+  "notesDiscardTitle": "Discard note?",
+  "notesDiscardMessage": "Your note hasn’t been saved. Discard your changes?",
+  "notesDiscard": "Discard",
+  "notesVerseIndicatorAccessibilityLabel": "Notes {{verse}}"
 }
