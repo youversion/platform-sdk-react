@@ -3,19 +3,22 @@ import { getSuggestedQueries, getTrendingQueries } from './search-queries';
 import { searchTopics } from './search-topics';
 import { searchUnified, type SearchUnifiedOptions } from './search-unified';
 import { searchImages, type SearchImagesOptions } from './search-images';
+import { searchVideos, type SearchVideosOptions } from './search-videos';
 import { searchVerses, type SearchVersesOptions } from './search-verses';
 import type {
+  ContentLibrarySearchOptions,
   SearchImagesResponse,
   SearchQueries,
   SearchTopicsResponse,
   SearchUnifiedResponse,
   SearchVersesResponse,
 } from './schemas/search';
+import type { SearchVideosResponse } from './schemas/search-videos';
 
-export type { SearchImagesOptions, SearchUnifiedOptions, SearchVersesOptions };
+export type { SearchImagesOptions, SearchUnifiedOptions, SearchVersesOptions, SearchVideosOptions };
 
 /**
- * Client for YouVersion Platform Search API endpoints (`/v1/*`).
+ * Client for YouVersion Platform Search API endpoints (`/v1/*` and `/v1-beta/*`).
  */
 export class SearchClient {
   private client: ApiClient;
@@ -80,6 +83,15 @@ export class SearchClient {
   }
 
   /**
+   * Searches video metadata through `/v1-beta/search-videos`.
+   * Send the same query, organization filters, and language with a continuation
+   * token; `pageSize` may change. Language defaults to English.
+   */
+  async searchVideos(query: string, options?: SearchVideosOptions): Promise<SearchVideosResponse> {
+    return searchVideos(this.client, query, options);
+  }
+
+  /**
    * Returns topics related to a query. This endpoint is unpaginated.
    * @param query Search text (1–100 characters).
    * @param languageRanges Ordered language ranges (`en_US` is normalized to `en-us` on the wire).
@@ -92,18 +104,18 @@ export class SearchClient {
   }
 
   /**
-   * Searches verses, topics, and images in one unpaginated request.
+   * Searches verses, topics, images, and lightweight video ids in one unpaginated request.
    * Image hits are `id` and `passageId` only.
    * @param query Search text (1 to 100 graphemes).
    * @param versionId Bible version identifier (sent to the API as `bible_id`).
    * @param languageRanges Ordered language ranges (`en_US` is normalized to `en-us` on the wire).
-   * @param options Optional `userIntent` and `fields` (`verses`, `topics`, or `images`).
+   * @param options Optional `userIntent` and `fields` (`verses`, `topics`, `images`, or `videos`).
    */
   async searchUnified(
     query: string,
     versionId: number,
     languageRanges: string | readonly string[],
-    options?: SearchUnifiedOptions,
+    options?: ContentLibrarySearchOptions,
   ): Promise<SearchUnifiedResponse> {
     return searchUnified(this.client, query, versionId, languageRanges, options);
   }

@@ -126,6 +126,10 @@ Bind on new/edited tests. When touching a file, bend the cases you edit toward t
 
 ## Env
 
+To verify playlist-to-video lookup against a deployment, set `YVP_API_HOST`, an authorized
+`YVP_APP_KEY`, and `YVP_VIDEO_ORGANIZATION_ID` for an organization with a populated video
+playlist. Run `pnpm --filter @youversion/platform-core test:integration src/__tests__/videos.integration.test.ts`.
+
 Missing `YVP_API_HOST` or other env files: read `docs/cursor-cloud.md`.
 
 ## Before pushing

@@ -6,12 +6,13 @@ const shouldRunLiveSmoke =
   process.env.INTEGRATION_TESTS === 'true' && Boolean(process.env.YVP_APP_KEY);
 
 function createSearchClient(): SearchClient {
-  const apiClient = new ApiClient({
-    apiHost: process.env.YVP_API_HOST,
-    appKey: process.env.YVP_APP_KEY || '',
-    installationId: 'integration-test',
-  });
-  return new SearchClient(apiClient);
+  return new SearchClient(
+    new ApiClient({
+      apiHost: process.env.YVP_API_HOST,
+      appKey: process.env.YVP_APP_KEY || '',
+      installationId: 'integration-test',
+    }),
+  );
 }
 
 (shouldRunLiveSmoke ? describe : describe.skip)('SearchClient live smoke', () => {
