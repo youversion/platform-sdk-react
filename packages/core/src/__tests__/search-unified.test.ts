@@ -55,7 +55,7 @@ describe('SearchClient.searchUnified', () => {
       });
 
       expect(result.videos).toEqual([{ id: 'search-issued-id' }]);
-      const detail = await videos.getVideo(result.videos[0]?.id ?? '');
+      const detail = await videos.getVideo(result.videos?.[0]?.id ?? '');
       expect(detail.id).toBe('detail-issued-id');
     },
   );

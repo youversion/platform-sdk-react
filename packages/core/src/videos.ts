@@ -8,11 +8,11 @@ import {
   VideoPlaylistFullCollectionSchema,
   VideoPlaylistFullSchema,
   VideoPlaylistIdSchema,
-  VideoSchema,
+  ContentLibraryVideoSchema,
   type GetPlaylistOptions,
   type GetPlaylistsOptions,
   type GetVideoOptions,
-  type Video,
+  type ContentLibraryVideo,
   type VideoPlaylist,
   type VideoPlaylistField,
 } from './schemas/video';
@@ -52,7 +52,7 @@ export class VideosClient {
    *   can also mean the app has not accepted the Extra-Biblical Content agreement.
    *   Read the status with `getHttpStatus`.
    */
-  async getVideo(videoId: string, options: GetVideoOptions = {}): Promise<Video> {
+  async getVideo(videoId: string, options: GetVideoOptions = {}): Promise<ContentLibraryVideo> {
     const id = VideoIdSchema.parse(videoId);
     const parsedOptions = GetVideoOptionsSchema.parse(options);
     const headers = parsedOptions.acceptLanguage
@@ -63,7 +63,7 @@ export class VideosClient {
       undefined,
       headers,
     );
-    const parsed = VideoSchema.safeParse(body);
+    const parsed = ContentLibraryVideoSchema.safeParse(body);
     if (!parsed.success) {
       throw new Error(`Unexpected videos API response: ${parsed.error.message}`);
     }

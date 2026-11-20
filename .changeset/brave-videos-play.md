@@ -1,7 +1,5 @@
 ---
-'@youversion/platform-core': major
+'@youversion/platform-core': minor
 ---
 
-Add Content Library video detail, playlist, unified video-hit, and dedicated video-search APIs. Video identifiers are now opaque strings and video records use the deployed `passage_id` contract, which is a breaking correction to the existing public `Video` type. Unified search responses also add a required `videos` array, so typed fixtures and hook overrides must include it.
-
-`SearchUnifiedField` now includes `'videos'`. Add a video case to exhaustive field switches and records keyed by this union.
+Add Content Library video detail, playlists, dedicated video search, and ID-only video hits in unified search. The new video APIs use `ContentLibraryVideo` with opaque string IDs and `passage_id`. Existing `Video`, unified field selections, and hook overrides remain compatible with v3.

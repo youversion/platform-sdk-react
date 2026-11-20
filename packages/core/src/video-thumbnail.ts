@@ -1,7 +1,10 @@
-import type { Video, VideoThumbnailSize } from './schemas/video';
+import type { ContentLibraryVideo, VideoThumbnailSize } from './schemas/video';
 
 /** @internal Response normalization shared by video detail and video search. */
-export function resolveVideoThumbnail(video: Video, size?: VideoThumbnailSize): Video {
+export function resolveVideoThumbnail(
+  video: ContentLibraryVideo,
+  size?: VideoThumbnailSize,
+): ContentLibraryVideo {
   if (video.thumbnail?.url == null) {
     return video;
   }

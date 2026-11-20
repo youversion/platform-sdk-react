@@ -55,8 +55,8 @@ function App() {
 ## Unified search
 
 Inside `YouVersionProvider`, use `useUnifiedSearch` for an unpaginated snapshot
-of top verse references, related topics, image hits, and video hits. Search
-requires an app key authorized for Search.
+of top verse references, related topics, and image hits. Search requires an app
+key authorized for Search.
 
 ```tsx
 import { useUnifiedSearch } from '@youversion/platform-react-hooks';
@@ -73,12 +73,10 @@ function SearchResults({ query }: { query: string }) {
 }
 ```
 
-The props also accept `userIntent` and `fields` (`verses`, `topics`, `images`,
-and/or `videos`). Omit `fields` for all kinds, or provide a nonempty selection
-such as `fields: ['videos']`. An empty array is invalid. Video hits contain
-opaque IDs that can be passed to `VideosClient.getVideo`. Image hits contain
-`id` and `passageId`, not image URLs. Verse hits contain passage IDs, not passage
-text.
+The props also accept `userIntent` and `fields` (`verses`, `topics`, and/or
+`images`). Omit `fields` for all kinds, or provide a nonempty selection such as
+`fields: ['images']`. An empty array is invalid. Image hits contain `id` and
+`passageId`, not image URLs. Verse hits contain passage IDs, not passage text.
 
 Image selection requires backend support. A production check on 2026-10-20
 returned HTTP 400 for `fields: ['images']`; the SDK supports mapping image hits,

@@ -6,7 +6,8 @@ import {
   SearchUnifiedOptionsSchema,
   SearchUnifiedWireSchema,
   toSearchUnifiedResponse,
-  type SearchUnifiedField,
+  type ContentLibrarySearchField,
+  type ContentLibrarySearchOptions,
   type SearchUnifiedOptions,
   type SearchUnifiedResponse,
 } from './schemas/search';
@@ -18,7 +19,7 @@ type SearchUnifiedQuery = {
   bible_id: number;
   'language_ranges[]': string[];
   user_intent?: string;
-  'fields[]'?: SearchUnifiedField[];
+  'fields[]'?: ContentLibrarySearchField[];
 };
 
 /**
@@ -33,7 +34,7 @@ export async function searchUnified(
   query: string,
   versionId: number,
   languageRanges: string | readonly string[],
-  options: SearchUnifiedOptions = {},
+  options: ContentLibrarySearchOptions = {},
 ): Promise<SearchUnifiedResponse> {
   const parsedQuery = SearchTextQuerySchema.parse(query);
   BibleVersionIdSchema.parse(versionId);

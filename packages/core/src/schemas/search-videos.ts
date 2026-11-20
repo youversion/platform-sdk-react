@@ -1,7 +1,7 @@
 import * as z from 'zod/mini';
 import { object } from './object';
 import { OrganizationIdSchema } from './organization';
-import { VideoSchema } from './video';
+import { ContentLibraryVideoSchema } from './video';
 
 export const SearchVideosQuerySchema = z.string().check(
   z.trim(),
@@ -24,7 +24,7 @@ export const SearchVideosOptionsSchema = object({
 export type SearchVideosOptions = z.infer<typeof SearchVideosOptionsSchema>;
 
 export const SearchVideosWireSchema = object({
-  videos: z.array(VideoSchema),
+  videos: z.array(ContentLibraryVideoSchema),
   user_intent: z.nullable(z.string()),
   did_you_mean: z.array(z.string()),
   search_instead_for: z.nullable(z.string()),
@@ -34,7 +34,7 @@ export const SearchVideosWireSchema = object({
 export type SearchVideosWire = z.infer<typeof SearchVideosWireSchema>;
 
 export const SearchVideosResponseSchema = object({
-  videos: z.array(VideoSchema),
+  videos: z.array(ContentLibraryVideoSchema),
   userIntent: z.optional(z.string()),
   didYouMean: z.array(z.string()),
   searchInsteadFor: z.nullable(z.string()),

@@ -231,7 +231,9 @@ export type SearchVersesOptions = z.infer<typeof SearchVersesOptionsSchema>;
 
 const SEARCH_UNIFIED_FIELDS = ['verses', 'topics', 'images', 'videos'] as const;
 
-export type SearchUnifiedField = (typeof SEARCH_UNIFIED_FIELDS)[number];
+export type ContentLibrarySearchField = (typeof SEARCH_UNIFIED_FIELDS)[number];
+/** Field selection supported by existing v3 search consumers. */
+export type SearchUnifiedField = Exclude<ContentLibrarySearchField, 'videos'>;
 
 const SearchUnifiedFieldSchema = z.enum(SEARCH_UNIFIED_FIELDS, {
   error: 'Search field must be verses, topics, images, or videos',
@@ -254,6 +256,9 @@ export type SearchUnifiedOptions = Readonly<{
   userIntent?: SearchUnifiedOptionsParsed['userIntent'];
   fields?: readonly SearchUnifiedField[];
 }>;
+
+export type ContentLibrarySearchOptions = Omit<SearchUnifiedOptions, 'fields'> &
+  Readonly<{ fields?: readonly ContentLibrarySearchField[] }>;
 
 const SearchUnifiedTopicHitWireSchema = object({
   ...SearchTopicWireFields,
@@ -309,12 +314,18 @@ export const SearchUnifiedResponseSchema = object({
   searchInsteadFor: z.nullable(z.string()),
 });
 
-export type SearchUnifiedResponse = Readonly<z.infer<typeof SearchUnifiedResponseSchema>>;
+type NormalizedSearchResponse = Readonly<z.infer<typeof SearchUnifiedResponseSchema>>;
 
-type EnsureSearchUnifiedFieldArrays<T extends Record<SearchUnifiedField, true>> = T;
+/** Core supplies video hits. Existing v3 hook overrides may omit them. */
+export type SearchUnifiedResponse = Omit<NormalizedSearchResponse, 'videos'> &
+  Partial<Pick<NormalizedSearchResponse, 'videos'>>;
+
+type EnsureSearchUnifiedFieldArrays<T extends Record<ContentLibrarySearchField, true>> = T;
 
 type _SearchUnifiedFieldCoverage = EnsureSearchUnifiedFieldArrays<{
-  [K in SearchUnifiedField]: SearchUnifiedResponse[K] extends readonly unknown[] ? true : false;
+  [K in ContentLibrarySearchField]: NormalizedSearchResponse[K] extends readonly unknown[]
+    ? true
+    : false;
 }>;
 
 function toSearchImageHit(wire: SearchImageHitWire): SearchImageHit | null {
@@ -366,8 +377,8 @@ export function toSearchImagesResponse(wire: SearchImagesWire): SearchImagesResp
   };
 }
 
-export function toSearchUnifiedResponse(wire: SearchUnifiedWire): SearchUnifiedResponse {
-  const response: SearchUnifiedResponse = {
+export function toSearchUnifiedResponse(wire: SearchUnifiedWire): NormalizedSearchResponse {
+  const response: NormalizedSearchResponse = {
     verses: (wire.verses ?? []).flatMap((hit) => {
       const parsed = SearchVerseHitWireSchema.safeParse(hit);
       if (!parsed.success) {

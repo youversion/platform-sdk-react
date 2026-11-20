@@ -27,6 +27,8 @@ export type { Language } from '../schemas/language';
 export type { User } from '../schemas/user';
 export type { Highlight, CreateHighlight } from '../schemas/highlight';
 export type {
+  ContentLibrarySearchField,
+  ContentLibrarySearchOptions,
   KnownSearchUserIntent,
   SearchImagesOptions,
   SearchImagesResponse,
@@ -51,6 +53,7 @@ export type {
   GetVideoOptions,
   GetPlaylistOptions,
   GetPlaylistsOptions,
+  ContentLibraryVideo,
   Video,
   VideoPlaylist,
   VideoPlaylistField,

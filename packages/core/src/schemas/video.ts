@@ -33,8 +33,8 @@ export const VideoThumbnailSchema = object({
 
 export type VideoThumbnail = Readonly<z.infer<typeof VideoThumbnailSchema>>;
 
-/** A dark-launched video resource approved for Platform consumers. */
-export const VideoSchema = object({
+/** Full Content Library video returned by video detail and dedicated search. */
+export const ContentLibraryVideoSchema = object({
   /** Opaque video identifier. Pass it to `VideosClient.getVideo` unchanged. */
   id: VideoIdSchema,
   /** Video title. */
@@ -59,7 +59,15 @@ export const VideoSchema = object({
   share_url: z.optional(z.nullable(z.string())),
 });
 
-export type Video = Readonly<z.infer<typeof VideoSchema>>;
+export type ContentLibraryVideo = Readonly<z.infer<typeof ContentLibraryVideoSchema>>;
+
+/** Legacy v3 video model with numeric IDs and Bible references. */
+export type Video = Readonly<
+  Omit<ContentLibraryVideo, 'id' | 'passage_id'> & {
+    id: number;
+    references?: string[] | null | undefined;
+  }
+>;
 
 /** Supported thumbnail renditions. Omit the option for the full-size image. */
 export const VideoThumbnailSizeSchema = z.enum(['thumb', 'card', 'full']);

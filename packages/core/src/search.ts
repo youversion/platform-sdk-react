@@ -6,6 +6,7 @@ import { searchImages, type SearchImagesOptions } from './search-images';
 import { searchVideos, type SearchVideosOptions } from './search-videos';
 import { searchVerses, type SearchVersesOptions } from './search-verses';
 import type {
+  ContentLibrarySearchOptions,
   SearchImagesResponse,
   SearchQueries,
   SearchTopicsResponse,
@@ -114,7 +115,7 @@ export class SearchClient {
     query: string,
     versionId: number,
     languageRanges: string | readonly string[],
-    options?: SearchUnifiedOptions,
+    options?: ContentLibrarySearchOptions,
   ): Promise<SearchUnifiedResponse> {
     return searchUnified(this.client, query, versionId, languageRanges, options);
   }

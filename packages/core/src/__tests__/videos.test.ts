@@ -1,6 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { ApiClient, getHttpStatus, VideosClient } from '../index';
+import {
+  ApiClient,
+  getHttpStatus,
+  VideosClient,
+  type Video,
+  type ContentLibraryVideo,
+} from '../index';
 import { server } from './setup';
 
 const apiHost = process.env.YVP_API_HOST;
@@ -53,6 +59,10 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
       thumbnailSize: 'card',
     });
 
+    expectTypeOf(video).toEqualTypeOf<ContentLibraryVideo>();
+    expectTypeOf(video.id).toEqualTypeOf<string>();
+    expectTypeOf<Video['id']>().toEqualTypeOf<number>();
+    expectTypeOf<Video['references']>().toEqualTypeOf<string[] | null | undefined>();
     expect(video).toEqual({
       id: 'video/id',
       title: 'La historia',
