@@ -164,7 +164,7 @@ function getVerseHtmlFromDom(container: HTMLElement, verseNum: string): string {
   wrappers.forEach((wrapper, i) => {
     if (i > 0) parts.push(' ');
     const clone = wrapper.cloneNode(true);
-    if (!(clone instanceof Element)) return;
+    if (!isElementFromOwnerDocument(clone, wrapper, 'Element')) return;
     clone.querySelectorAll('.yv-h, .yv-vlbl, .va').forEach((el) => el.remove());
     clone.querySelectorAll('[data-verse-footnote]').forEach((anchor) => {
       const sup = wrapper.ownerDocument.createElement('sup');
@@ -202,7 +202,7 @@ export function getCleanVerseText(container: HTMLElement, verseNum: number): str
   const parts: string[] = [];
   wrappers.forEach((wrapper) => {
     const clone = wrapper.cloneNode(true);
-    if (!(clone instanceof Element)) return;
+    if (!isElementFromOwnerDocument(clone, wrapper, 'Element')) return;
     clone
       .querySelectorAll('.yv-h, .yv-vlbl, .va, [data-verse-footnote]')
       .forEach((el) => el.remove());
