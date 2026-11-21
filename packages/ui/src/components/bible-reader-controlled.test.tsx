@@ -1272,7 +1272,7 @@ it('does not restore the verse menu after an outside click if the permission gra
   }
 });
 
-it('anchors the verse menu to a verse created in the reader iframe document', async ({
+it('selects and anchors iframe verses and resets highlight fills and label colors', async ({
   onTestFinished,
 }) => {
   const iframe = document.createElement('iframe');
@@ -1287,14 +1287,23 @@ it('anchors the verse menu to a verse created in the reader iframe document', as
   const mount = iframeDocument.createElement('div');
   iframeDocument.body.append(mount);
   const onVerseSelect = verseSelectSpy();
-  const view = render(wrapReader({ highlights: [], onVerseSelect }), {
-    container: mount,
-    baseElement: iframeDocument.body,
-  });
+  const view = render(
+    wrapReader({
+      highlights: [{ version_id: 111, passage_id: 'JHN.1.1', color: YELLOW }],
+      onVerseSelect,
+    }),
+    { container: mount, baseElement: iframeDocument.body },
+  );
   onTestFinished(() => view.unmount());
   const verse = getVerseEl(mount, 1);
+  const label = verse.querySelector<HTMLElement>('.yv-vlbl');
+  if (!label) throw new Error('verse number label not rendered');
   expect(verse.ownerDocument).toBe(iframeDocument);
   expect(verse).not.toBeInstanceOf(HTMLElement);
+  expect(label.ownerDocument).toBe(iframeDocument);
+  expect(label).not.toBeInstanceOf(HTMLElement);
+  expect(verse.style.backgroundColor).toBe(fillFor(YELLOW));
+  expect(label.style.color).toBe('inherit');
   vi.spyOn(verse, 'getBoundingClientRect').mockReturnValue(new DOMRect(100, 100, 240, 24));
 
   fireEvent.click(verse);
@@ -1305,4 +1314,13 @@ it('anchors the verse menu to a verse created in the reader iframe document', as
     const popover = document.querySelector<HTMLElement>('[data-radix-popper-content-wrapper]');
     expect(popover?.style.getPropertyValue('--radix-popper-anchor-width')).toBe('240px');
   });
+
+  view.rerender(wrapReader({ highlights: [], onVerseSelect }));
+
+  const unhighlightedVerse = getVerseEl(mount, 1);
+  const unhighlightedLabel = unhighlightedVerse.querySelector<HTMLElement>('.yv-vlbl');
+  if (!unhighlightedLabel)
+    throw new Error('verse number label not rendered after highlight removal');
+  expect(unhighlightedVerse.style.backgroundColor).toBe('');
+  expect(unhighlightedLabel.style.color).toBe('');
 });
