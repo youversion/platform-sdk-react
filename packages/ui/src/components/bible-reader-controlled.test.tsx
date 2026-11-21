@@ -1271,3 +1271,38 @@ it('does not restore the verse menu after an outside click if the permission gra
     localStorage.clear();
   }
 });
+
+it('anchors the verse menu to a verse created in the reader iframe document', async ({
+  onTestFinished,
+}) => {
+  const iframe = document.createElement('iframe');
+  document.body.append(iframe);
+  onTestFinished(() => iframe.remove());
+  const iframeDocument = iframe.contentDocument;
+  if (!iframeDocument) throw new Error('same-origin iframe document not available');
+  Object.defineProperty(Object.getPrototypeOf(iframeDocument.createElement('main')), 'scrollTo', {
+    value: vi.fn(),
+    configurable: true,
+  });
+  const mount = iframeDocument.createElement('div');
+  iframeDocument.body.append(mount);
+  const onVerseSelect = verseSelectSpy();
+  const view = render(wrapReader({ highlights: [], onVerseSelect }), {
+    container: mount,
+    baseElement: iframeDocument.body,
+  });
+  onTestFinished(() => view.unmount());
+  const verse = getVerseEl(mount, 1);
+  expect(verse.ownerDocument).toBe(iframeDocument);
+  expect(verse).not.toBeInstanceOf(HTMLElement);
+  vi.spyOn(verse, 'getBoundingClientRect').mockReturnValue(new DOMRect(100, 100, 240, 24));
+
+  fireEvent.click(verse);
+
+  expect(lastSelection(onVerseSelect).verses).toEqual([1]);
+  expect(verse).toHaveClass('yv-v-selected');
+  await waitFor(() => {
+    const popover = document.querySelector<HTMLElement>('[data-radix-popper-content-wrapper]');
+    expect(popover?.style.getPropertyValue('--radix-popper-anchor-width')).toBe('240px');
+  });
+});

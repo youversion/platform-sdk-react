@@ -1088,7 +1088,10 @@ function Content() {
     const anchorVerse = added ?? Math.max(...verses);
     const wrappers = readerRef.current?.querySelectorAll(`.yv-v[v="${anchorVerse}"]`);
     const anchor = wrappers?.[wrappers.length - 1];
-    setAnchorElement(anchor instanceof HTMLElement ? anchor : null);
+    const container = readerRef.current;
+    setAnchorElement(
+      container && isElementFromOwnerDocument(anchor, container, 'HTMLElement') ? anchor : null,
+    );
     setPopoverOpen(true);
   }
 
