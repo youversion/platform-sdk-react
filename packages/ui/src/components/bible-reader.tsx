@@ -1,6 +1,7 @@
 'use client';
 
 import i18n from '@/i18n';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { useInterfaceDirection } from '@/lib/direction';
 import { useDelayedLoading } from '@/lib/use-delayed-loading';
 import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
@@ -1167,7 +1168,7 @@ function Content() {
       closeAndClearSelection();
       return;
     }
-    if (data?.text) void navigator.clipboard?.writeText(data.text);
+    if (data?.text) void copyTextToClipboard(data.text);
     closeAndClearSelection();
   }
 
@@ -1193,9 +1194,7 @@ function Content() {
       return;
     }
     // No Web Share support (e.g. most desktop browsers) — fall back to clipboard.
-    if (text && globalThis.navigator) {
-      void globalThis.navigator.clipboard?.writeText(text);
-    }
+    if (text) void copyTextToClipboard(text);
     closeAndClearSelection();
   }
 

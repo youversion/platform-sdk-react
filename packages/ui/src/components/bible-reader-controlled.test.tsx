@@ -1271,3 +1271,43 @@ it('does not restore the verse menu after an outside click if the permission gra
     localStorage.clear();
   }
 });
+
+it('clears the verse selection and closes the menu when Copy or Share clipboard writes fail', async ({
+  onTestFinished,
+}) => {
+  onTestFinished(() => {
+    vi.unstubAllGlobals();
+  });
+  const writeText = vi
+    .fn<(text: string) => Promise<void>>()
+    .mockRejectedValue(new DOMException('Clipboard permission denied', 'NotAllowedError'));
+  vi.stubGlobal('navigator', {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    clipboard: { writeText },
+    share: undefined,
+  });
+  const onVerseSelect = verseSelectSpy();
+  const { container } = renderReader({ highlights: [], onVerseSelect });
+
+  for (const action of ['Copy', 'Share']) {
+    selectVerse(container, 1);
+    expect(getVerseEl(container, 1)).toHaveClass('yv-v-selected');
+    const actionButton = await screen.findByRole('button', {
+      name: new RegExp(`^${action}$`, 'i'),
+    });
+    const previousWrites = writeText.mock.calls.length;
+    onVerseSelect.mockClear();
+
+    fireEvent.click(actionButton);
+
+    expect(writeText).toHaveBeenCalledTimes(previousWrites + 1);
+    expect(writeText).toHaveBeenLastCalledWith('“In the beginning was the Word.”\n\nJohn 1:1 NIV');
+    expect(lastSelection(onVerseSelect)).toEqual(selection([]));
+    expect(getVerseEl(container, 1)).not.toHaveClass('yv-v-selected');
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /^copy$/i })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^share$/i })).toBeNull();
+    });
+  }
+});
