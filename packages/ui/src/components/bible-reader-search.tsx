@@ -23,7 +23,7 @@ import {
   type RefObject,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useBibleReaderContext } from './bible-reader';
+import { useBibleReaderContext } from './bible-reader-context';
 import { SearchIcon } from './icons/search';
 import { XIcon } from './icons/x';
 import { LoaderIcon } from './icons/loader';
