@@ -9,8 +9,12 @@ import { useState, type ReactElement } from 'react';
 import { hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import type { BibleBook, BibleVersion } from '@youversion/platform-core';
-import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
-import { HookOverrideProvider } from '@/test/hook-overrides';
+import {
+  YouVersionContext,
+  YouVersionAuthContext,
+  type HookOverrides,
+} from '@youversion/platform-react-hooks';
+import { HookOverrideProvider, TestQueryClientProvider } from '@/test/hook-overrides';
 import { InterfaceDirectionProvider } from '@/lib/direction';
 import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 import {
@@ -690,4 +694,41 @@ describe('BibleReader version picker language', () => {
 
     expect(requestedLanguages.includes('ko')).toBe(true);
   });
+});
+
+it('names the signed-out user menu trigger and supports keyboard sign-in through the host callback', async () => {
+  const user = userEvent.setup();
+  const onSignInPress = vi.fn();
+  render(
+    <TestQueryClientProvider>
+      <YouVersionContext.Provider
+        value={{
+          appKey: 'test',
+          theme: 'light',
+          authEnabled: true,
+          hookOverrides: defaultOverrides(),
+        }}
+      >
+        <YouVersionAuthContext.Provider
+          value={{ userInfo: null, setUserInfo: vi.fn(), isLoading: false, error: null }}
+        >
+          <ReuseShadowBoundary>
+            <BibleReader.Root defaultVersionId={3034} onSignInPress={onSignInPress}>
+              <BibleReader.Toolbar />
+            </BibleReader.Root>
+          </ReuseShadowBoundary>
+        </YouVersionAuthContext.Provider>
+      </YouVersionContext.Provider>
+    </TestQueryClientProvider>,
+  );
+
+  const trigger = screen.getByRole('button', { name: i18n.t('signIn') });
+  trigger.focus();
+  await user.keyboard('{Enter}');
+
+  const menu = await screen.findByRole('dialog', { name: i18n.t('signIn') });
+  const signIn = within(menu).getByRole('button', { name: i18n.t('signIn') });
+  signIn.focus();
+  await user.keyboard('{Enter}');
+  expect(onSignInPress).toHaveBeenCalledTimes(1);
 });
