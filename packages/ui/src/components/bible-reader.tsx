@@ -1156,14 +1156,21 @@ function Content() {
     };
   }
 
+  async function runHostVerseAction(
+    action: (data: BibleReaderShareData) => void | Promise<void>,
+    data: BibleReaderShareData,
+  ): Promise<void> {
+    try {
+      await action(data);
+    } catch {
+      // Host failure must not interrupt verse-selection and popover cleanup.
+    }
+  }
+
   function handleCopy() {
     const data = buildSelectionShareData(selectedVerses);
     if (onCopy) {
-      if (data) {
-        void Promise.resolve(onCopy(data)).catch(() => {
-          // Host rejected — mirror the silent failure of navigator.clipboard.
-        });
-      }
+      if (data) void runHostVerseAction(onCopy, data);
       closeAndClearSelection();
       return;
     }
@@ -1174,11 +1181,7 @@ function Content() {
   function handleShare() {
     const data = buildSelectionShareData(selectedVerses);
     if (onShare) {
-      if (data) {
-        void Promise.resolve(onShare(data)).catch(() => {
-          // Host rejected or cancelled — mirror the silent navigator.share dismiss.
-        });
-      }
+      if (data) void runHostVerseAction(onShare, data);
       closeAndClearSelection();
       return;
     }
