@@ -515,9 +515,9 @@ describe('YouVersionAPIUsers', () => {
       clearAuthTokensSpy.mockRestore();
     });
 
-    it('unions stashed early grants with token scope when final URL omits them', async () => {
+    it('keeps stashed grants without treating Notes scopes as data-exchange permissions', async () => {
       setupCallbackFlow({
-        scope: 'openid profile email',
+        scope: 'openid profile email read_notes write_notes',
         pendingGrant: JSON.stringify({ state: 'test-state', permissions: ['highlights'] }),
       });
 

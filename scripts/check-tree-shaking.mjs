@@ -130,6 +130,7 @@ const CHECKS = [
       source: `import { ApiClient } from '@youversion/platform-core';\nnew ApiClient({ apiHost: 'https://api.youversion.com' });\n`,
       absent: [
         'Color must be a 6-character hex string without #',
+        'At least one note field is required',
         'App key is required to request a data exchange token.',
         'Invalid state parameter - possible CSRF attack',
       ],
@@ -139,6 +140,11 @@ const CHECKS = [
         label: 'HighlightsClient',
         source: `import { HighlightsClient } from '@youversion/platform-core';\nexport { HighlightsClient };\n`,
         present: ['Color must be a 6-character hex string without #'],
+      },
+      {
+        label: 'NotesClient',
+        source: `import { NotesClient } from '@youversion/platform-core';\nexport { NotesClient };\n`,
+        present: ['At least one note field is required'],
       },
       {
         label: 'DataExchangeClient',

@@ -61,8 +61,15 @@ const PENDING_GRANTED_PERMISSIONS_KEY = 'youversion-auth-pending-granted-permiss
  */
 const REQUESTED_PERMISSIONS_KEY = 'youversion-auth-requested-permissions';
 
-/** OIDC scopes that must not be stored in the data-exchange permission cache. */
-const OIDC_SCOPES = new Set(['openid', 'profile', 'email', 'offline_access']);
+/** OAuth scopes that must not be stored in the data-exchange permission cache. */
+const NON_PERMISSION_SCOPES = new Set([
+  'openid',
+  'profile',
+  'email',
+  'offline_access',
+  'read_notes',
+  'write_notes',
+]);
 
 type PendingGrantedPermissionsStash = StatePermissionsStash;
 
@@ -213,9 +220,9 @@ export class YouVersionAPIUsers {
    * The function redirects to the YouVersion authorization URL and expects the callback to be handled separately.
    *
    * @param redirectURL - The URL to redirect back to after authentication.
-   * @param scopes - The OIDC scopes given to the authentication call (e.g. `profile`, `email`).
+   * @param scopes - OAuth scopes to request, such as `profile`, `email`, or `read_notes`.
    * @param permissions - YouVersion data-exchange permissions to request (e.g. `highlights`).
-   *   These are sent as a comma-joined `requested_permissions` param, separate from OIDC scopes.
+   *   These are sent as a comma-joined `requested_permissions` param, separate from OAuth scopes.
    * @throws An error if authentication fails or configuration is invalid.
    */
   static async signIn(
@@ -391,7 +398,7 @@ export class YouVersionAPIUsers {
       const tokens = parsed.data;
 
       // Match Swift: union grants from (1) this URL, (2) stashed pre-code hop,
-      // (3) token scope — then drop OIDC scopes before seeding the data-exchange
+      // (3) token scope — then drop scopes that aren't data-exchange permissions before seeding the
       // permission cache. Stash is state-bound so a leftover from another flow
       // cannot seed this user's optimistic permission cache.
       //
@@ -414,7 +421,7 @@ export class YouVersionAPIUsers {
           ...parsePermissionList(tokens.scope),
           ...requestedGrants,
         ]),
-      ].filter((permission) => !OIDC_SCOPES.has(permission));
+      ].filter((permission) => !NON_PERMISSION_SCOPES.has(permission));
 
       // Extract user info from ID token
       const result = this.extractSignInResult(tokens);

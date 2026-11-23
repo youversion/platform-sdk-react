@@ -26,6 +26,7 @@ export type {
 export type { Language } from '../schemas/language';
 export type { User } from '../schemas/user';
 export type { Highlight, CreateHighlight } from '../schemas/highlight';
+export type { CreateNote, GetNotesOptions, Note, NotePassage, UpdateNote } from '../schemas/note';
 export type {
   KnownSearchUserIntent,
   SearchImagesOptions,
@@ -76,7 +77,7 @@ export interface AuthenticationState {
   readonly error: Error | null;
 }
 
-export type AuthenticationScopes = 'profile' | 'email';
+export type AuthenticationScopes = 'profile' | 'email' | 'read_notes' | 'write_notes';
 
 export interface HighlightColor {
   id: number;

@@ -52,6 +52,7 @@ export {
   type GetHighlightsOptions,
   type DeleteHighlightOptions,
 } from './highlights';
+export { NotesClient } from './notes';
 export {
   DataExchangeClient,
   buildDataExchangeUrl,

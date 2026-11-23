@@ -21,6 +21,7 @@ export {
   MAX_SEARCH_QUERY_GRAPHEMES,
   MemoryStorageStrategy,
   MissingPassageAttributionError,
+  NotesClient,
   OrganizationsClient,
   SDK_NAME,
   SDK_VERSION,
