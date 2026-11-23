@@ -1,7 +1,11 @@
-export async function copyTextToClipboard(text: string): Promise<void> {
+/** Resolves with whether the text was copied, including when clipboard access is denied or unavailable. */
+export async function copyTextToClipboard(text: string): Promise<boolean> {
   try {
-    await globalThis.navigator?.clipboard?.writeText(text);
+    const clipboard = globalThis.navigator?.clipboard;
+    if (!clipboard) return false;
+    await clipboard.writeText(text);
+    return true;
   } catch {
-    // Clipboard failure must not interrupt dismissing the verse action popover.
+    return false;
   }
 }

@@ -881,6 +881,7 @@ function Content() {
   });
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [clipboardFailed, setClipboardFailed] = useState(false);
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
   const verseFocusRestoreTargetRef = useRef<Element | null>(null);
   const takeVerseFocusRestoreTarget = useCallback(() => {
@@ -1157,22 +1158,29 @@ function Content() {
     };
   }
 
+  async function copySelectionText(text: string) {
+    const copied = await copyTextToClipboard(text);
+    setClipboardFailed(!copied);
+  }
+
   function handleCopy() {
+    setClipboardFailed(false);
     const data = buildSelectionShareData(selectedVerses);
     if (onCopy) {
       if (data) {
         void Promise.resolve(onCopy(data)).catch(() => {
-          // Host rejected — mirror the silent failure of navigator.clipboard.
+          // Host overrides own their error feedback.
         });
       }
       closeAndClearSelection();
       return;
     }
-    if (data?.text) void copyTextToClipboard(data.text);
+    if (data?.text) void copySelectionText(data.text);
     closeAndClearSelection();
   }
 
   function handleShare() {
+    setClipboardFailed(false);
     const data = buildSelectionShareData(selectedVerses);
     if (onShare) {
       if (data) {
@@ -1183,18 +1191,26 @@ function Content() {
       closeAndClearSelection();
       return;
     }
-    const text = data?.text ?? '';
+    void shareSelectionText(data?.text ?? '');
+  }
+
+  async function shareSelectionText(text: string) {
     if (text && globalThis.navigator?.share instanceof Function) {
-      globalThis.navigator
-        .share({ text })
-        .then(() => closeAndClearSelection())
-        .catch(() => {
-          // Cancelled or failed — keep the popover open (AC 4).
-        });
-      return;
+      try {
+        await globalThis.navigator.share({ text });
+        closeAndClearSelection();
+        return;
+      } catch (error) {
+        // A cancelled share keeps the selection and popover available for retry.
+        if (
+          (error instanceof DOMException || error instanceof Error) &&
+          error.name === 'AbortError'
+        )
+          return;
+      }
     }
-    // No Web Share support (e.g. most desktop browsers) — fall back to clipboard.
-    if (text) void copyTextToClipboard(text);
+    // Unsupported or failed Web Share falls back to clipboard.
+    if (text) void copySelectionText(text);
     closeAndClearSelection();
   }
 
@@ -1272,6 +1288,14 @@ function Content() {
           <bdi dir="auto">{chapterLabel || chapter || '-'}</bdi>
         </span>
       </h1>
+
+      <div
+        role="status"
+        aria-live="polite"
+        className="yv:empty:sr-only yv:text-center yv:text-destructive"
+      >
+        {clipboardFailed ? t('unableToShare') : null}
+      </div>
 
       {chapterUnavailable ? (
         <p className="yv:text-center yv:text-balance yv:text-muted-foreground">
