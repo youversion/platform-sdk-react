@@ -557,12 +557,20 @@ test('restore a long grid and render previews in the selected content language',
   expect(position).toBeGreaterThan(0);
   await last.click();
   await expect(page.getByText('1 of 1', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Back to images' }).click();
+  await page.goBack();
   await expect
     .poll(() =>
       page.locator('[data-active-screen="true"]').evaluate((element) => element.scrollTop),
     )
     .toBe(position);
+  await page.goForward();
+  await expect(page.getByRole('region', { name: 'Image detail' })).toBeVisible();
+  await expect
+    .poll(() =>
+      page.locator('[data-active-screen="true"]').evaluate((element) => element.scrollTop),
+    )
+    .toBe(0);
+  await page.getByRole('button', { name: 'Back to images' }).click();
   await expect(last).toBeFocused();
   for (const [language, text] of [
     ['Spanish', 'Dios amó al mundo.'],
@@ -931,4 +939,60 @@ test('returning to Content resumes an interrupted page without applying the hidd
   const grid = page.getByRole('list', { name: 'Verse images' });
   await expect(grid.getByRole('listitem')).toHaveCount(2);
   await expect(grid.locator('img').nth(1)).toHaveAttribute('src', /\/b\.svg/);
+});
+
+test('a shorter replacement retains its outgoing card until the shuffle finishes', async ({
+  page,
+}) => {
+  const { promise: replacement, resolve: release } = Promise.withResolvers();
+  let retrying = false;
+  await setup(page, async (url) => {
+    if (url.pathname === '/v1/images' && url.searchParams.has('passage_id')) {
+      if (retrying) {
+        await replacement;
+        return { data: [art('a'), art('b'), art('d')], next_page_token: null };
+      }
+      if (url.searchParams.has('page_token'))
+        return { status: 503, body: { message: 'Failed continuation' } };
+      return { data: [art('a'), art('b'), art('c'), art('d')], next_page_token: 'failed' };
+    }
+    return detailResponses(url);
+  });
+  await page.getByRole('button', { name: 'Open JHN.3.16' }).click();
+  await expect(page.getByRole('button', { name: 'Retry artwork list' })).toBeVisible();
+  const next = page.getByRole('button', { name: 'Next image', exact: true });
+  for (let step = 0; step < 2; step += 1) {
+    await next.click();
+    await expect(next).toBeEnabled();
+  }
+  await expect(page.getByText('3 of 4', { exact: true })).toBeVisible();
+  retrying = true;
+  const started = page.waitForRequest(
+    (request) =>
+      request.url().includes('passage_id=JHN.3.16') && !request.url().includes('page_token'),
+  );
+  await page.getByRole('button', { name: 'Retry artwork list' }).click();
+  await started;
+  await next.click();
+  await page.evaluate(() => {
+    for (const animation of document.getAnimations()) {
+      animation.pause();
+      animation.currentTime = 100;
+    }
+  });
+  const oldImage = await page.locator('.image-stack-flight img').elementHandle();
+  const response = page.waitForResponse(
+    (result) =>
+      result.url().includes('passage_id=JHN.3.16') && !result.url().includes('page_token'),
+  );
+  release();
+  await settleResponse(page, response);
+  await expect(page.getByText('3 of 3', { exact: true })).toBeVisible();
+  expect(await oldImage.evaluate((node) => node.isConnected)).toBe(true);
+  await page.evaluate(() => {
+    for (const animation of document.getAnimations()) animation.finish();
+  });
+  await expect(next).toBeEnabled();
+  await next.click();
+  await expect(page.getByText('1 of 3', { exact: true })).toBeVisible();
 });

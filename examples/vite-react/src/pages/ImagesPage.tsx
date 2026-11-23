@@ -129,13 +129,14 @@ function ImageResults({
   const openedCard = useRef<HTMLButtonElement | null>(null);
   const previousImageId = useRef(imageId);
   useEffect(() => {
+    const entering = previousImageId.current !== imageId && imageId !== null;
     const returning = previousImageId.current !== null && imageId === null;
     previousImageId.current = imageId;
-    if (!returning || !active) return;
+    if ((!entering && !returning) || !active) return;
     const frame = requestAnimationFrame(() => {
-      (openedCard.current ?? container.current)?.focus({ preventScroll: true });
+      if (returning) (openedCard.current ?? container.current)?.focus({ preventScroll: true });
       const owner = container.current?.closest('[data-demo-scroll]') ?? document.scrollingElement;
-      owner?.scrollTo({ top: listScroll.current });
+      owner?.scrollTo({ top: returning ? listScroll.current : 0 });
     });
     return () => cancelAnimationFrame(frame);
   }, [imageId, active]);
@@ -184,7 +185,6 @@ function ImageResults({
                     container.current?.closest('[data-demo-scroll]') ?? document.scrollingElement;
                   listScroll.current = owner?.scrollTop ?? 0;
                   onSelectImage(image.id);
-                  owner?.scrollTo({ top: 0 });
                 }}
               />
             </li>

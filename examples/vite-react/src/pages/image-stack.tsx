@@ -2,7 +2,7 @@ import { useRef, useState, type PointerEvent, type Ref, type CSSProperties } fro
 import type { VerseImage } from '@youversion/platform-react-ui';
 import { ImageArt } from './image-art';
 
-type CardFlight = { id: string; direction: number; startX: number };
+type CardFlight = { image: VerseImage; direction: number; startX: number };
 type CardStyle = CSSProperties & {
   '--flight-direction': number;
   '--flight-start-x': string;
@@ -34,10 +34,15 @@ export function ImageStack({
     images.findIndex((image) => image.id === selected.id),
   );
 
+  const cards =
+    flight && !images.some((image) => image.id === flight.image.id)
+      ? [...images, flight.image]
+      : images;
+
   function shuffle(direction = -1, startX = 0) {
     if (images.length < 2 || flight) return;
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setFlight({ id: selected.id, direction, startX });
+      setFlight({ image: selected, direction, startX });
     }
     setOffset(0);
     onSelect(images[(index + 1) % images.length]);
@@ -59,10 +64,11 @@ export function ImageStack({
   return (
     <>
       <div className="image-stack">
-        {images.map((image, imageIndex) => {
-          const depth = (imageIndex - index + images.length) % images.length;
+        {cards.map((image, imageIndex) => {
+          const depth =
+            imageIndex < images.length ? (imageIndex - index + images.length) % images.length : 3;
           const isSelected = depth === 0;
-          const isFlying = flight?.id === image.id;
+          const isFlying = flight?.image.id === image.id;
           if (depth >= 3 && !isFlying) return null;
           const style: CardStyle = {
             zIndex: isFlying ? 4 : 3 - depth,

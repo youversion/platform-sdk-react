@@ -177,9 +177,6 @@
 .image-stack-card > .image-art {
   block-size: 100%;
 }
-.image-stack-selected {
-  z-index: 3;
-}
 .image-stack-selected .image-open {
   z-index: 1;
 }
@@ -257,9 +254,6 @@
   }
 }
 .image-stack-flight {
-  position: absolute;
-  inset: 1.75rem;
-  z-index: 4;
   pointer-events: none;
   animation: image-shuffle 0.48s ease-in-out both;
 }

@@ -60,8 +60,7 @@ export function ImageDetail({
           });
           if (!current) return;
           collected = appendImages(collected, page.data);
-          const partial = collected;
-          setImages((previous) => appendImages(previous, partial));
+          setImages((previous) => appendImages(previous, page.data));
           token = page.next_page_token;
           if (token !== null && visited.has(token))
             throw new Error('The image service repeated a page. Please retry.');

@@ -15,7 +15,7 @@ type ResultSession = {
   token: string | null;
   versionId?: number;
   pending: SearchImagesResponse | null;
-  ids: string[];
+  ids: Set<string>;
   resolved: Map<string, VerseImage>;
   consumed: Set<string>;
 };
@@ -38,7 +38,7 @@ export function useImageResults(
     token: null,
     versionId: undefined,
     pending: null,
-    ids: [],
+    ids: new Set<string>(),
     resolved: new Map<string, VerseImage>(),
     consumed: new Set<string>(),
   });
@@ -65,8 +65,7 @@ export function useImageResults(
           });
           if (!current.active) return;
           current.pending = page;
-          for (const hit of page.images)
-            if (!current.ids.includes(hit.id)) current.ids.push(hit.id);
+          for (const hit of page.images) current.ids.add(hit.id);
         }
         const pending = current.pending;
         const results = await Promise.allSettled(
@@ -79,7 +78,7 @@ export function useImageResults(
           if (result.status === 'fulfilled')
             current.resolved.set(result.value.id, result.value.image);
         setImages(
-          current.ids.flatMap((id) => {
+          [...current.ids].flatMap((id) => {
             const image = current.resolved.get(id);
             return image ? [image] : [];
           }),

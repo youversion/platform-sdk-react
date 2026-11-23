@@ -249,3 +249,14 @@ The original route parser, reader-command adapter, destination navigation, navig
 | Existing long-grid and touch workflows updated to the real app | Restore Content container scroll and originating card focus; vertical touch scrolls that container without shuffling |
 
 `pnpm --filter vite-react test` passes all four unchanged route tests. `pnpm --filter vite-react exec tsc -b` and example oxlint pass. `pnpm --filter vite-react test:e2e` passes 18 Chromium workflows. Full integrated checks pass: `pnpm build`, `pnpm test` (including all four unchanged route tests), `pnpm typecheck`, `pnpm lint`, example tsc and Prettier. Clean-context audits follow the local merge checkpoint before handoff.
+
+## Integration simplification and regression checks
+
+A clean-context gpt-6.2-sol / medium read-only simplification audit of `a76f84f` against `27ae317` covered all 21 changed files and 45 hunks without changing the snapshot. All three recommendations were accepted after independent inspection: merge each new passage page into visible state rather than repeatedly merging the cumulative prefix; keep search IDs in insertion-ordered Set storage; remove stack CSS declarations already supplied by the base card and inline styles. These preserve first-seen ordering, retained retry results and animation geometry without adding abstractions.
+
+Two additional browser checks reproduced concrete integration defects before their fixes:
+
+- A shorter successful retry removed an outgoing card during its shuffle (retained image DOM assertion failed). The flight now retains its artwork snapshot until animation completion, then releases the card and enables another shuffle.
+- Browser Forward from a restored long grid left detail scrolled down 351px (expected 0). Detail route transitions now reset the Content scroll container; returning to the grid still restores the exact previous scroll position and originating-card focus.
+
+Both checks pass after the fixes. Full verification of this checkpoint: `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm --filter vite-react exec tsc -b`, and all 19 Chromium workflows. The full integrated unit suite passed at the merge checkpoint; these subsequent changes are example-only and directly covered by the browser suite. Native OS sharing, live service availability, Firefox/WebKit and continuous real-device animation smoothness remain unverified.
