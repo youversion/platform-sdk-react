@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog } from 'radix-ui';
 
 const CONTENT_LANGUAGES = [
@@ -33,13 +33,21 @@ function contentLocale(): string {
 
 export function ImageLanguagePicker({
   language,
+  active = true,
   onChange,
 }: {
   language: string;
+  active?: boolean;
   onChange: (language: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState('');
+  useEffect(() => {
+    if (!active) {
+      setOpen(false);
+      setFilter('');
+    }
+  }, [active]);
   const locale = contentLocale();
   const displayNames = new Intl.DisplayNames([locale], { type: 'language' });
   const languages = CONTENT_LANGUAGES.map((tag) => ({ tag, name: displayNames.of(tag) ?? tag }))
@@ -49,7 +57,7 @@ export function ImageLanguagePicker({
     .sort((a, b) => a.name.localeCompare(b.name, locale));
   return (
     <Dialog.Root
-      open={open}
+      open={active && open}
       onOpenChange={(value) => {
         setOpen(value);
         if (!value) setFilter('');
@@ -66,7 +74,12 @@ export function ImageLanguagePicker({
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="image-dialog-overlay" />
-        <Dialog.Content className="image-dialog">
+        <Dialog.Content
+          className="image-dialog"
+          onCloseAutoFocus={(event) => {
+            if (!active) event.preventDefault();
+          }}
+        >
           <div className="image-dialog-inner">
             <div className="image-dialog-header">
               <Dialog.Title>Content language</Dialog.Title>

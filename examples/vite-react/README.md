@@ -16,17 +16,20 @@ pnpm install
 pnpm dev:web
 ```
 
-## React SDK Components Used
+## Demo map
 
-- **Bible Reader** — Full interactive Bible reader with chapter/version navigation
-- **Verse of the Day** — Daily verse card
-- **Bible Card** — Embeddable Bible passage card
-- **Images** — Browse and search verse artwork by language, shuffle passage images, open scripture previews, and share the selected image. Main Bible navigation awaits YPE-6574.
-- **Sign in with YouVersion Button** - Authentication with YouVersion
+The top bar has four destinations: Bible, Content, Examples, and Profile. Screens use a hash (`#/bible`) so a subpath deploy and an OAuth query stay on the URL. Back and Forward restore the screen. A screen mounts the first time you open it, then stays mounted so the reader, image list, and search fields survive a round trip.
+
+- **Bible** — full reader. Chapter, version, and font remain when you leave.
+- **Content** — Browse and search verse images by language, shuffle passage artwork, open scripture previews, and share the selected image. Detail is `#/content/image/<id>`.
+- **Examples** — Navigation, Verse of the Day, Bible Card, and Unified Search.
+- **Profile** — sign in (profile and email), account, and theme.
+
+Navigation presets and an image's Read in Bible action open that passage in Bible. The image action uses the Bible version resolved for its content language and asks for the full chapter.
 
 ## Image library browser checks
 
-From the repository root, build dependencies and run the local HTTP/CDN-fixture workflows:
+From the repository root:
 
 ```bash
 pnpm exec turbo build --filter=@youversion/platform-react-ui
@@ -34,4 +37,4 @@ pnpm --filter vite-react exec playwright install chromium
 pnpm --filter vite-react test:e2e
 ```
 
-The library exposes `ImagesPage.onReadInBible(passageId, versionId)` for the upcoming Content navigation. Without that callback, Read in Bible stays disabled.
+The Content library uses the shared hash routes and reader-command adapter. Its Read in Bible callback carries both passage ID and resolved Bible version ID.

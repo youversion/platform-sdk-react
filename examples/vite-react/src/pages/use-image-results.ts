@@ -10,6 +10,7 @@ import {
 const PAGE_SIZE = 30;
 type ResultSession = {
   active: boolean;
+  started: boolean;
   busy: boolean;
   token: string | null;
   versionId?: number;
@@ -20,13 +21,19 @@ type ResultSession = {
 };
 
 // A mounted results view owns one submitted query/language. Cleanup invalidates its work.
-export function useImageResults(clients: ImageLibraryClients, language: string, query: string) {
+export function useImageResults(
+  clients: ImageLibraryClients,
+  language: string,
+  query: string,
+  active = true,
+) {
   const [images, setImages] = useState<VerseImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const session = useRef<ResultSession>({
     active: false,
+    started: false,
     busy: false,
     token: null,
     versionId: undefined,
@@ -40,6 +47,7 @@ export function useImageResults(clients: ImageLibraryClients, language: string, 
     const current = session.current;
     if (!current.active || current.busy) return;
     current.busy = true;
+    current.started = true;
     setLoading(true);
     setError(null);
     try {
@@ -111,14 +119,16 @@ export function useImageResults(clients: ImageLibraryClients, language: string, 
   }, [clients, language, query]);
 
   useEffect(() => {
+    if (!active) return;
     // StrictMode cleanup must not reactivate a previous request's session.
+    const resume = !session.current.started || session.current.busy;
     const current = { ...session.current, active: true, busy: false };
     session.current = current;
-    void load();
+    if (resume) void load();
     return () => {
       current.active = false;
     };
-  }, [load]);
+  }, [load, active]);
 
   return { images, loading, error, hasMore, load };
 }

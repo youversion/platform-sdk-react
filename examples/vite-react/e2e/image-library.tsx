@@ -6,6 +6,7 @@ import '../src/index.css';
 
 function ImageLibraryHarness() {
   const [reference, setReference] = useState('');
+  const [imageId, setImageId] = useState<string | null>(null);
   const restrict = new URLSearchParams(location.search).has('restrict');
   return (
     <YouVersionProvider
@@ -14,6 +15,8 @@ function ImageLibraryHarness() {
       excludedVersionIds={restrict ? [3034] : undefined}
     >
       <ImagesPage
+        imageId={imageId}
+        onSelectImage={setImageId}
         onReadInBible={(passageId, versionId) => setReference(`${versionId}:${passageId}`)}
       />
       <output aria-label="Requested Bible passage">{reference}</output>

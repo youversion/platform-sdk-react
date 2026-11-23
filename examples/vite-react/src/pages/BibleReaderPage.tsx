@@ -1,11 +1,12 @@
-import { BibleReader } from '@youversion/platform-react-ui';
+import { BibleReader, type BibleReaderNavigation } from '@youversion/platform-react-ui';
 
-export function BibleReaderPage() {
+export function BibleReaderPage({ navigation }: { navigation: BibleReaderNavigation }) {
   const defaultLanguageId = import.meta.env.VITE_YVP_DEFAULT_LANGUAGE_ID?.trim() || undefined;
 
   return (
-    <div className="h-[calc(100vh-3.5rem)]">
+    <div className="h-full min-h-0">
       <BibleReader.Root
+        navigation={navigation}
         defaultBook="JHN"
         defaultChapter="1"
         defaultVersionId={3034}

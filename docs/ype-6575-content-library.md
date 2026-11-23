@@ -1,10 +1,12 @@
 # YPE-6575 implementation scope and evidence plan
 
-Scope and test boundaries approved by the user. Implementation and evidence are recorded below.
+Scope and browser test boundaries approved by the user. The library is now integrated locally with PR #496; no push, PR, or Jira mutation is authorized for this run.
 
 Ticket: https://lifechurch.atlassian.net/browse/YPE-6575
 Title: [React SDK] Add image browsing and search to Content Library
-Branch: 6575-content-library-browse-and-search
+Original checkpoint branch: 6575-content-library-browse-and-search at c327908.
+Integration branch: codex/YPE-6575-content-library-integration.
+Navigation foundation: PR #496, feat/ype-6574-example-app-navigation at 27ae317368aed54e6583232fde6c81a9afd396aa.
 Base: main, f4a3ddb604e4f30b4eb5e9705907c3edc2d99819
 Initial worktree: clean.
 
@@ -32,7 +34,8 @@ Extend Content from the tab-reorganization ticket into an image Content Library,
 
 ## Scope contract
 
-Required outcomes: all tracker requirements above remain required. Implement the independent image library now in the existing Vite demo Images destination. Leave YPE-6574's Content/Examples navigation to its developer. Provide a local callback carrying the resolved Bible version and passage for later integration; verify it independently now. Final Content navigation, main Bible routing, back navigation and state-preservation verification remain pending YPE-6574. Do not mark the ticket complete or the PR review-ready while required integration remains incomplete.
+Required outcomes: all tracker requirements above remain required. The image library uses PR #496's Content destination, hash routes, preserved screens and reader-command adapter. The original 6575 branch is preserved; integration merges the pinned navigation foundation on a separate branch. No changes are made to the other developer's branch. Read in Bible carries the resolved version and passage, including when Bible mounts for the first time. Container scroll, Back/Forward, direct links, interrupted requests and transient dialogs are verified through the running app. Stop before pushing or creating a PR, and leave Jira unchanged.
+
 
 Approved Swift reference alignment: content-language selection, language-aware image requests and Bible resolution, partial search-hit retry, passage-stack pagination, selected-image URL sharing, and reduced-motion support. These are implementation details supporting the existing outcomes, not unrelated new screens or SDK capabilities.
 
@@ -42,7 +45,7 @@ Non-goals: implementing YPE-6574; video tabs, playlists or playback; authenticat
 
 ## Implementation decisions grounded in the reference
 
-- Use Swift's 18 content-language tags: en, es, fr, de, it, ja, zh, ru, pt, ko, hi, ar, tr, nl, sv, zh-CN, zh-TW, zh-HK. Default to en, matching Swift. Display and sort language names using the app locale; allow filtering by name or tag. Keep this picker within the image library until the shared Content shell exists.
+- Use Swift's 18 content-language tags: en, es, fr, de, it, ja, zh, ru, pt, ko, hi, ar, tr, nl, sv, zh-CN, zh-TW, zh-HK. Default to en, matching Swift. Display and sort language names using the app locale; allow filtering by name or tag. Keep this picker within the image library in Content; no video or global media-language shell is introduced.
 - Filter browse and passage artwork by the selected content language. Image search requires a Bible version ID, not a language parameter.
 - Resolve accessible Bible versions using existing filtered getVersions APIs. Prefer 3034 for English only when available and usable; otherwise prefer exact language tags, ordered by ID, then an available candidate. For passage previews, require that the version contains the passage's book. Follow pagination so later valid candidates are not missed.
 - Match Swift's Chinese fallbacks: zh-CN then zh; zh-TW/zh-HK then zh-Hant then zh. Never fall back silently to an unrelated language or bypass integrator version filters.
@@ -70,7 +73,7 @@ Seam B: browser workflow through the running Vite app, real React rendering and 
 
 Seam V: browser visual/manual validation with reproducible inputs and recorded outcomes.
 
-Seam N: callback boundary carrying passage ID and Bible version now; final running-app navigation after YPE-6574 becomes available.
+Seam N: real running-app Content → image → Bible navigation, plus the isolated passage/version callback harness. Uses the actual hash router, kept screens, reader-command adapter and BibleReader.
 
 | ID | Source | Independently falsifiable requirement | Seam | Planned evidence |
 | --- | --- | --- | --- | --- |
@@ -86,7 +89,7 @@ Seam N: callback boundary carrying passage ID and Bible version now; final runni
 | 10 | description | Display image attribution | B | Observe selected image attribution |
 | 11 | description | Display passage text | B | Observe passage content through existing scripture component |
 | 12 | description | Share the currently selected image | B | Capture share URL after changing selection |
-| 13 | description | Support Read in Bible | N | Verify resolved passage/version callback now; main Bible navigation pending 6574 |
+| 13 | description | Support Read in Bible | N | Verify callback and real reader passage/version, including a cold first mount |
 | 14 | description | Show loading states | B | Hold metadata and image responses and observe progress |
 | 15 | description | Show empty states | B | Return empty browse and search pages |
 | 16 | description | Retry metadata failures | B | Fail then retry successfully |
@@ -105,7 +108,7 @@ Seam N: callback boundary carrying passage ID and Bible version now; final runni
 | 29 | description | No z-order flashes | V | Inspect normal and interrupted shuffle transitions |
 | 30 | description | Cards do not abruptly disappear | V | Inspect outgoing card completion and rapid gestures |
 | 31 | description | Use ordinary platform animations | V | Inspect web transitions and reduced-motion behavior |
-| 32 | description | Integrate with Content navigation from 6574 | N | Deferred required final running-app journey when 6574 exists |
+| 32 | description | Integrate with Content navigation from 6574 | N | Content detail/hash history, reader navigation and preserved screen state browser workflows |
 | 33 | description/reference | Reuse existing APIs without unrelated auth/video work | review | Inspect changed files and imports |
 | 34 | Swift ContentView/ContentLanguagePicker | Select a supported content language | B | Select non-English tag and observe active choice |
 | 35 | Swift ContentLanguagePicker | Filter languages by localized name or tag | B | Filter picker and observe matches/empty state |
@@ -138,16 +141,17 @@ Seam N: callback boundary carrying passage ID and Bible version now; final runni
 
 Implement one browser workflow slice at a time, red then green. Run focused browser checks and example typechecking as slices progress. Finish with required pnpm build, pnpm test, pnpm lint, pnpm typecheck, the example build and added browser workflows. Record exact outcomes, manual checks and incomplete evidence.
 
-Independent simplification/reviews follow the jira-to-pr skill. A draft PR may document the remaining dependency, but do not present it as complete, move Jira to review, or claim green/mergeable completion without the pending navigation evidence. Do not modify 6574 or message its developer.
+Independent simplification/reviews follow the jira-to-pr skill. The user requires a local handoff before any push or PR. Do not modify the other developer’s branch, message its developer, or change Jira.
 
 
 ## Local handoff
 
 User terminal condition: stop before creating a PR. Do not push or move Jira to review.
 
-The image library is mounted at the existing Images destination. Its optional `ImagesPage.onReadInBible(passageId, versionId)` callback is the integration boundary for YPE-6574. Without a host callback, Read in Bible is disabled. The browser-only harness verifies the callback with a real filtered Bible client; it does not claim to verify navigation in the main app.
+The image library is mounted in Content. `ImagesPage` receives the opaque routed image ID, an image-selection callback and active-screen state. Its Read in Bible callback carries passage ID and resolved Bible version ID to the existing reader-command adapter. The callback harness remains supplemental evidence; real main-app reader navigation is now directly verified.
 
-Code remains in the example. No SDK package or public exports change. Add the host callback when 6574's navigation is available, then verify Content entry, reader routing, cross-tab state and back navigation before marking the ticket complete.
+Code remains in the example. No SDK package or public exports change. PR #496 remains unmerged upstream; this local integration is pinned to its head 27ae317. Its routing implementation, reader adapter, destination navigation, navigation presets, Profile, Bible reader page and route tests are unchanged.
+
 
 Browser tests: `pnpm --filter vite-react test:e2e` after `pnpm exec turbo build --filter=@youversion/platform-react-ui`. Fixtures intercept HTTP and artwork responses. They do not validate live API availability or the native OS share sheet; they verify its selected-image URL payload.
 
@@ -158,10 +162,10 @@ Verification completed locally:
 - `pnpm lint`: passed without suppressions.
 - `pnpm typecheck`: passed.
 - `pnpm --filter vite-react build`: passed after final example edits.
-- `pnpm --filter vite-react test:e2e`: passed, 13 Chromium workflows.
+- `pnpm --filter vite-react test:e2e`: passed before integration, 13 Chromium workflows; integrated results are recorded below.
 - Desktop grid, desktop viewer and narrow-screen viewer captures inspected. The mobile viewer header was adjusted after visual inspection.
 
-The thirteen browser workflows in `examples/vite-react/e2e/images.spec.js` are the executable evidence. The following mapping supplements the planned ledger above; it does not convert manual or deferred items into automated proof.
+The browser workflows in `examples/vite-react/e2e/images.spec.js` are the executable evidence. The following mapping supplements the planned ledger above; it does not convert manual or deferred items into automated proof.
 
 | Workflow | Ledger coverage and assertions |
 | --- | --- |
@@ -182,7 +186,7 @@ Remaining manual/limited evidence:
 - 33: verify scope and dependency direction in the local audit.
 - Picker name/tag filtering and locale-dependent sorting use Intl. Not every language/locale permutation is independently asserted; malformed configured locale is separately exercised.
 - Native OS share-sheet presentation, live API smoke, and Firefox/WebKit have not been verified.
-- 13 (main Bible navigation) and 32 remain blocked by YPE-6574. They are required final ticket evidence, not waived criteria.
+- 13 (main Bible navigation) and 32 are now exercised with the pinned PR #496 foundation; upstream merge/hosting CI remain outside this local run.
 
 
 
@@ -218,4 +222,30 @@ Three read-only clean-context audits reviewed checkpoint `09c55b0` against `f4a3
 - Required support: pin browser-server base to `/` and stub public font CSS/CDN requests. Applied; the compatibility run inherits the hosted demo base path to verify isolation.
 - Required documentation: replace the retired Images smoke-page description and document the browser command/callback in the example README. Applied.
 
-All source fixes remain within the approved independent-library scope. None implements 6574, video UI, authentication changes or a published SDK API. Additional combinations (every locale, every allowed-version policy and native OS share UI) are verification limitations, not claims of exhaustive coverage. Final Content/Bible navigation remains an explicit required integration step.
+All source fixes remain within the approved independent-library scope. None implements 6574, video UI, authentication changes or a published SDK API. Additional combinations (every locale, every allowed-version policy and native OS share UI) are verification limitations, not claims of exhaustive coverage. The subsequent integration below supplies the formerly deferred Content/Bible navigation evidence.
+
+
+## PR #496 integration
+
+User approved integration after a read-only merge simulation. Both histories share f4a3ddb. A new branch preserves the original c327908 checkpoint and merges 27ae317. The three Git conflicts were resolved deliberately:
+
+| File | Preserved intent |
+| --- | --- |
+| ImagesPage.tsx | #496's routed image ID and opaque-ID deep links, plus the full browse/search/detail library from 6575 |
+| package.json | Both the four route tests (`test`) and browser workflows (`test:e2e`), plus the existing pinned Playwright dev dependency |
+| README.md | #496's four-destination map and history/state model, updated Content behavior and browser test instructions |
+
+Semantic integration changes are limited to the image library and its App boundary: resolved version ID reaches the existing reader command; detail is driven by the hash route; active-screen state closes body portals and invalidates obsolete work without discarding loaded data; scroll restoration uses the Content scroll owner, with document scrolling only for the standalone harness. A completed artwork stack stays loaded across active-screen changes; interrupted requests resume with their original cursor.
+
+The original route parser, reader-command adapter, destination navigation, navigation presets, Profile, BibleReaderPage and route test files are byte-identical to 27ae317 (verified with `git diff --exit-code 27ae317 -- <paths>`). They are not replaced with 6575 implementations.
+
+| Added/updated running-app workflow | Evidence |
+| --- | --- |
+| Content image routes preserve the grid through detail history and direct links | Open/back/forward/back-to-grid URL assertions and a cold opaque ID containing slash/space |
+| Read in Bible uses the selected language and preserves loaded Content state on return | Actual BibleReader renders version 500, full chapter JHN.3; Back restores Spanish, submitted query and both loaded search pages; Profile round trip preserves them |
+| Cold image links open Bible before its first mount, and hidden Content closes its dialogs | Actual first reader mount renders 3034 JHN.3; browser Back closes language picker; leaving with viewer open removes the body dialog |
+| Missing image links recover without a browse result and reject an obsolete detail response | Detail 404 retry succeeds while list is empty; delayed obsolete ID response cannot replace a later route |
+| Returning to Content resumes an interrupted page without applying the hidden response | Leave during Load more, finish the old response while hidden, return and observe a resumed page with the correct artwork |
+| Existing long-grid and touch workflows updated to the real app | Restore Content container scroll and originating card focus; vertical touch scrolls that container without shuffling |
+
+`pnpm --filter vite-react test` passes all four unchanged route tests. `pnpm --filter vite-react exec tsc -b` and example oxlint pass. `pnpm --filter vite-react test:e2e` passes 18 Chromium workflows. Full integrated checks pass: `pnpm build`, `pnpm test` (including all four unchanged route tests), `pnpm typecheck`, `pnpm lint`, example tsc and Prettier. Clean-context audits follow the local merge checkpoint before handoff.

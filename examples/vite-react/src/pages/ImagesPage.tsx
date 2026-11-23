@@ -1,7 +1,8 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { clampSearchText, type VerseImage } from '@youversion/platform-react-ui';
 import {
   createImageLibraryClients,
+  imageError,
   type ImageLibraryClients,
   type ReadImagePassage,
 } from './image-library-api';
@@ -11,7 +12,17 @@ import { ImageArt } from './image-art';
 import { useImageResults } from './use-image-results';
 import './image-library.css';
 
-export function ImagesPage({ onReadInBible }: { onReadInBible?: ReadImagePassage }) {
+export function ImagesPage({
+  imageId,
+  onSelectImage,
+  active = true,
+  onReadInBible,
+}: {
+  imageId: string | null;
+  onSelectImage: (id: string | null) => void;
+  active?: boolean;
+  onReadInBible?: ReadImagePassage;
+}) {
   const [clients] = useState(createImageLibraryClients);
   const [draft, setDraft] = useState('');
   const [query, setQuery] = useState('');
@@ -25,6 +36,7 @@ export function ImagesPage({ onReadInBible }: { onReadInBible?: ReadImagePassage
       return;
     }
     setValidation(null);
+    onSelectImage(null);
     setQuery(value);
   }
   return (
@@ -34,7 +46,14 @@ export function ImagesPage({ onReadInBible }: { onReadInBible?: ReadImagePassage
           <p className="image-eyebrow">Content library</p>
           <h1>Verse images</h1>
         </div>
-        <ImageLanguagePicker language={language} onChange={setLanguage} />
+        <ImageLanguagePicker
+          language={language}
+          active={active}
+          onChange={(tag) => {
+            onSelectImage(null);
+            setLanguage(tag);
+          }}
+        />
       </header>
       <form role="search" className="image-toolbar" onSubmit={submit}>
         <input
@@ -50,6 +69,7 @@ export function ImagesPage({ onReadInBible }: { onReadInBible?: ReadImagePassage
             type="button"
             aria-label="Clear search"
             onClick={() => {
+              onSelectImage(null);
               setDraft('');
               setQuery('');
               setValidation(null);
@@ -69,6 +89,9 @@ export function ImagesPage({ onReadInBible }: { onReadInBible?: ReadImagePassage
       ) : null}
       <ImageResults
         key={`${language}:${query}`}
+        imageId={imageId}
+        onSelectImage={onSelectImage}
+        active={active}
         clients={clients}
         language={language}
         query={query}
@@ -82,35 +105,55 @@ function ImageResults({
   clients,
   language,
   query,
+  imageId,
+  onSelectImage,
+  active,
   onReadInBible,
 }: {
   clients: ImageLibraryClients;
   language: string;
   query: string;
+  imageId: string | null;
+  onSelectImage: (id: string | null) => void;
+  active: boolean;
   onReadInBible?: ReadImagePassage;
 }) {
-  const { images, loading, error, hasMore, load } = useImageResults(clients, language, query);
-  const [selected, setSelected] = useState<VerseImage | null>(null);
+  const { images, loading, error, hasMore, load } = useImageResults(
+    clients,
+    language,
+    query,
+    active,
+  );
+  const container = useRef<HTMLDivElement>(null);
   const listScroll = useRef(0);
   const openedCard = useRef<HTMLButtonElement | null>(null);
+  const previousImageId = useRef(imageId);
+  useEffect(() => {
+    const returning = previousImageId.current !== null && imageId === null;
+    previousImageId.current = imageId;
+    if (!returning || !active) return;
+    const frame = requestAnimationFrame(() => {
+      (openedCard.current ?? container.current)?.focus({ preventScroll: true });
+      const owner = container.current?.closest('[data-demo-scroll]') ?? document.scrollingElement;
+      owner?.scrollTo({ top: listScroll.current });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [imageId, active]);
   return (
-    <>
-      {selected ? (
-        <ImageDetail
-          image={selected}
+    <div ref={container} tabIndex={-1}>
+      {imageId !== null ? (
+        <RoutedImageDetail
+          key={imageId}
+          imageId={imageId}
+          cached={images.find((image) => image.id === imageId)}
           clients={clients}
           language={language}
+          active={active}
+          onBack={() => onSelectImage(null)}
           onReadInBible={onReadInBible}
-          onBack={() => {
-            setSelected(null);
-            requestAnimationFrame(() => {
-              openedCard.current?.focus({ preventScroll: true });
-              window.scrollTo(0, listScroll.current);
-            });
-          }}
         />
       ) : null}
-      <div hidden={selected !== null}>
+      <div hidden={imageId !== null}>
         {error ? (
           <div className="image-error">
             <p role="alert">{error}</p>
@@ -137,9 +180,11 @@ function ImageResults({
                 aria-label={`Open ${image.passage_id}`}
                 onClick={(event) => {
                   openedCard.current = event.currentTarget;
-                  listScroll.current = window.scrollY;
-                  setSelected(image);
-                  window.scrollTo(0, 0);
+                  const owner =
+                    container.current?.closest('[data-demo-scroll]') ?? document.scrollingElement;
+                  listScroll.current = owner?.scrollTop ?? 0;
+                  onSelectImage(image.id);
+                  owner?.scrollTo({ top: 0 });
                 }}
               />
             </li>
@@ -168,6 +213,83 @@ function ImageResults({
           </div>
         ) : null}
       </div>
-    </>
+    </div>
+  );
+}
+
+function RoutedImageDetail({
+  imageId,
+  cached,
+  clients,
+  language,
+  active,
+  onBack,
+  onReadInBible,
+}: {
+  imageId: string;
+  cached?: VerseImage;
+  clients: ImageLibraryClients;
+  language: string;
+  active: boolean;
+  onBack: () => void;
+  onReadInBible?: ReadImagePassage;
+}) {
+  const [image, setImage] = useState<VerseImage | null>(cached ?? null);
+  const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    if (!active || image) return;
+    if (cached) {
+      setImage(cached);
+      return;
+    }
+    let current = true;
+    setError(null);
+    void clients.images.getImage(imageId).then(
+      (result) => {
+        if (current) setImage(result);
+      },
+      (cause) => {
+        if (current)
+          setError(imageError(cause instanceof Error ? cause : new Error('Unable to load image.')));
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [active, cached, clients, imageId, image, retry]);
+  if (image)
+    return (
+      <ImageDetail
+        image={image}
+        language={language}
+        clients={clients}
+        active={active}
+        onBack={onBack}
+        onReadInBible={onReadInBible}
+      />
+    );
+  return (
+    <section aria-label="Image detail">
+      <button type="button" className="image-button" onClick={onBack}>
+        Back to images
+      </button>
+      {error ? (
+        <div className="image-error">
+          <p role="alert">{error}</p>
+          <button
+            type="button"
+            className="image-button"
+            onClick={() => setRetry((value) => value + 1)}
+          >
+            Retry image details
+          </button>
+        </div>
+      ) : (
+        <p role="status" className="image-status">
+          Loading image details…
+        </p>
+      )}
+    </section>
   );
 }

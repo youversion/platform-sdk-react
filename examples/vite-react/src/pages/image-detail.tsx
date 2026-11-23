@@ -14,12 +14,14 @@ import {
 
 export function ImageDetail({
   image,
+  active = true,
   language,
   clients,
   onBack,
   onReadInBible,
 }: {
   image: VerseImage;
+  active?: boolean;
   language: string;
   clients: ImageLibraryClients;
   onBack: () => void;
@@ -31,11 +33,17 @@ export function ImageDetail({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const complete = useRef(false);
   const viewerButton = useRef<HTMLButtonElement>(null);
   const selected = images.find((item) => item.id === selectedId) ?? images[0] ?? image;
 
   useEffect(() => {
-    let active = true;
+    if (!active) setOpen(false);
+  }, [active]);
+
+  useEffect(() => {
+    if (!active || complete.current) return;
+    let current = true;
     setLoading(true);
     setError(null);
     void (async () => {
@@ -50,29 +58,32 @@ export function ImageDetail({
             page_size: 99,
             page_token: token,
           });
-          if (!active) return;
+          if (!current) return;
           collected = appendImages(collected, page.data);
           const partial = collected;
-          setImages((previous) => (retry === 0 ? partial : appendImages(previous, partial)));
+          setImages((previous) => appendImages(previous, partial));
           token = page.next_page_token;
           if (token !== null && visited.has(token))
             throw new Error('The image service repeated a page. Please retry.');
           if (token !== null) visited.add(token);
         } while (token !== null);
-        if (active) setImages(collected);
+        if (current) {
+          complete.current = true;
+          setImages(collected);
+        }
       } catch (cause) {
-        if (active)
+        if (current)
           setError(
             imageError(cause instanceof Error ? cause : new Error('Unable to load content.')),
           );
       } finally {
-        if (active) setLoading(false);
+        if (current) setLoading(false);
       }
     })();
     return () => {
-      active = false;
+      current = false;
     };
-  }, [clients, image, language, retry]);
+  }, [clients, image, language, retry, active]);
 
   return (
     <section aria-label="Image detail">
@@ -102,20 +113,23 @@ export function ImageDetail({
           <button
             type="button"
             className="image-button"
-            onClick={() => setRetry((value) => value + 1)}
+            onClick={() => {
+              complete.current = false;
+              setRetry((value) => value + 1);
+            }}
           >
             Retry artwork list
           </button>
         </div>
       ) : null}
-      <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Root open={active && open} onOpenChange={setOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="image-dialog-overlay" />
           <Dialog.Content
             className="image-dialog"
             onCloseAutoFocus={(event) => {
               event.preventDefault();
-              viewerButton.current?.focus();
+              if (active) viewerButton.current?.focus();
             }}
           >
             <div className="image-dialog-inner">
