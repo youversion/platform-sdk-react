@@ -60,13 +60,14 @@
 .image-button:hover {
   background: var(--muted);
 }
-.image-button:disabled {
+.image-button:disabled,
+.image-button[aria-disabled='true'] {
   opacity: 0.5;
   cursor: default;
 }
 .image-button:focus-visible,
 .image-open:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--foreground);
   outline-offset: 4px;
 }
 .image-primary {

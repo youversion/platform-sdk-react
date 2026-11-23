@@ -154,6 +154,8 @@ test('language selection, partial search retries, empty cursors and obsolete sea
       };
     if (url.pathname === '/v1/search-images') {
       const query = url.searchParams.get('query');
+      if (query === 'new')
+        return { images: [{ id: 'fresh', passage_id: 'JHN.3.16' }], next_page_token: null };
       if (query === 'old') {
         oldRequested();
         await oldGate;
@@ -211,16 +213,20 @@ test('language selection, partial search retries, empty cursors and obsolete sea
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await oldStarted;
   await page.getByRole('searchbox', { name: 'Search images' }).fill('new');
+  const freshRequest = page.waitForRequest(
+    (request) => new URL(request.url()).searchParams.get('query') === 'new',
+  );
   await page.getByRole('button', { name: 'Search', exact: true }).click();
-  await expect(grid.locator('img')).toHaveCount(2);
-  await expect(grid.locator('img').first()).toHaveAttribute('src', /missing/);
+  await freshRequest;
+  await expect(grid.locator('img')).toHaveCount(1);
+  await expect(grid.locator('img').first()).toHaveAttribute('src', /fresh/);
   const oldResponse = page.waitForResponse(
     (response) => response.url().includes('/search-images') && response.url().includes('query=old'),
   );
   releaseOld();
   await settleResponse(page, oldResponse);
-  await expect(grid.locator('img').first()).toHaveAttribute('src', /missing/);
-  await expect(grid.locator('img')).toHaveCount(2);
+  await expect(grid.locator('img').first()).toHaveAttribute('src', /fresh/);
+  await expect(grid.locator('img')).toHaveCount(1);
   await page.getByRole('button', { name: 'Clear search' }).click();
   await expect(grid.locator('img').first()).toHaveAttribute('src', /spanish/);
 });
@@ -270,7 +276,9 @@ test('shuffle, share the selected artwork, view scripture and return to the load
   await setup(page, detailResponses);
   await page.getByRole('link', { name: 'Open JHN.3.16' }).click();
   await expect(page.getByText('1 of 3', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Next image', exact: true }).click();
+  const nextImage = page.getByRole('button', { name: 'Next image', exact: true });
+  await nextImage.focus();
+  await page.keyboard.press('Enter');
   await expect(page.getByText('2 of 3', { exact: true })).toBeVisible();
   await page.evaluate(() => {
     for (const animation of document.getAnimations()) {
@@ -286,6 +294,7 @@ test('shuffle, share the selected artwork, view scripture and return to the load
   await page.evaluate(() => {
     for (const animation of document.getAnimations()) animation.finish();
   });
+  await expect(nextImage).toBeFocused();
   await page.getByRole('button', { name: 'Share image', exact: true }).click();
   await expect
     .poll(() => page.evaluate(() => window.sharedImages))
@@ -361,9 +370,13 @@ test('recover artwork, later stack pages and a shorter retry; share without nati
   );
   await page.reload();
   const grid = page.getByRole('list', { name: 'Verse images' });
-  await expect(grid.getByRole('button', { name: 'Retry artwork', exact: true })).toBeVisible();
+  await expect(
+    grid.getByRole('button', { name: 'Retry artwork: JHN.3.16, Artist a', exact: true }),
+  ).toBeVisible();
   thumbFails = false;
-  await grid.getByRole('button', { name: 'Retry artwork', exact: true }).click();
+  await grid
+    .getByRole('button', { name: 'Retry artwork: JHN.3.16, Artist a', exact: true })
+    .click();
   await expect(grid.getByRole('img')).toBeVisible();
   await page.route('https://art.test/b.svg*', (route) => route.abort());
   await page.getByRole('link', { name: 'Open JHN.3.16' }).click();
@@ -535,6 +548,13 @@ test('narrow touch layout and keyboard viewer controls remain usable', async ({ 
     ).toHaveCount(1);
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+      .toBe(true);
+    await expect
+      .poll(() =>
+        page
+          .locator('[data-active-screen="true"]')
+          .evaluate((element) => element.scrollWidth <= element.clientWidth),
+      )
       .toBe(true);
     await page.getByRole('link', { name: 'Open JHN.3.16' }).tap();
     await expect(page.getByText('1 of 3', { exact: true })).toBeVisible();
@@ -786,7 +806,11 @@ test('mixed-aspect cards stay bounded and a drag preserves the loaded outgoing a
   const bounds = await page.locator('.image-stack').boundingBox();
   for (const artwork of await page.locator('.image-stack img').all()) {
     const box = await artwork.boundingBox();
+    expect(box.x).toBeGreaterThanOrEqual(bounds.x);
+    expect(box.y).toBeGreaterThanOrEqual(bounds.y);
+    expect(box.x + box.width).toBeLessThanOrEqual(bounds.x + bounds.width);
     expect(box.y + box.height).toBeLessThanOrEqual(bounds.y + bounds.height);
+    await expect(artwork).toHaveCSS('object-fit', 'contain');
   }
   const viewer = page.getByRole('button', { name: 'View full-screen image' });
   await viewer.scrollIntoViewIfNeeded();
@@ -854,9 +878,16 @@ test('Content image routes preserve the grid through detail history and direct l
   await expect(page.getByRole('region', { name: 'Image detail' })).toBeVisible();
   await page.getByRole('button', { name: 'Back to images' }).click();
   await expect(page).toHaveURL(/#\/content$/);
+  const opaqueRequest = page.waitForRequest(
+    (request) => new URL(request.url()).pathname === '/v1/images/opaque%2Fa%20b',
+  );
   await page.goto('/#/content/image/opaque%2Fa%20b');
+  await opaqueRequest;
   await expect(page.getByRole('region', { name: 'Image detail' })).toBeVisible();
-  await expect(page.locator('.image-stack-selected img')).toHaveAttribute('src', /opaque/);
+  await expect(page.locator('.image-stack-selected img')).toHaveAttribute(
+    'src',
+    'https://art.test/opaque/a%20b.svg?size=card',
+  );
   await content.click();
   await expect(page).toHaveURL(/#\/content$/);
 });
@@ -895,6 +926,7 @@ async function readerResponses(url) {
 test('Read in Bible uses the selected language and preserves loaded Content state on return', async ({
   page,
 }) => {
+  let searchRequests = 0;
   await setup(page, async (url) => {
     if (url.pathname === '/v1/images') return { data: [art('spanish')], next_page_token: null };
     if (url.pathname.startsWith('/v1/images/')) return art(url.pathname.split('/').at(-1));
@@ -908,13 +940,15 @@ test('Read in Bible uses the selected language and preserves loaded Content stat
         ],
         next_page_token: null,
       };
-    if (url.pathname === '/v1/search-images')
+    if (url.pathname === '/v1/search-images') {
+      searchRequests += 1;
       return {
         images: [
           { id: url.searchParams.has('page_token') ? 'later' : 'spanish', passage_id: 'JHN.3.16' },
         ],
         next_page_token: url.searchParams.has('page_token') ? null : 'more',
       };
+    }
     return readerResponses(url);
   });
   await page.getByRole('button', { name: 'Content language' }).click();
@@ -925,6 +959,7 @@ test('Read in Bible uses the selected language and preserves loaded Content stat
   await expect(page.getByRole('list', { name: 'Verse images' }).getByRole('listitem')).toHaveCount(
     2,
   );
+  expect(searchRequests).toBe(2);
   await page.getByRole('link', { name: 'Open JHN.3.16' }).first().click();
   await page.getByRole('button', { name: 'View full-screen image' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Read in Bible' }).click();
@@ -939,6 +974,10 @@ test('Read in Bible uses the selected language and preserves loaded Content stat
   await expect(page).toHaveURL(/#\/content\/image\/spanish$/);
   await page.getByRole('button', { name: 'Back to images' }).click();
   await expect(page.getByRole('searchbox', { name: 'Search images' })).toHaveValue('amor');
+  const retained = page.getByRole('list', { name: 'Verse images' }).locator('img');
+  await expect(retained.nth(0)).toHaveAttribute('src', /\/spanish\.svg/);
+  await expect(retained.nth(1)).toHaveAttribute('src', /\/later\.svg/);
+  expect(searchRequests).toBe(2);
   await expect(
     page.getByRole('button', { name: 'Content language: Spanish', exact: true }),
   ).toBeVisible();
@@ -954,6 +993,9 @@ test('Read in Bible uses the selected language and preserves loaded Content stat
     .getByRole('link', { name: 'Content' })
     .click();
   await expect(page.getByRole('searchbox', { name: 'Search images' })).toHaveValue('amor');
+  await expect(retained.nth(0)).toHaveAttribute('src', /\/spanish\.svg/);
+  await expect(retained.nth(1)).toHaveAttribute('src', /\/later\.svg/);
+  expect(searchRequests).toBe(2);
   await expect(page.getByRole('list', { name: 'Verse images' }).getByRole('listitem')).toHaveCount(
     2,
   );
@@ -1049,6 +1091,8 @@ test('returning to Content resumes an interrupted page without applying the hidd
   await setup(page, async (url) => {
     if (url.pathname === '/v1/images') {
       if (!url.searchParams.has('page_token')) return { data: [art('a')], next_page_token: 'more' };
+      if (url.searchParams.get('page_token') !== 'more')
+        return { status: 400, body: { message: 'Wrong resumed cursor' } };
       pageRequests += 1;
       if (pageRequests === 1) {
         await gate;
@@ -1072,6 +1116,7 @@ test('returning to Content resumes an interrupted page without applying the hidd
   await nav.getByRole('link', { name: 'Content' }).click();
   const grid = page.getByRole('list', { name: 'Verse images' });
   await expect(grid.getByRole('listitem')).toHaveCount(2);
+  await expect(grid.locator('img').nth(0)).toHaveAttribute('src', /\/a\.svg/);
   await expect(grid.locator('img').nth(1)).toHaveAttribute('src', /\/b\.svg/);
 });
 

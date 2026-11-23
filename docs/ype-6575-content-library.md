@@ -165,7 +165,7 @@ Verification completed locally:
 - `pnpm --filter vite-react test:e2e`: passed before integration, 13 Chromium workflows; integrated results are recorded below.
 - Desktop grid, desktop viewer and narrow-screen viewer captures inspected. The mobile viewer header was adjusted after visual inspection.
 
-The browser workflows in `examples/vite-react/e2e/images.spec.js` are the executable evidence. The following mapping supplements the planned ledger above; it does not convert manual or deferred items into automated proof.
+**Historical pre-integration checkpoint mapping (13 workflows).** The browser workflows in `examples/vite-react/e2e/images.spec.js` are the executable evidence. The following mapping supplements the planned ledger above; it does not convert manual or deferred items into automated proof.
 
 | Workflow | Ledger coverage and assertions |
 | --- | --- |
@@ -239,6 +239,8 @@ Semantic integration changes are limited to the image library and its App bounda
 
 The original route parser, reader-command adapter, destination navigation, navigation presets, Profile, BibleReaderPage and route test files are byte-identical to 27ae317 (verified with `git diff --exit-code 27ae317 -- <paths>`). They are not replaced with 6575 implementations.
 
+**Historical integration merge checkpoint (18 workflows; cold-reader version 3034).**
+
 | Added/updated running-app workflow | Evidence |
 | --- | --- |
 | Content image routes preserve the grid through detail history and direct links | Open/back/forward/back-to-grid URL assertions and a cold opaque ID containing slash/space |
@@ -280,3 +282,12 @@ Other findings were scope-gated: cross-browser/native OS/live-service behavior r
 The original mapping above describes historical checkpoints. Current browser coverage adds explicit disabled double-activation evidence for row 52, cross-page language reset for row 37 and filter exclusion for row 35. English 3034 preference is asserted in the browse/search workflow rather than the shuffle workflow. Source inspection supplies dependency direction and exact unmodified App-to-reader passage forwarding; main-app reader rendering plus the exact callback harness are complementary evidence, not a claim that every verse-scroll permutation is independently tested. Continuous real-device smoothness and unsampled animation frames remain manual limits.
 
 Post-fix verification: `pnpm build`, `pnpm test` (Core 352, hooks 200, UI 622, example routes 4; two opt-in Core live tests skipped), `pnpm lint`, `pnpm typecheck`, example `tsc -b`, and Prettier pass. All 19 browser workflows pass against the stable source snapshot. Normal narrow viewer capture was inspected again. Full source checks precede a fresh clean-snapshot independent review; remote CI is still pending publication.
+
+
+## Final bounded review-fix pass
+
+Fresh c83bbee audits: Spec found no concrete defect or scope creep; Compatibility found no blocker. Standards findings D1–D4/D6/D8 received scoped fixes or stronger evidence: foreground-colored focus outlines; uniquely keyed rapid replacement search; exact resumed cursor and opaque image ID; all four image bounds plus object-fit; retained card IDs with no repeat search; actual scroll-owner width; descriptive thumbnail retry names without per-thumbnail live loading/alert repetition; and normal-motion Next focus. The actual browser regression reproduced focus loss before replacing native disabled with aria-disabled plus the existing flight guard, preserving both focus and duplicate-shuffle prevention.
+
+Standards D5 is addressed by locally labeling historical evidence tables and following the repository's ticket-free subject/title convention for subsequent commits and the squash title. Previously committed subjects are not rewritten solely for metadata on this squash-bound branch. D7 transport policy and H1–H6 design/performance observations remain nonblocking follow-ups or rejected preference refactors: no concrete exploit, runtime performance defect, missing domain type or need for a generic lifecycle/paging abstraction was established. The three independent audit reports remain separate; none substitutes for another.
+
+The final browser run passes all 19 workflows in 28.1s with the stricter assertions. This is the second bounded review-fix pass; a fresh final audit follows its clean commit. Remaining missing permutations in the Spec report are validation limits, not concrete tracker defects: additional input devices, unsampled frames, retry/token/version permutations, optional clipboard, and every loading surface. The confirmed browser and manual seams, source inspection of unchanged adapters and direct assertions cover the required outcomes without expanding the ticket into exhaustive platform testing.

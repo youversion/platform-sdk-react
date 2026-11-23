@@ -30,16 +30,21 @@ export function ImageArt({
         style={{ visibility: status === 'ready' ? 'visible' : 'hidden' }}
       />
       {!decorative && status === 'loading' ? (
-        <span className="image-art-message" role="status">
+        <span className="image-art-message" role={size === 'thumb' ? undefined : 'status'}>
           Loading artwork…
         </span>
       ) : null}
       {!decorative && status === 'error' ? (
         <div className="image-art-message">
-          <span role="alert">Artwork could not load.</span>
+          <span role={size === 'thumb' ? undefined : 'alert'}>Artwork could not load.</span>
           <button
             type="button"
             className="image-button"
+            aria-label={
+              size === 'thumb'
+                ? `Retry artwork: ${image.passage_id}, ${image.attribution || image.id}`
+                : undefined
+            }
             onClick={(event) => {
               event.stopPropagation();
               setStatus('loading');

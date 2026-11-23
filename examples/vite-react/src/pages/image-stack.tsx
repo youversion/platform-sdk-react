@@ -145,7 +145,7 @@ export function ImageStack({
           <button
             type="button"
             className="image-button"
-            disabled={flight !== null}
+            aria-disabled={flight !== null}
             onClick={() => shuffle()}
           >
             Next image
