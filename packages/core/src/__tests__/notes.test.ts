@@ -31,6 +31,7 @@ it('follows a cursor from an empty filtered page and handles both forms of termi
   const client = createClient();
   const cursor = 'next+/=';
   const filters = { version_id: 3034, passage_id: passageId, page_size: 2 };
+  const color = '44AA44';
   server.use(
     http.get(collectionUrl, ({ request }) => {
       expect(request.headers.get('authorization')).toBe('Bearer reader');
@@ -43,14 +44,14 @@ it('follows a cursor from an empty filtered page and handles both forms of termi
         return HttpResponse.json({ data: [], next_page_token: cursor });
       }
       expect(query).toEqual({ ...expectedFilters, page_token: cursor });
-      return HttpResponse.json({ data: [wireNote] });
+      return HttpResponse.json({ data: [{ ...wireNote, color }] });
     }),
   );
 
   const first = await client.getNotes(filters, 'reader');
   expect(first).toEqual({ data: [], next_page_token: cursor });
   const last = await client.getNotes({ ...filters, page_token: first.next_page_token }, 'reader');
-  expect(last).toEqual({ data: [note], next_page_token: null });
+  expect(last).toEqual({ data: [{ ...note, color }], next_page_token: null });
   expect(await client.getNotes(undefined, 'reader')).toEqual({ data: [], next_page_token: null });
 });
 
@@ -132,6 +133,11 @@ it('rejects invalid writes, pagination, and missing auth before sending a reques
 
   await expect(client.getNotes()).rejects.toThrow('Authentication required');
   await expect(client.getNotes({ page_size: 100 }, 'reader')).rejects.toThrow('page_size');
+  await expect(client.getNotes({ version_id: -1 }, 'reader')).rejects.toThrow('version_id');
+  await expect(
+    client.updateNote(noteId, { passage: { version_id: 0, passage_id: passageId } }, 'writer'),
+  ).rejects.toThrow('version_id');
+  await expect(client.updateNote(noteId, { color: '44AA44' }, 'writer')).rejects.toThrow('color');
   await expect(
     client.createNote({ request_id: 'not-a-uuid', content: 'Note', status: 'private' }, 'writer'),
   ).rejects.toThrow('request_id');
@@ -143,9 +149,12 @@ it('rejects invalid writes, pagination, and missing auth before sending a reques
   expect(requests).toBe(0);
 });
 
-it('rejects a response containing a visibility outside the Notes contract', async () => {
-  server.use(http.get(resourceUrl, () => HttpResponse.json({ ...wireNote, status: 'draft' })));
-  await expect(createClient().getNote(noteId, 'reader')).rejects.toThrow('status');
+it.each([
+  ['status', 'draft'],
+  ['color', '#44AA44'],
+])('rejects an invalid %s in a note response', async (field, value) => {
+  server.use(http.get(resourceUrl, () => HttpResponse.json({ ...wireNote, [field]: value })));
+  await expect(createClient().getNote(noteId, 'reader')).rejects.toThrow(field);
 });
 
 it('preserves lowercase RFC 3339 timestamps but still rejects invalid dates', async () => {

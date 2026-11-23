@@ -515,9 +515,9 @@ describe('YouVersionAPIUsers', () => {
       clearAuthTokensSpy.mockRestore();
     });
 
-    it('keeps stashed grants without treating Notes scopes as data-exchange permissions', async () => {
+    it('keeps stashed grants without treating authentication scopes as data-exchange permissions', async () => {
       setupCallbackFlow({
-        scope: 'openid profile email read_notes write_notes',
+        scope: 'openid profile email offline_access read_notes write_notes',
         pendingGrant: JSON.stringify({ state: 'test-state', permissions: ['highlights'] }),
       });
 

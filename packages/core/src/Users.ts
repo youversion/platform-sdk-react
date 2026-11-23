@@ -62,14 +62,14 @@ const PENDING_GRANTED_PERMISSIONS_KEY = 'youversion-auth-pending-granted-permiss
 const REQUESTED_PERMISSIONS_KEY = 'youversion-auth-requested-permissions';
 
 /** OAuth scopes that must not be stored in the data-exchange permission cache. */
-const NON_PERMISSION_SCOPES = new Set([
-  'openid',
-  'profile',
-  'email',
-  'offline_access',
-  'read_notes',
-  'write_notes',
-]);
+const NON_PERMISSION_SCOPES = {
+  openid: true,
+  profile: true,
+  email: true,
+  offline_access: true,
+  read_notes: true,
+  write_notes: true,
+} satisfies Record<AuthenticationScopes | 'openid' | 'offline_access', true>;
 
 type PendingGrantedPermissionsStash = StatePermissionsStash;
 
@@ -421,7 +421,7 @@ export class YouVersionAPIUsers {
           ...parsePermissionList(tokens.scope),
           ...requestedGrants,
         ]),
-      ].filter((permission) => !NON_PERMISSION_SCOPES.has(permission));
+      ].filter((permission) => !Object.hasOwn(NON_PERMISSION_SCOPES, permission));
 
       // Extract user info from ID token
       const result = this.extractSignInResult(tokens);
