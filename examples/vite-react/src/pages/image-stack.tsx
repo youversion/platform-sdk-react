@@ -27,7 +27,7 @@ export function ImageStack({
 }) {
   const [flight, setFlight] = useState<CardFlight | null>(null);
   const [offset, setOffset] = useState(0);
-  const gesture = useRef<{ x: number; y: number } | null>(null);
+  const gesture = useRef<{ pointerId: number; x: number; y: number } | null>(null);
   const suppressClick = useRef(false);
   const index = Math.max(
     0,
@@ -49,8 +49,8 @@ export function ImageStack({
   }
   function finishDrag(event: PointerEvent<HTMLButtonElement>) {
     const start = gesture.current;
+    if (!start || start.pointerId !== event.pointerId) return;
     gesture.current = null;
-    if (!start) return;
     const dx = event.clientX - start.x;
     const dy = event.clientY - start.y;
     suppressClick.current = Math.abs(dx) > 8 || Math.abs(dy) > 8;
@@ -101,13 +101,17 @@ export function ImageStack({
                   aria-label="View full-screen image"
                   onPointerDown={(event) => {
                     if (!event.isPrimary || event.button !== 0 || flight) return;
-                    gesture.current = { x: event.clientX, y: event.clientY };
+                    gesture.current = {
+                      pointerId: event.pointerId,
+                      x: event.clientX,
+                      y: event.clientY,
+                    };
                     suppressClick.current = false;
                     event.currentTarget.setPointerCapture(event.pointerId);
                   }}
                   onPointerMove={(event) => {
                     const start = gesture.current;
-                    if (!start) return;
+                    if (!start || start.pointerId !== event.pointerId) return;
                     const dx = event.clientX - start.x;
                     const dy = event.clientY - start.y;
                     if (
@@ -117,7 +121,8 @@ export function ImageStack({
                       setOffset(dx);
                   }}
                   onPointerUp={finishDrag}
-                  onPointerCancel={() => {
+                  onPointerCancel={(event) => {
+                    if (gesture.current?.pointerId !== event.pointerId) return;
                     gesture.current = null;
                     setOffset(0);
                     suppressClick.current = true;

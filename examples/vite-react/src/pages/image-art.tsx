@@ -16,6 +16,7 @@ export function ImageArt({
   return (
     <div
       className="image-art"
+      data-status={status}
       style={{ aspectRatio: image.aspect_ratio > 0 ? image.aspect_ratio : 1 }}
       aria-hidden={decorative || undefined}
     >

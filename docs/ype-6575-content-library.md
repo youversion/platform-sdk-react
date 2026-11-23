@@ -1,6 +1,6 @@
 # YPE-6575 implementation scope and evidence plan
 
-Scope and browser test boundaries approved by the user. The library is now integrated locally with PR #496; no push, PR, or Jira mutation is authorized for this run.
+Scope and browser test boundaries approved by the user. The library is now integrated locally with PR #496; the user has authorized commit, push and PR creation after verification. Jira remains unchanged.
 
 Ticket: https://lifechurch.atlassian.net/browse/YPE-6575
 Title: [React SDK] Add image browsing and search to Content Library
@@ -34,7 +34,7 @@ Extend Content from the tab-reorganization ticket into an image Content Library,
 
 ## Scope contract
 
-Required outcomes: all tracker requirements above remain required. The image library uses PR #496's Content destination, hash routes, preserved screens and reader-command adapter. The original 6575 branch is preserved; integration merges the pinned navigation foundation on a separate branch. No changes are made to the other developer's branch. Read in Bible carries the resolved version and passage, including when Bible mounts for the first time. Container scroll, Back/Forward, direct links, interrupted requests and transient dialogs are verified through the running app. Stop before pushing or creating a PR, and leave Jira unchanged.
+Required outcomes: all tracker requirements above remain required. The image library uses PR #496's Content destination, hash routes, preserved screens and reader-command adapter. The original 6575 branch is preserved; integration merges the pinned navigation foundation on a separate branch. No changes are made to the other developer's branch. Read in Bible carries the resolved version and passage, including when Bible mounts for the first time. Container scroll, Back/Forward, direct links, interrupted requests and transient dialogs are verified through the running app. Commit, push and create the PR only after verification and independent review; leave Jira unchanged.
 
 
 Approved Swift reference alignment: content-language selection, language-aware image requests and Bible resolution, partial search-hit retry, passage-stack pagination, selected-image URL sharing, and reduced-motion support. These are implementation details supporting the existing outcomes, not unrelated new screens or SDK capabilities.
@@ -141,12 +141,12 @@ Seam N: real running-app Content → image → Bible navigation, plus the isolat
 
 Implement one browser workflow slice at a time, red then green. Run focused browser checks and example typechecking as slices progress. Finish with required pnpm build, pnpm test, pnpm lint, pnpm typecheck, the example build and added browser workflows. Record exact outcomes, manual checks and incomplete evidence.
 
-Independent simplification/reviews follow the jira-to-pr skill. The user requires a local handoff before any push or PR. Do not modify the other developer’s branch, message its developer, or change Jira.
+Independent simplification/reviews follow the jira-to-pr skill. The user has authorized push and PR creation after the review fixes and verification. Do not modify the other developer’s branch, message its developer, or change Jira.
 
 
 ## Local handoff
 
-User terminal condition: stop before creating a PR. Do not push or move Jira to review.
+User terminal condition: deliver a verified PR after the review fixes. Do not merge or move Jira to review.
 
 The image library is mounted in Content. `ImagesPage` receives the opaque routed image ID, an image-selection callback and active-screen state. Its Read in Bible callback carries passage ID and resolved Bible version ID to the existing reader-command adapter. The callback harness remains supplemental evidence; real main-app reader navigation is now directly verified.
 
@@ -213,7 +213,7 @@ Three read-only clean-context audits reviewed checkpoint `09c55b0` against `f4a3
 - Required: preserve the loaded outgoing artwork and drag-release transform through a shuffle. Stack cards now keep stable image elements, and animation starts at the release position. A browser check asserts retained DOM identity and first-frame geometry.
 - Required: contain mixed-aspect artwork inside each card without cropping. Stack geometry is bounded with object-fit containment; a landscape/portrait workflow reproduced the previous overflow and now passes.
 - Required: reject structurally invalid image passage IDs before resolving a Bible or emitting Read in Bible. Uses the existing Core parser; malformed metadata is exercised through the browser harness. A transient passage-preview network failure alone is not treated as an invalid routing target, consistent with Swift.
-- Evidence: added real vertical touch scrolling, exact long-grid focus/scroll, and a direct comparison against the Figma library group (node `5458-11641`) and Jira's attached Swift screenshot. The grid follows the pill search and artwork/reference hierarchy; mobile uses two columns, desktop three; viewer preserves artwork, attribution, scripture and reading action. Native shell navigation remains deferred to 6574.
+- Evidence: added real vertical touch scrolling, exact long-grid focus/scroll, and a direct comparison against the Figma library group (node `5458-11641`) and Jira's attached Swift screenshot. The grid follows the pill search and artwork/reference hierarchy; mobile uses two columns, desktop three; viewer preserves artwork, attribution, scripture and reading action. The later integration below supplies the navigation foundation.
 
 ### Compatibility
 
@@ -260,3 +260,23 @@ Two additional browser checks reproduced concrete integration defects before the
 - Browser Forward from a restored long grid left detail scrolled down 351px (expected 0). Detail route transitions now reset the Content scroll container; returning to the grid still restores the exact previous scroll position and originating-card focus.
 
 Both checks pass after the fixes. Full verification of this checkpoint: `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm --filter vite-react exec tsc -b`, and all 19 Chromium workflows. The full integrated unit suite passed at the merge checkpoint; these subsequent changes are example-only and directly covered by the browser suite. Native OS sharing, live service availability, Firefox/WebKit and continuous real-device animation smoothness remain unverified.
+
+
+## Review-fix pass after the pause
+
+The user resumed work and authorized commit, push and PR creation when ready. PR #496 is still open at the pinned head; the PR should target its branch to isolate 6575.
+
+Required findings accepted from the independent audits of 33c2800:
+
+- Standards S1 / Compatibility 1–3: restore real hash anchors and native modified/middle-click behavior, focus a stable detail region, and retain grid scroll independently of card clicks. The long-grid workflow observes href, keyboard entry focus and Tab order, direct hash entry and exact return offset.
+- Standards S2: match pointer IDs on move/up/cancel. The mixed-aspect workflow reproduces a secondary pointer advancing the primary gesture before the fix, then verifies the primary drag still completes.
+- Spec 1: distinguish a provided empty passage from an omitted search passage. Both empty and malformed IDs remain disabled in the viewer while valid artwork loads without URL.canParse.
+- Spec 2: the running full-viewer failure reproduced retry clipping by about 17px. Reserve a usable loading/error surface independently of the failed image's intrinsic size; verify the control bounds, activation, full-rendition recovery and thumbnail recovery separately.
+- Spec 3: expose a selected-image link when native sharing rejects. Cancellation remains silent; policy failure produces an error and a usable selected-image fallback.
+- Standards S6/S8 and Spec evidence gaps: strengthen existing workflows for exact browse/search identities and cross-page order, overlapping search hits, nonempty rapid-query replacement, picker exclusions, disabled double activation while a page is pending, language reset after pagination, settled stale responses, visible outgoing artwork and removal after flight, full-rendition URL, draft clearing and nondefault cold-reader version 777. These provide evidence at the approved browser seam without adding a test-only SDK API.
+
+Other findings were scope-gated: cross-browser/native OS/live-service behavior remains a disclosed validation limit, not a reproduced defect. Explicit HTTPS sink validation has no demonstrated exploit (React sanitizes script hrefs; Web Share validates schemes); eager-image optimization, aggregate thumbnail announcements, broader locale/version permutations and CI step naming are follow-ups. Preference-only domain/lifecycle abstractions and file splitting are rejected as unnecessary churn. The evidence ledger is retained because the workflow requires durable requirement traceability; it is not additional product scope. Cache freshness and inheriting a direct image's language are unrequested alternatives to Swift's cached image/current content-language behavior.
+
+The original mapping above describes historical checkpoints. Current browser coverage adds explicit disabled double-activation evidence for row 52, cross-page language reset for row 37 and filter exclusion for row 35. English 3034 preference is asserted in the browse/search workflow rather than the shuffle workflow. Source inspection supplies dependency direction and exact unmodified App-to-reader passage forwarding; main-app reader rendering plus the exact callback harness are complementary evidence, not a claim that every verse-scroll permutation is independently tested. Continuous real-device smoothness and unsampled animation frames remain manual limits.
+
+Post-fix verification: `pnpm build`, `pnpm test` (Core 352, hooks 200, UI 622, example routes 4; two opt-in Core live tests skipped), `pnpm lint`, `pnpm typecheck`, example `tsc -b`, and Prettier pass. All 19 browser workflows pass against the stable source snapshot. Normal narrow viewer capture was inspected again. Full source checks precede a fresh clean-snapshot independent review; remote CI is still pending publication.

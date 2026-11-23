@@ -218,6 +218,11 @@
   max-inline-size: 100%;
   margin-inline: auto;
 }
+.image-dialog .image-art[data-status='error'],
+.image-dialog .image-art[data-status='loading'] {
+  min-inline-size: min(100%, 20rem);
+  min-block-size: 12rem;
+}
 .image-dialog .image-art img {
   max-block-size: 75dvh;
   inline-size: auto;

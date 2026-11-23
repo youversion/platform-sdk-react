@@ -85,7 +85,7 @@ export function ImageDetail({
   }, [clients, image, language, retry, active]);
 
   return (
-    <section aria-label="Image detail">
+    <section>
       <div className="image-actions">
         <button type="button" className="image-button" onClick={onBack}>
           Back to images

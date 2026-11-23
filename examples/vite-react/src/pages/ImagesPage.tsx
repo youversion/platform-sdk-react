@@ -10,6 +10,7 @@ import { ImageLanguagePicker } from './image-language-picker';
 import { ImageDetail } from './image-detail';
 import { ImageArt } from './image-art';
 import { useImageResults } from './use-image-results';
+import { formatHash } from '../routes';
 import './image-library.css';
 
 export function ImagesPage({
@@ -126,8 +127,19 @@ function ImageResults({
   );
   const container = useRef<HTMLDivElement>(null);
   const listScroll = useRef(0);
-  const openedCard = useRef<HTMLButtonElement | null>(null);
+  const openedCard = useRef<HTMLAnchorElement | null>(null);
+  const detail = useRef<HTMLDivElement>(null);
   const previousImageId = useRef(imageId);
+  useEffect(() => {
+    if (!active || imageId !== null) return;
+    const owner = container.current?.closest('[data-demo-scroll]') ?? document.scrollingElement;
+    const target = owner === document.scrollingElement ? document : owner;
+    const remember = () => {
+      listScroll.current = owner?.scrollTop ?? 0;
+    };
+    target?.addEventListener('scroll', remember);
+    return () => target?.removeEventListener('scroll', remember);
+  }, [imageId, active]);
   useEffect(() => {
     const entering = previousImageId.current !== imageId && imageId !== null;
     const returning = previousImageId.current !== null && imageId === null;
@@ -135,6 +147,14 @@ function ImageResults({
     if ((!entering && !returning) || !active) return;
     const frame = requestAnimationFrame(() => {
       if (returning) (openedCard.current ?? container.current)?.focus({ preventScroll: true });
+      else {
+        if (
+          openedCard.current?.getAttribute('href') !==
+          formatHash({ destination: 'content', imageId })
+        )
+          openedCard.current = null;
+        detail.current?.focus({ preventScroll: true });
+      }
       const owner = container.current?.closest('[data-demo-scroll]') ?? document.scrollingElement;
       owner?.scrollTo({ top: returning ? listScroll.current : 0 });
     });
@@ -143,16 +163,18 @@ function ImageResults({
   return (
     <div ref={container} tabIndex={-1}>
       {imageId !== null ? (
-        <RoutedImageDetail
-          key={imageId}
-          imageId={imageId}
-          cached={images.find((image) => image.id === imageId)}
-          clients={clients}
-          language={language}
-          active={active}
-          onBack={() => onSelectImage(null)}
-          onReadInBible={onReadInBible}
-        />
+        <div ref={detail} role="region" aria-label="Image detail" tabIndex={-1}>
+          <RoutedImageDetail
+            key={imageId}
+            imageId={imageId}
+            cached={images.find((image) => image.id === imageId)}
+            clients={clients}
+            language={language}
+            active={active}
+            onBack={() => onSelectImage(null)}
+            onReadInBible={onReadInBible}
+          />
+        </div>
       ) : null}
       <div hidden={imageId !== null}>
         {error ? (
@@ -175,11 +197,20 @@ function ImageResults({
               <span className="image-reference" dir="auto">
                 {image.passage_id}
               </span>
-              <button
+              <a
                 className="image-open"
-                type="button"
+                href={formatHash({ destination: 'content', imageId: image.id })}
                 aria-label={`Open ${image.passage_id}`}
                 onClick={(event) => {
+                  if (
+                    event.button !== 0 ||
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.shiftKey ||
+                    event.altKey
+                  )
+                    return;
+                  event.preventDefault();
                   openedCard.current = event.currentTarget;
                   const owner =
                     container.current?.closest('[data-demo-scroll]') ?? document.scrollingElement;
@@ -270,7 +301,7 @@ function RoutedImageDetail({
       />
     );
   return (
-    <section aria-label="Image detail">
+    <section>
       <button type="button" className="image-button" onClick={onBack}>
         Back to images
       </button>

@@ -6,6 +6,7 @@ export function ImageShare({ image }: { image: VerseImage }) {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [fallback, setFallback] = useState(false);
   const supportsSharing = Boolean('share' in navigator);
   async function share() {
     setError(null);
@@ -13,8 +14,10 @@ export function ImageShare({ image }: { image: VerseImage }) {
     try {
       await navigator.share({ title: image.passage_id, url: image.image_url });
     } catch (cause) {
-      if (!(cause instanceof DOMException && cause.name === 'AbortError'))
-        setError(imageError(cause instanceof Error ? cause : new Error('Unable to load content.')));
+      if (!(cause instanceof DOMException && cause.name === 'AbortError')) {
+        setFallback(true);
+        setError(imageError(cause instanceof Error ? cause : new Error('Unable to share image.')));
+      }
     } finally {
       setBusy(false);
     }
@@ -40,7 +43,8 @@ export function ImageShare({ image }: { image: VerseImage }) {
         >
           Share
         </button>
-      ) : (
+      ) : null}
+      {!supportsSharing || fallback ? (
         <div className="image-actions">
           <a className="image-button" href={image.image_url} target="_blank" rel="noreferrer">
             Open image link
@@ -51,7 +55,7 @@ export function ImageShare({ image }: { image: VerseImage }) {
             </button>
           ) : null}
         </div>
-      )}
+      ) : null}
       {error ? (
         <p role="alert" className="image-status">
           {error}

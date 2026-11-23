@@ -47,7 +47,7 @@ export async function resolveImageBible(
   language: string,
   passageId?: string,
 ): Promise<BibleVersion> {
-  if (passageId && !isValidStructuralUsfmReference(passageId)) {
+  if (passageId !== undefined && !isValidStructuralUsfmReference(passageId)) {
     throw new Error('This image has an invalid Bible passage.');
   }
   const ranges =
@@ -66,7 +66,9 @@ export async function resolveImageBible(
         page_token: token ?? undefined,
       });
       versions.push(
-        ...page.data.filter((v) => !passageId || v.books.includes(passageId.split('.')[0])),
+        ...page.data.filter(
+          (v) => passageId === undefined || v.books.includes(passageId.split('.')[0]),
+        ),
       );
       token = page.next_page_token;
       if (token !== null && visited.has(token))
@@ -81,7 +83,7 @@ export async function resolveImageBible(
     if (selected) return selected;
   }
   throw new Error(
-    passageId
+    passageId !== undefined
       ? 'This passage is unavailable in the selected language.'
       : 'No Bible is available in the selected language.',
   );
