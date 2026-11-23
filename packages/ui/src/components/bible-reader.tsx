@@ -6,7 +6,6 @@ import { useDelayedLoading } from '@/lib/use-delayed-loading';
 import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
 import { useResolvedScriptureDirection } from '@/lib/scripture-direction';
 import { cn } from '@/lib/utils';
-import type { FontFamily } from '@/lib/verse-html-utils';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import {
   DEFAULT_LICENSE_FREE_BIBLE_VERSION,
@@ -55,6 +54,7 @@ import {
 
 import type {
   BibleReaderHighlightIntent,
+  BibleReaderSettingsProps,
   BibleReaderShareData,
   BibleReaderVerseSelection,
 } from './bible-reader.types';
@@ -84,7 +84,7 @@ export type {
   BibleReaderVerseSelection,
 } from './bible-reader.types';
 
-export type RootProps = {
+export type RootProps = BibleReaderSettingsProps & {
   /** Retain this connection outside the reader to request navigation before mount. */
   navigation?: BibleReaderNavigation;
   book?: string;
@@ -96,21 +96,6 @@ export type RootProps = {
   versionId?: number;
   defaultVersionId?: number;
   onVersionChange?: (versionId: number) => void;
-  fontSize?: number;
-  defaultFontSize?: number;
-  onFontSizeChange?: (fontSize: number) => void;
-  fontFamily?: FontFamily;
-  defaultFontFamily?: FontFamily;
-  onFontFamilyChange?: (fontFamily: FontFamily) => void;
-  lineSpacing?: number;
-  defaultLineSpacing?: number;
-  onChangeLineSpacing?: (size: number) => void;
-  /**
-   * @deprecated Use `defaultLineSpacing` (uncontrolled) or `lineSpacing` +
-   * `onChangeLineSpacing` (controlled) instead. When provided, this is used as
-   * the initial line spacing. Will be removed in the next major version.
-   */
-  lineHeight?: number;
   showVerseNumbers?: boolean;
   background?: 'light' | 'dark';
   onFootnotePress?: (data: FootnoteData) => void;

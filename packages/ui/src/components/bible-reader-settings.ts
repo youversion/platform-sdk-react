@@ -13,8 +13,6 @@ export const BIBLE_READER_SPACING = {
   LG: 2.0,
 } as const;
 
-const MIN_FONT_SIZE = BIBLE_READER_FONT.MIN;
-const MAX_FONT_SIZE = BIBLE_READER_FONT.MAX;
 const DEFAULT_FONT_SIZE = BIBLE_READER_FONT.DEFAULT;
 const FONT_SIZE_STEP = BIBLE_READER_FONT.STEP;
 
@@ -41,11 +39,11 @@ export type BibleThemeSettingsContentProps = {
 };
 
 export function clampBibleReaderFontSize(fontSize: number): number {
-  return Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, fontSize));
+  return Math.min(BIBLE_READER_FONT.MAX, Math.max(BIBLE_READER_FONT.MIN, fontSize));
 }
 
 export function normalizeReaderFontSizeForInitialization(size: number): number {
-  if (size > MAX_FONT_SIZE || size < MIN_FONT_SIZE) {
+  if (size > BIBLE_READER_FONT.MAX || size < BIBLE_READER_FONT.MIN) {
     return DEFAULT_FONT_SIZE;
   }
   return size;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useContext, useRef, type JSX } from 'react';
+import { useContext, useLayoutEffect, useRef, type JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useYVAuth, YouVersionContext } from '@youversion/platform-react-hooks';
 import { getAdjacentChapter } from '@youversion/platform-core';
@@ -31,9 +31,6 @@ import {
   type BibleThemeSettingsValues,
   type BibleThemeSettingsSnapshot,
 } from './bible-reader-settings';
-
-const MIN_FONT_SIZE = BIBLE_READER_FONT.MIN;
-const MAX_FONT_SIZE = BIBLE_READER_FONT.MAX;
 
 function UserMenu() {
   const { t } = useTranslation(undefined, { i18n });
@@ -156,11 +153,13 @@ export function Toolbar({
     lineSpacing: currentLineSpacing,
   });
 
-  themesSettingsValuesRef.current = {
-    fontSize: currentFontSize,
-    fontFamily: currentFontFamily,
-    lineSpacing: currentLineSpacing,
-  };
+  useLayoutEffect(() => {
+    themesSettingsValuesRef.current = {
+      fontSize: currentFontSize,
+      fontFamily: currentFontFamily,
+      lineSpacing: currentLineSpacing,
+    };
+  });
 
   const applyThemeSettings = (
     themeSettings: BibleThemeSettingsValues,
@@ -212,8 +211,8 @@ export function Toolbar({
 
   const buildBibleThemeSettingsSnapshot = (): BibleThemeSettingsSnapshot => ({
     ...themesSettingsValuesRef.current,
-    minFontSize: MIN_FONT_SIZE,
-    maxFontSize: MAX_FONT_SIZE,
+    minFontSize: BIBLE_READER_FONT.MIN,
+    maxFontSize: BIBLE_READER_FONT.MAX,
   });
 
   const prevResult = getAdjacentChapter(booksData, book, chapter, 'previous');
@@ -259,7 +258,7 @@ export function Toolbar({
               {({ chapterLabel, currentBook, loading }) => (
                 <div className="yv:grid yv:grid-cols-[auto_1fr_auto] yv:justify-start yv:grid-rows-1 yv:overflow-hidden yv:rounded-full yv:min-w-30 yv:bg-muted yv:text-muted-foreground yv:hover:bg-muted/80">
                   <Button
-                    className="yv:min-w-0 yv:group yv:place-self-center yv:max-size-9 yv:touch-hitbox"
+                    className="yv:min-w-0 yv:group yv:place-self-center yv:touch-hitbox"
                     size="icon"
                     variant="ghost"
                     disabled={!canNavigatePrevious}
@@ -304,7 +303,7 @@ export function Toolbar({
                         setChapter(nextResult.chapterId);
                       }
                     }}
-                    className="yv:min-w-0 yv:group yv:place-self-center yv:size-9 yv:touch-hitbox"
+                    className="yv:min-w-0 yv:group yv:place-self-center yv:touch-hitbox"
                     size="icon"
                     variant="ghost"
                     disabled={!canNavigateNext}

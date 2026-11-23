@@ -10,19 +10,7 @@ import {
   normalizeReaderFontSizeForInitialization,
 } from './bible-reader-settings';
 import { READER_STORAGE_KEYS } from './bible-reader-storage';
-
-type BibleReaderSettingsOptions = {
-  fontSize?: number;
-  defaultFontSize?: number;
-  onFontSizeChange?: (size: number) => void;
-  fontFamily?: FontFamily;
-  defaultFontFamily?: FontFamily;
-  onFontFamilyChange?: (fontFamily: FontFamily) => void;
-  lineSpacing?: number;
-  defaultLineSpacing?: number;
-  onChangeLineSpacing?: (size: number) => void;
-  lineHeight?: number;
-};
+import type { BibleReaderSettingsProps } from './bible-reader.types';
 
 type BibleReaderSettings = {
   currentFontSize: number;
@@ -33,9 +21,13 @@ type BibleReaderSettings = {
   setCurrentLineSpacing: Dispatch<SetStateAction<number>>;
 };
 
-const MIN_FONT_SIZE = BIBLE_READER_FONT.MIN;
-const MAX_FONT_SIZE = BIBLE_READER_FONT.MAX;
-
+/**
+ * Initializes and persists reader typography. An on-change callback opts a setting
+ * into host control; pass its value prop to keep Radix state controlled. Saved
+ * values hydrate once in a layout effect before paint, and only uncontrolled
+ * settings are persisted.
+ * @internal
+ */
 export function useBibleReaderSettings({
   fontSize: fontSizeProp,
   defaultFontSize = BIBLE_READER_FONT.DEFAULT,
@@ -47,7 +39,7 @@ export function useBibleReaderSettings({
   defaultLineSpacing,
   onChangeLineSpacing,
   lineHeight,
-}: BibleReaderSettingsOptions): BibleReaderSettings {
+}: BibleReaderSettingsProps): BibleReaderSettings {
   const isFontSizeControlled = onFontSizeChange !== undefined;
   const isFontFamilyControlled = onFontFamilyChange !== undefined;
   const isLineSpacingControlled = onChangeLineSpacing !== undefined;
@@ -89,7 +81,7 @@ export function useBibleReaderSettings({
       const savedFontSize = getLocalStorage()?.getItem(READER_STORAGE_KEYS.fontSize);
       if (savedFontSize) {
         const parsed = parseInt(savedFontSize);
-        if (parsed >= MIN_FONT_SIZE && parsed <= MAX_FONT_SIZE) {
+        if (parsed >= BIBLE_READER_FONT.MIN && parsed <= BIBLE_READER_FONT.MAX) {
           setCurrentFontSize(parsed);
         }
       }
