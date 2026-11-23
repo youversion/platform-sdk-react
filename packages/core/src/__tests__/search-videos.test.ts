@@ -80,6 +80,29 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
     });
   });
 
+  it('treats an empty organization filter like omitted filters', async () => {
+    const search = createSearchClient();
+    const requests: string[] = [];
+    server.use(
+      http.get(`https://${apiHost}/v1-beta/search-videos`, ({ request }) => {
+        const url = new URL(request.url);
+        requests.push(request.url);
+        expect(url.searchParams.get('query')).toBe('love');
+        expect(url.searchParams.has('organization_ids[]')).toBe(false);
+        return HttpResponse.json({
+          videos: [],
+          user_intent: null,
+          did_you_mean: [],
+          search_instead_for: null,
+        });
+      }),
+    );
+    const unfiltered = await search.searchVideos('love');
+    await expect(search.searchVideos('love', { organizationIds: [] })).resolves.toEqual(unfiltered);
+    expect(requests).toHaveLength(2);
+    expect(requests[1]).toBe(requests[0]);
+  });
+
   it('preserves an empty-page token and validates parameters before networking', async () => {
     const search = createSearchClient();
     let requests = 0;

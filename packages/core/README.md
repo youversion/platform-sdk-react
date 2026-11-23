@@ -141,6 +141,21 @@ set. Omit `fields` for all available kinds, or pass a nonempty selection.
 `userIntent` accepts `unknown`, `topical`, `text`, or `reference`; response intent
 strings remain open-ended.
 
+Unified responses now always include a `videos` array, including stable-route
+searches that return `videos: []`. This adds an enumerable property to returned
+objects, so JSON output, exact snapshots, and `keyof SearchUnifiedResponse` include
+it. The public type keeps the property optional for existing fixtures and hook
+overrides.
+
+Explicit video selection is available through core `SearchClient.searchUnified`
+with `ContentLibrarySearchOptions`. The existing React `useUnifiedSearch` hook
+continues to accept only `verses`, `topics`, and `images`. For options shared with
+the hook, use `SearchUnifiedOptions` or `UseUnifiedSearchProps` rather than deriving
+the wider core selection from `Parameters<SearchClient['searchUnified']>`.
+
+`SearchClient.searchVideos` accepts `organizationIds` as UUID filters combined with
+OR. Omit the option or pass `[]` to search all organizations accessible to the app.
+
 The SDK also accepts `fields: ['images']` and maps image hits to `{ id, passageId }`,
 not image URLs. Image selection requires backend support. A production check on
 2026-10-20 returned HTTP 400 for `fields: ['images']`; successful verse/topic

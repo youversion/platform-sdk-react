@@ -1,7 +1,7 @@
 import * as z from 'zod/mini';
 import { object } from './object';
 import { OrganizationIdSchema } from './organization';
-import { ContentLibraryVideoSchema } from './video';
+import { ContentLibraryVideoSchema } from './video-resource';
 
 export const SearchVideosQuerySchema = z.string().check(
   z.trim(),
@@ -13,8 +13,8 @@ export const SearchVideosQuerySchema = z.string().check(
 );
 
 export const SearchVideosOptionsSchema = object({
-  /** Publisher filters combined with OR. */
-  organizationIds: z.optional(z.readonly(z.array(OrganizationIdSchema).check(z.minLength(1)))),
+  /** Publisher filters combined with OR. Omit or pass an empty array for no filter. */
+  organizationIds: z.optional(z.readonly(z.array(OrganizationIdSchema))),
   /** Language preference. Defaults to English. */
   acceptLanguage: z.optional(z.string().check(z.minLength(1))),
   pageSize: z.optional(z.int().check(z.gte(1), z.lte(99))),

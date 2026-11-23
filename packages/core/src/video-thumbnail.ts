@@ -1,4 +1,5 @@
-import type { ContentLibraryVideo, VideoThumbnailSize } from './schemas/video';
+import type { ContentLibraryVideo } from './schemas/video-resource';
+import type { VideoThumbnailSize } from './schemas/video';
 
 /** @internal Response normalization shared by video detail and video search. */
 export function resolveVideoThumbnail(
