@@ -126,11 +126,40 @@ Bind on new/edited tests. When touching a file, bend the cases you edit toward t
 
 ## Env
 
-To verify playlist-to-video lookup against a deployment, set `YVP_API_HOST`, an authorized
-`YVP_APP_KEY`, and `YVP_VIDEO_ORGANIZATION_ID` for an organization with a populated video
-playlist. Run `pnpm --filter @youversion/platform-core test:integration src/__tests__/videos.integration.test.ts`.
+To verify beta playlist-to-video lookup against a deployment, set `YVP_API_HOST`, a beta-enabled
+`YVP_APP_KEY` with access to the video catalog, and `YVP_VIDEO_ORGANIZATION_ID` for an organization
+with a populated video playlist. Run `pnpm --filter @youversion/platform-core test:integration src/__tests__/videos.integration.test.ts`.
 
 Missing `YVP_API_HOST` or other env files: read `docs/cursor-cloud.md`.
+
+## Content Library contract and rollout routing
+
+YPE-6573 response validation follows the user-supplied Transformers `compiled.yaml`
+snapshot (SHA-256 `e2458ce1008a5d5a1d6151e08b7769e6edf27f36abfdb40d06133b15c0a5475d`).
+[Swift PR 302](https://github.com/youversion/platform-sdk-swift/pull/302)
+(`bba84a3`) and [Kotlin PR 242](https://github.com/youversion/platform-sdk-kotlin/pull/242)
+(`3e39b55`) are comparison references,
+not substitutes for that contract. The mocked client tests cover video detail,
+playlist-to-detail and unified-search-to-detail lookup, thumbnail renditions,
+nullable and absent video metadata, required fields, pagination and HTTP errors.
+Video search requires `videos`, `user_intent`, `did_you_mean` and
+`search_instead_for`; nullable fields must still be present. Its undocumented
+204 response rejects, while playlist 204 returns an empty page. Malformed full
+video resources reject rather than being silently dropped.
+
+Routing deliberately follows both SDK implementations during rollout, overriding
+the ticket instruction against splitting unified search by selected fields:
+
+- Video detail, playlist collection/detail and dedicated video search use `/v1-beta`.
+- Unified search uses `/v1-beta/search-unified` only when `fields` includes `videos`.
+  Other selections, including omitted `fields`, stay on `/v1/search-unified`.
+- Playlist language defaults to English, and wildcard page size remains explicit.
+
+The supplied spec names stable routes for video details, playlists and unified
+search; this temporary routing exception is separate from response validation.
+Promote the beta routes only after confirming deployment and catalog access.
+The live smoke remains optional deployment evidence, not a replacement for the
+contract tests or a requirement for adding UI. No UI is added by YPE-6573.
 
 ## Before pushing
 

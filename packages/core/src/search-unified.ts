@@ -24,6 +24,7 @@ type SearchUnifiedQuery = {
 
 /**
  * Searches verses, topics, images, and lightweight video ids in one unpaginated request.
+ * Selecting `videos` sends the request to beta and requires a beta-enabled app key.
  * @param query Search text (1 to 100 graphemes).
  * @param versionId Bible version identifier (sent to the API as `bible_id`).
  * @param languageRanges Ordered language ranges (`en_US` is normalized to `en-us` on the wire).
@@ -54,7 +55,11 @@ export async function searchUnified(
     params['fields[]'] = parsedOptions.fields;
   }
 
-  const response = await client.get<unknown>('/v1/search-unified', params);
+  // Match Swift and Kotlin rollout routing; existing searches keep stable access.
+  const path = parsedOptions.fields?.includes('videos')
+    ? '/v1-beta/search-unified'
+    : '/v1/search-unified';
+  const response = await client.get<unknown>(path, params);
 
   const parsed = SearchUnifiedWireSchema.safeParse(response);
   if (!parsed.success) {

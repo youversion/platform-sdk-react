@@ -33,16 +33,12 @@ export const VideoThumbnailSchema = object({
 
 export type VideoThumbnail = Readonly<z.infer<typeof VideoThumbnailSchema>>;
 
-/** Full Content Library video returned by video detail and dedicated search. */
-export const ContentLibraryVideoSchema = object({
-  /** Opaque video identifier. Pass it to `VideosClient.getVideo` unchanged. */
-  id: VideoIdSchema,
+/** Metadata shared by Content Library resources and the legacy v3 video model. */
+const VideoFields = {
   /** Video title. */
   title: z.optional(z.nullable(z.string())),
   /** Video description. */
   description: z.optional(z.nullable(z.string())),
-  /** Bible passage associated with the video (e.g., `1SA.17.45`). */
-  passage_id: z.optional(z.nullable(z.string())),
   /** BCP 47 language tag for the video. */
   language_tag: z.optional(z.nullable(z.string())),
   /** Runtime in seconds. */
@@ -57,17 +53,29 @@ export const ContentLibraryVideoSchema = object({
   playback_preview_sources: z.array(VideoPlaybackSourceSchema),
   /** Share URL for the video. */
   share_url: z.optional(z.nullable(z.string())),
+};
+
+/** Full Content Library video returned by video detail and dedicated search. */
+export const ContentLibraryVideoSchema = object({
+  ...VideoFields,
+  /** Opaque video identifier. Pass it to `VideosClient.getVideo` unchanged. */
+  id: VideoIdSchema,
+  /** Bible passage associated with the video (e.g., `1SA.17.45`). */
+  passage_id: z.optional(z.nullable(z.string())),
 });
 
 export type ContentLibraryVideo = Readonly<z.infer<typeof ContentLibraryVideoSchema>>;
 
+const LegacyVideoSchema = object({
+  ...VideoFields,
+  /** Legacy numeric video identifier. */
+  id: z.number(),
+  /** Bible references associated with the legacy video. */
+  references: z.optional(z.nullable(z.array(z.string()))),
+});
+
 /** Legacy v3 video model with numeric IDs and Bible references. */
-export type Video = Readonly<
-  Omit<ContentLibraryVideo, 'id' | 'passage_id'> & {
-    id: number;
-    references?: string[] | null | undefined;
-  }
->;
+export type Video = Readonly<z.infer<typeof LegacyVideoSchema>>;
 
 /** Supported thumbnail renditions. Omit the option for the full-size image. */
 export const VideoThumbnailSizeSchema = z.enum(['thumb', 'card', 'full']);

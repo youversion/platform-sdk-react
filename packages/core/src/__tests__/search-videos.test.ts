@@ -187,6 +187,34 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
     }
   });
 
+  it('requires query metadata fields while allowing nullable values', async () => {
+    const search = createSearchClient();
+    const valid = {
+      videos: [],
+      user_intent: null,
+      did_you_mean: [],
+      search_instead_for: null,
+    };
+    server.use(
+      http.get(`https://${apiHost}/v1-beta/search-videos`, () => HttpResponse.json(valid)),
+    );
+    await expect(search.searchVideos('love')).resolves.toEqual({
+      videos: [],
+      didYouMean: [],
+      searchInsteadFor: null,
+      nextPageToken: null,
+    });
+    for (const field of ['videos', 'user_intent', 'did_you_mean', 'search_instead_for']) {
+      const payload = Object.fromEntries(Object.entries(valid).filter(([name]) => name !== field));
+      server.use(
+        http.get(`https://${apiHost}/v1-beta/search-videos`, () => HttpResponse.json(payload)),
+      );
+      await expect(search.searchVideos('love')).rejects.toThrow(
+        'Unexpected search-videos API response',
+      );
+    }
+  });
+
   it('preserves a missing-app-key response as an HTTP status error', async () => {
     const search = new SearchClient(
       new ApiClient({ apiHost, appKey: '', installationId: 'test-installation' }),

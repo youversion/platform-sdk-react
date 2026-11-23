@@ -21,17 +21,19 @@ function createSearchClient(): SearchClient {
 
 describe('SearchClient.searchUnified', () => {
   it.skipIf(Boolean(process.env.INTEGRATION_TESTS))(
-    'requests stable unified video hits as opaque ids',
+    'routes mixed video and verse search to beta and resolves the returned video id',
     async () => {
       const apiClient = createApiClient();
       const searchClient = new SearchClient(apiClient);
       const videos = new VideosClient(apiClient);
+      let expectedFields: readonly string[];
 
       server.use(
-        http.get(`https://${apiHost}/v1/search-unified`, ({ request }) => {
+        http.get(`https://${apiHost}/v1-beta/search-unified`, ({ request }) => {
           const url = new URL(request.url);
-          expect(url.searchParams.getAll('fields[]')).toEqual(['videos']);
+          expect(url.searchParams.getAll('fields[]')).toEqual(expectedFields);
           return HttpResponse.json({
+            verses: [{ reference: 'JHN.3.16' }],
             videos: [
               { id: 'search-issued-id', title: 'not part of a unified hit' },
               { id: '' },
@@ -41,7 +43,7 @@ describe('SearchClient.searchUnified', () => {
             search_instead_for: null,
           });
         }),
-        http.get(`https://${apiHost}/v1/videos/search-issued-id`, () =>
+        http.get(`https://${apiHost}/v1-beta/videos/search-issued-id`, () =>
           HttpResponse.json({
             id: 'detail-issued-id',
             playback_sources: [],
@@ -50,13 +52,14 @@ describe('SearchClient.searchUnified', () => {
         ),
       );
 
-      const result = await searchClient.searchUnified('faith', 111, 'en', {
-        fields: ['videos'],
-      });
-
-      expect(result.videos).toEqual([{ id: 'search-issued-id' }]);
-      const detail = await videos.getVideo(result.videos?.[0]?.id ?? '');
-      expect(detail.id).toBe('detail-issued-id');
+      for (const fields of [['videos'], ['verses', 'videos']] as const) {
+        expectedFields = fields;
+        const result = await searchClient.searchUnified('faith', 111, 'en', { fields });
+        expect(result.verses).toEqual([{ id: 'JHN.3.16' }]);
+        expect(result.videos).toEqual([{ id: 'search-issued-id' }]);
+        const detail = await videos.getVideo(result.videos?.[0]?.id ?? '');
+        expect(detail.id).toBe('detail-issued-id');
+      }
     },
   );
 

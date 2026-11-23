@@ -22,7 +22,7 @@ import { resolveVideoThumbnail } from './video-thumbnail';
 
 export type { GetPlaylistOptions, GetPlaylistsOptions, GetVideoOptions };
 
-const VIDEOS_PATH = '/v1/videos';
+const VIDEOS_PATH = '/v1-beta/videos';
 
 type PlaylistsQuery = {
   'fields[]'?: VideoPlaylistField[];
@@ -30,7 +30,7 @@ type PlaylistsQuery = {
   page_token?: string;
 };
 
-/** Client for video detail and playlist resources. */
+/** Client for beta video detail and playlist resources. Requires a beta-enabled app key. */
 export class VideosClient {
   private client: ApiClient;
 
@@ -97,7 +97,7 @@ export class VideosClient {
     if (parsedOptions.page_token !== undefined) query.page_token = parsedOptions.page_token;
 
     const response = await this.client.getWithStatus<unknown>(
-      `/v1/organizations/${encodeURIComponent(id)}/playlists`,
+      `/v1-beta/organizations/${encodeURIComponent(id)}/playlists`,
       query,
       { 'Accept-Language': parsedOptions.accept_language ?? 'en' },
     );
@@ -126,7 +126,7 @@ export class VideosClient {
     const playlist = VideoPlaylistIdSchema.parse(playlistId);
     const parsedOptions = GetPlaylistOptionsSchema.parse(options);
     const body = await this.client.get<unknown>(
-      `/v1/organizations/${encodeURIComponent(organization)}/playlists/${playlist}`,
+      `/v1-beta/organizations/${encodeURIComponent(organization)}/playlists/${playlist}`,
       undefined,
       { 'Accept-Language': parsedOptions.accept_language ?? 'en' },
     );

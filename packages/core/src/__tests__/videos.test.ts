@@ -30,7 +30,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
     const videos = createVideosClient();
 
     server.use(
-      http.get(`https://${apiHost}/v1/videos/:videoId`, ({ params, request }) => {
+      http.get(`https://${apiHost}/v1-beta/videos/:videoId`, ({ params, request }) => {
         expect(params.videoId).toBe('video/id');
         expect(request.headers.get('Accept-Language')).toBe('es');
         return HttpResponse.json({
@@ -89,7 +89,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
 
     server.use(
       http.get(
-        `https://${apiHost}/v1/organizations/:organizationId/playlists`,
+        `https://${apiHost}/v1-beta/organizations/:organizationId/playlists`,
         ({ params, request }) => {
           expect(params.organizationId).toBe(organizationId);
           const url = new URL(request.url);
@@ -103,7 +103,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
           });
         },
       ),
-      http.get(`https://${apiHost}/v1/videos/52186`, ({ request }) => {
+      http.get(`https://${apiHost}/v1-beta/videos/52186`, ({ request }) => {
         expect(request.headers.get('Accept-Language')).toBe('fr');
         return HttpResponse.json({
           id: '52186',
@@ -134,7 +134,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
 
     server.use(
       http.get(
-        `https://${apiHost}/v1/organizations/:organizationId/playlists/:playlistId`,
+        `https://${apiHost}/v1-beta/organizations/:organizationId/playlists/:playlistId`,
         ({ params, request }) => {
           expect(params.organizationId).toBe(organizationId);
           expect(params.playlistId).toBe('3669');
@@ -150,7 +150,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
         },
       ),
       http.get(
-        `https://${apiHost}/v1/organizations/:organizationId/playlists`,
+        `https://${apiHost}/v1-beta/organizations/:organizationId/playlists`,
         ({ params, request }) => {
           expect(params.organizationId).toBe(organizationId);
           const language = request.headers.get('Accept-Language');
@@ -224,7 +224,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
     };
 
     server.use(
-      http.get(`https://${apiHost}/v1/videos/:videoId`, ({ params, request }) => {
+      http.get(`https://${apiHost}/v1-beta/videos/:videoId`, ({ params, request }) => {
         expect(request.headers.has('Accept-Language')).toBe(false);
         const videoId = String(params.videoId);
         return HttpResponse.json({
@@ -253,6 +253,51 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
     expect(noThumbnailUrl.thumbnail).toEqual({ url: null, width: null, height: null });
   });
 
+  it('decodes absent and null metadata while rejecting missing required video fields', async () => {
+    const videos = createVideosClient();
+    const required = { id: 'returned-id', playback_sources: [], playback_preview_sources: [] };
+    const optional = {
+      title: null,
+      description: null,
+      passage_id: null,
+      language_tag: null,
+      runtime: null,
+      orientation: null,
+      thumbnail: null,
+      share_url: null,
+    };
+    for (const payload of [required, { ...required, ...optional }]) {
+      server.use(
+        http.get(`https://${apiHost}/v1-beta/videos/:videoId`, () => HttpResponse.json(payload)),
+      );
+      await expect(videos.getVideo('requested-id')).resolves.toEqual(payload);
+    }
+    for (const field of ['id', 'playback_sources', 'playback_preview_sources']) {
+      for (const payload of [
+        Object.fromEntries(Object.entries(required).filter(([name]) => name !== field)),
+        { ...required, [field]: null },
+      ]) {
+        server.use(
+          http.get(`https://${apiHost}/v1-beta/videos/:videoId`, () => HttpResponse.json(payload)),
+        );
+        await expect(videos.getVideo('requested-id')).rejects.toThrow(
+          'Unexpected videos API response',
+        );
+      }
+    }
+    for (const payload of [
+      { ...required, runtime: 1.5 },
+      { ...required, playback_sources: [{ url: 'https://cdn.example/video.m3u8' }] },
+    ]) {
+      server.use(
+        http.get(`https://${apiHost}/v1-beta/videos/:videoId`, () => HttpResponse.json(payload)),
+      );
+      await expect(videos.getVideo('requested-id')).rejects.toThrow(
+        'Unexpected videos API response',
+      );
+    }
+  });
+
   it('validates playlist inputs and full detail responses while preserving HTTP status errors', async () => {
     const videos = createVideosClient();
     const organizationId = '550e8400-e29b-41d4-a716-446655440000';
@@ -261,32 +306,35 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
     try {
       server.use(
         http.get(
-          `https://${apiHost}/v1/organizations/:organizationId/playlists/:playlistId`,
+          `https://${apiHost}/v1-beta/organizations/:organizationId/playlists/:playlistId`,
           ({ params }) => {
             expect(params.organizationId).toBe(organizationId);
             return HttpResponse.json({ id: 3669 });
           },
         ),
-        http.get(`https://${apiHost}/v1/organizations/:organizationId/playlists`, ({ request }) => {
-          const pageToken = new URL(request.url).searchParams.get('page_token');
-          if (pageToken === 'null-body') return HttpResponse.json(null);
-          if (pageToken === 'forbidden') return new HttpResponse(null, { status: 403 });
-          if (pageToken === 'json-string') return HttpResponse.json('');
-          return HttpResponse.json({
-            data: [
-              {
-                id: 2_147_483_648,
-                title: 'Out of range',
-                description: null,
-                type: 'TEACHING_CLIPS',
-                total: 0,
-                videos: [],
-              },
-            ],
-            next_page_token: null,
-          });
-        }),
-        http.get(`https://${apiHost}/v1/videos/missing`, () =>
+        http.get(
+          `https://${apiHost}/v1-beta/organizations/:organizationId/playlists`,
+          ({ request }) => {
+            const pageToken = new URL(request.url).searchParams.get('page_token');
+            if (pageToken === 'null-body') return HttpResponse.json(null);
+            if (pageToken === 'forbidden') return new HttpResponse(null, { status: 403 });
+            if (pageToken === 'json-string') return HttpResponse.json('');
+            return HttpResponse.json({
+              data: [
+                {
+                  id: 2_147_483_648,
+                  title: 'Out of range',
+                  description: null,
+                  type: 'TEACHING_CLIPS',
+                  total: 0,
+                  videos: [],
+                },
+              ],
+              next_page_token: null,
+            });
+          },
+        ),
+        http.get(`https://${apiHost}/v1-beta/videos/missing`, () =>
           HttpResponse.json({ message: 'not found' }, { status: 404 }),
         ),
       );

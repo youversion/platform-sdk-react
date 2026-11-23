@@ -106,6 +106,7 @@ export class SearchClient {
   /**
    * Searches verses, topics, images, and lightweight video ids in one unpaginated request.
    * Image hits are `id` and `passageId` only.
+   * Selecting `videos` sends the request to beta and requires a beta-enabled app key.
    * @param query Search text (1 to 100 graphemes).
    * @param versionId Bible version identifier (sent to the API as `bible_id`).
    * @param languageRanges Ordered language ranges (`en_US` is normalized to `en-us` on the wire).
