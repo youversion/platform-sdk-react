@@ -1,10 +1,12 @@
 import {
   ApiClient,
+  isValidStructuralUsfmReference,
   BibleClient,
   ImagesClient,
   SearchClient,
   getHttpStatus,
   type BibleVersion,
+  type VerseImage,
 } from '@youversion/platform-react-ui';
 import { API_TIMEOUT_MS } from '../api-timeout';
 
@@ -31,10 +33,13 @@ export function imageError(error: Error): string {
 }
 
 export function imageUrl(source: string, size: 'thumb' | 'card' | 'full'): string {
-  if (!URL.canParse(source)) return source;
-  const url = new URL(source);
-  url.searchParams.set('size', size);
-  return url.href;
+  try {
+    const url = new URL(source);
+    url.searchParams.set('size', size);
+    return url.href;
+  } catch {
+    return source;
+  }
 }
 
 export async function resolveImageBible(
@@ -42,6 +47,9 @@ export async function resolveImageBible(
   language: string,
   passageId?: string,
 ): Promise<BibleVersion> {
+  if (passageId && !isValidStructuralUsfmReference(passageId)) {
+    throw new Error('This image has an invalid Bible passage.');
+  }
   const ranges =
     language === 'zh-CN'
       ? [language, 'zh']
@@ -77,4 +85,19 @@ export async function resolveImageBible(
       ? 'This passage is unavailable in the selected language.'
       : 'No Bible is available in the selected language.',
   );
+}
+
+export function appendImages(
+  current: readonly VerseImage[],
+  incoming: readonly VerseImage[],
+): VerseImage[] {
+  const known = new Set(current.map((image) => image.id));
+  return [
+    ...current,
+    ...incoming.filter((image) => {
+      if (known.has(image.id)) return false;
+      known.add(image.id);
+      return true;
+    }),
+  ];
 }

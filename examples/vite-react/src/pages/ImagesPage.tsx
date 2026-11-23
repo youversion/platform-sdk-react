@@ -92,6 +92,7 @@ function ImageResults({
   const { images, loading, error, hasMore, load } = useImageResults(clients, language, query);
   const [selected, setSelected] = useState<VerseImage | null>(null);
   const listScroll = useRef(0);
+  const openedCard = useRef<HTMLButtonElement | null>(null);
   return (
     <>
       {selected ? (
@@ -102,7 +103,10 @@ function ImageResults({
           onReadInBible={onReadInBible}
           onBack={() => {
             setSelected(null);
-            requestAnimationFrame(() => window.scrollTo(0, listScroll.current));
+            requestAnimationFrame(() => {
+              openedCard.current?.focus({ preventScroll: true });
+              window.scrollTo(0, listScroll.current);
+            });
           }}
         />
       ) : null}
@@ -131,7 +135,8 @@ function ImageResults({
                 className="image-open"
                 type="button"
                 aria-label={`Open ${image.passage_id}`}
-                onClick={() => {
+                onClick={(event) => {
+                  openedCard.current = event.currentTarget;
                   listScroll.current = window.scrollY;
                   setSelected(image);
                   window.scrollTo(0, 0);
@@ -146,7 +151,9 @@ function ImageResults({
           </p>
         ) : null}
         {!loading && !error && images.length === 0 ? (
-          <p className="image-status">No images found{query ? ` for “${query}”` : ''}.</p>
+          <p role="status" aria-label="Empty image results" className="image-status">
+            No images found{query ? ` for “${query}”` : ''}.
+          </p>
         ) : null}
         {hasMore && !error ? (
           <div className="image-actions">

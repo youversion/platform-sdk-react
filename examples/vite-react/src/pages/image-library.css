@@ -156,24 +156,26 @@
 }
 .image-stack {
   position: relative;
+  inline-size: 100%;
+  aspect-ratio: 0.85;
+  isolation: isolate;
+  overflow: clip;
   max-inline-size: 30rem;
   margin-inline: auto;
   padding: 1.75rem;
   touch-action: pan-y;
 }
 .image-stack-card {
-  position: relative;
+  position: absolute;
+  inset: 1.75rem;
   border-radius: 1.125rem;
   box-shadow: 0 0.6rem 1.5rem #0002;
 }
 .image-stack-back {
-  position: absolute;
-  inset: 1.75rem;
   pointer-events: none;
-  transform: rotate(-5deg) scale(0.96);
 }
-.image-stack-back:nth-child(2) {
-  transform: rotate(4deg) scale(0.98);
+.image-stack-card > .image-art {
+  block-size: 100%;
 }
 .image-stack-selected {
   z-index: 3;
@@ -263,7 +265,7 @@
 }
 @keyframes image-shuffle {
   0% {
-    transform: translateX(0) rotate(0);
+    transform: translateX(var(--flight-start-x)) rotate(var(--flight-start-angle));
     z-index: 4;
     opacity: 1;
   }
@@ -277,8 +279,8 @@
     z-index: 0;
   }
   100% {
-    transform: translateX(0) rotate(-5deg) scale(0.96);
+    transform: translateX(0) rotate(var(--flight-end-angle)) scale(var(--flight-end-scale));
     z-index: 0;
-    opacity: 0;
+    opacity: var(--flight-end-opacity);
   }
 }

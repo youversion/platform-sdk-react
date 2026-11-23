@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SearchImagesResponse, VerseImage } from '@youversion/platform-react-ui';
-import { imageError, resolveImageBible, type ImageLibraryClients } from './image-library-api';
+import {
+  appendImages,
+  imageError,
+  resolveImageBible,
+  type ImageLibraryClients,
+} from './image-library-api';
 
 const PAGE_SIZE = 30;
 type ResultSession = {
@@ -83,17 +88,7 @@ export function useImageResults(clients: ImageLibraryClients, language: string, 
         });
         if (!current.active) return;
         nextToken = page.next_page_token;
-        setImages((previous) => {
-          const known = new Set(previous.map((image) => image.id));
-          return [
-            ...previous,
-            ...page.data.filter((image) => {
-              if (known.has(image.id)) return false;
-              known.add(image.id);
-              return true;
-            }),
-          ];
-        });
+        setImages((previous) => appendImages(previous, page.data));
       }
       if (current.token !== null) current.consumed.add(current.token);
       if (nextToken !== null && current.consumed.has(nextToken)) {

@@ -6,6 +6,7 @@ import { ImageShare } from './image-share';
 import { ImageStack } from './image-stack';
 import {
   imageError,
+  appendImages,
   resolveImageBible,
   type ImageLibraryClients,
   type ReadImagePassage,
@@ -50,21 +51,15 @@ export function ImageDetail({
             page_token: token,
           });
           if (!active) return;
-          const ids = new Set(collected.map((item) => item.id));
-          collected = [
-            ...collected,
-            ...page.data.filter((item) => {
-              if (ids.has(item.id)) return false;
-              ids.add(item.id);
-              return true;
-            }),
-          ];
-          setImages(collected);
+          collected = appendImages(collected, page.data);
+          const partial = collected;
+          setImages((previous) => (retry === 0 ? partial : appendImages(previous, partial)));
           token = page.next_page_token;
           if (token !== null && visited.has(token))
             throw new Error('The image service repeated a page. Please retry.');
           if (token !== null) visited.add(token);
         } while (token !== null);
+        if (active) setImages(collected);
       } catch (cause) {
         if (active)
           setError(

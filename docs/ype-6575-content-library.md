@@ -158,10 +158,10 @@ Verification completed locally:
 - `pnpm lint`: passed without suppressions.
 - `pnpm typecheck`: passed.
 - `pnpm --filter vite-react build`: passed after final example edits.
-- `pnpm --filter vite-react test:e2e`: passed, 10 Chromium workflows.
+- `pnpm --filter vite-react test:e2e`: passed, 13 Chromium workflows.
 - Desktop grid, desktop viewer and narrow-screen viewer captures inspected. The mobile viewer header was adjusted after visual inspection.
 
-The ten browser workflows in `examples/vite-react/e2e/images.spec.js` are the executable evidence. The following mapping supplements the planned ledger above; it does not convert manual or deferred items into automated proof.
+The thirteen browser workflows in `examples/vite-react/e2e/images.spec.js` are the executable evidence. The following mapping supplements the planned ledger above; it does not convert manual or deferred items into automated proof.
 
 | Workflow | Ledger coverage and assertions |
 | --- | --- |
@@ -180,7 +180,7 @@ Remaining manual/limited evidence:
 
 - 29–30: inspected outgoing and returning shuffle frames by pausing the browser animation at 180ms and 350ms; the previous card stays visible through its flight and fades behind the selected card. Gesture tests verify selection and prevent an unintended viewer opening. Continuous real-device animation smoothness remains a manual limitation.
 - 33: verify scope and dependency direction in the local audit.
-- 35: picker name/tag filtering is exercised; locale-dependent sorting is implemented with Intl but not independently asserted for every locale.
+- Picker name/tag filtering and locale-dependent sorting use Intl. Not every language/locale permutation is independently asserted; malformed configured locale is separately exercised.
 - Native OS share-sheet presentation, live API smoke, and Firefox/WebKit have not been verified.
 - 13 (main Bible navigation) and 32 remain blocked by YPE-6574. They are required final ticket evidence, not waived criteria.
 
@@ -189,3 +189,33 @@ Remaining manual/limited evidence:
 ## Simplification audit
 
 Read-only clean-context gpt-6.2-sol / medium audit of implementation checkpoint 778cfa8 covered all 19 files and 31 diff hunks. Worktree and HEAD remained unchanged. All three recommendations passed correctness, necessity and scope gates: use a ref for the non-rendering scroll offset; keep browse page data local instead of a dummy search assignment; replace manually captured promise resolvers with the repository's existing Promise.withResolvers pattern. No lifecycle paths were combined and no new abstraction was introduced.
+
+
+## Independent local review and dispositions
+
+Three read-only clean-context audits reviewed checkpoint `09c55b0` against `f4a3ddb`, fingerprint `9bd18659edf4bc4a3002381c27baced66edc45ea0f832cf16e2d005ddae9b766`. Standards used gpt-6.2-sol / medium; Spec and Compatibility used gpt-6.2-sol / high. Each inventoried the complete diff and left HEAD and the worktree unchanged.
+
+### Standards
+
+- Required: synchronize stale-search and stale-language checks with the old response and a browser render opportunity. Applied.
+- Required: make exact cursors and English-version preference falsifiable, and validate order when metadata arrives out of order. Fixtures now reject wrong cursors/versions, offer an alternative English Bible, and gate metadata completion. Narrow claims about unasserted permutations rather than treating shared mechanisms as exhaustive tests.
+- Required: use an empty-results status contract instead of English prose assertions. Applied.
+- Required: expose the selected language in the trigger's accessible name and restore focus to the opened grid card on return. Applied and long-grid focus assertion added.
+- Judgment findings: no new domain types or generic lifecycle abstraction justified. Deduplication was extracted only when the retry fix introduced a third use of the identical append behavior. Repetitive error formatting and minor fixture naming are non-blocking follow-ups.
+
+### Spec
+
+- Required: keep previously loaded stack pages and selection when retry fails on an earlier page. Retried prefixes merge into the visible stack; a shorter replacement discards cards only after its complete pagination walk succeeds. A three-page failure/retry workflow reproduced the old defect and now passes.
+- Required: preserve the loaded outgoing artwork and drag-release transform through a shuffle. Stack cards now keep stable image elements, and animation starts at the release position. A browser check asserts retained DOM identity and first-frame geometry.
+- Required: contain mixed-aspect artwork inside each card without cropping. Stack geometry is bounded with object-fit containment; a landscape/portrait workflow reproduced the previous overflow and now passes.
+- Required: reject structurally invalid image passage IDs before resolving a Bible or emitting Read in Bible. Uses the existing Core parser; malformed metadata is exercised through the browser harness. A transient passage-preview network failure alone is not treated as an invalid routing target, consistent with Swift.
+- Evidence: added real vertical touch scrolling, exact long-grid focus/scroll, and a direct comparison against the Figma library group (node `5458-11641`) and Jira's attached Swift screenshot. The grid follows the pill search and artwork/reference hierarchy; mobile uses two columns, desktop three; viewer preserves artwork, attribution, scripture and reading action. Native shell navigation remains deferred to 6574.
+
+### Compatibility
+
+- Required: avoid unguarded URL.canParse in the existing Vite browser target. Replaced with URL-constructor try/catch; test removes URL.canParse entirely.
+- Required: normalize malformed configured locale and fall back safely before Intl formatting. Applied; a separate run exercises en_US.
+- Required support: pin browser-server base to `/` and stub public font CSS/CDN requests. Applied; the compatibility run inherits the hosted demo base path to verify isolation.
+- Required documentation: replace the retired Images smoke-page description and document the browser command/callback in the example README. Applied.
+
+All source fixes remain within the approved independent-library scope. None implements 6574, video UI, authentication changes or a published SDK API. Additional combinations (every locale, every allowed-version policy and native OS share UI) are verification limitations, not claims of exhaustive coverage. Final Content/Bible navigation remains an explicit required integration step.

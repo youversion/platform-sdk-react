@@ -22,6 +22,15 @@ const CONTENT_LANGUAGES = [
   'zh-HK',
 ];
 
+function contentLocale(): string {
+  const configured = import.meta.env.VITE_YVP_LOCALE?.trim() || navigator.language;
+  try {
+    return Intl.getCanonicalLocales(configured.replaceAll('_', '-'))[0] ?? 'en';
+  } catch {
+    return 'en';
+  }
+}
+
 export function ImageLanguagePicker({
   language,
   onChange,
@@ -31,7 +40,7 @@ export function ImageLanguagePicker({
 }) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState('');
-  const locale = import.meta.env.VITE_YVP_LOCALE?.trim() || navigator.language;
+  const locale = contentLocale();
   const displayNames = new Intl.DisplayNames([locale], { type: 'language' });
   const languages = CONTENT_LANGUAGES.map((tag) => ({ tag, name: displayNames.of(tag) ?? tag }))
     .filter(({ tag, name }) =>
@@ -47,7 +56,11 @@ export function ImageLanguagePicker({
       }}
     >
       <Dialog.Trigger asChild>
-        <button type="button" className="image-button" aria-label="Content language">
+        <button
+          type="button"
+          className="image-button"
+          aria-label={`Content language: ${displayNames.of(language) ?? language}`}
+        >
           {displayNames.of(language) ?? language} <span aria-hidden="true">⌄</span>
         </button>
       </Dialog.Trigger>
