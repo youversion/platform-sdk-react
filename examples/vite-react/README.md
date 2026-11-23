@@ -16,10 +16,13 @@ pnpm install
 pnpm dev:web
 ```
 
-## React SDK Components Used
+## Demo map
 
-- **Bible Reader** — Full interactive Bible reader with chapter/version navigation
-- **Verse of the Day** — Daily verse card
-- **Bible Card** — Embeddable Bible passage card
-- **Images** — Smoke page for `ImagesClient` list and detail (metadata only)
-- **Sign in with YouVersion Button** - Authentication with YouVersion
+The top bar has four destinations: Bible, Content, Examples, and Profile. Screens use a hash (`#/bible`) so a subpath deploy and an OAuth query stay on the URL. Back and Forward restore the screen. A screen mounts the first time you open it, then stays mounted so the reader, image list, and search fields survive a round trip.
+
+- **Bible** — full reader. Chapter, version, and font remain when you leave.
+- **Content** — Images list and detail for `JHN.3.16`. Detail is `#/content/image/<id>`.
+- **Examples** — Navigation, Verse of the Day, Bible Card, and Unified Search.
+- **Profile** — sign in (profile and email), account, and theme.
+
+Navigation presets and an image's Read in Bible action open that passage in Bible. The image action uses sample version 3034 and asks for the full chapter.

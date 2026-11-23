@@ -3,20 +3,27 @@ import {
   ApiClient,
   ImagesClient,
   getHttpStatus,
+  parseUsfmReference,
   type Collection,
   type VerseImage,
 } from '@youversion/platform-react-ui';
 import { API_TIMEOUT_MS } from '../api-timeout';
+import { formatHash } from '@/routes';
 
 const DEFAULT_PASSAGE_ID = 'JHN.3.16';
 const LIST_PAGE_SIZE = 12;
 
-type ImagesDemoState =
-  | { kind: 'loading'; passageId: string }
-  | { kind: 'empty'; passageId: string }
-  | { kind: 'list'; passageId: string; page: Collection<VerseImage> }
-  | { kind: 'detail'; passageId: string; page: Collection<VerseImage>; image: VerseImage }
-  | { kind: 'error'; passageId: string; message: string };
+type ListState =
+  | { kind: 'loading' }
+  | { kind: 'empty' }
+  | { kind: 'ready'; page: Collection<VerseImage> }
+  | { kind: 'error'; message: string };
+
+type DetailState =
+  | { kind: 'idle' }
+  | { kind: 'loading'; imageId: string }
+  | { kind: 'ready'; imageId: string; image: VerseImage }
+  | { kind: 'error'; imageId: string; message: string };
 
 function createImagesClient(): ImagesClient {
   const appKey = import.meta.env.VITE_YVP_APP_KEY?.trim();
@@ -39,13 +46,16 @@ function thumbUrl(imageUrl: string): string {
   return url.toString();
 }
 
-export function ImagesPage() {
-  const [state, setState] = useState<ImagesDemoState>({
-    kind: 'loading',
-    passageId: DEFAULT_PASSAGE_ID,
-  });
-  const [detailBusy, setDetailBusy] = useState(false);
-  const [detailError, setDetailError] = useState<string | null>(null);
+export function ImagesPage({
+  imageId,
+  onReadInBible,
+}: {
+  imageId: string | null;
+  onReadInBible: (passageId: string) => void;
+}) {
+  const [list, setList] = useState<ListState>({ kind: 'loading' });
+  const [detail, setDetail] = useState<DetailState>({ kind: 'idle' });
+  const [passageRejected, setPassageRejected] = useState(false);
   const detailRequestId = useRef(0);
 
   useEffect(() => {
@@ -60,17 +70,13 @@ export function ImagesPage() {
         });
         if (cancelled) return;
         if (page.data.length === 0) {
-          setState({ kind: 'empty', passageId: DEFAULT_PASSAGE_ID });
+          setList({ kind: 'empty' });
           return;
         }
-        setState({ kind: 'list', passageId: DEFAULT_PASSAGE_ID, page });
+        setList({ kind: 'ready', page });
       } catch (err) {
         if (cancelled) return;
-        setState({
-          kind: 'error',
-          passageId: DEFAULT_PASSAGE_ID,
-          message: formatCaughtError(err),
-        });
+        setList({ kind: 'error', message: formatCaughtError(err) });
       }
     })();
 
@@ -79,34 +85,39 @@ export function ImagesPage() {
     };
   }, []);
 
-  async function openDetail(page: Collection<VerseImage>, imageId: string) {
+  useEffect(() => {
     const requestId = ++detailRequestId.current;
-    setDetailError(null);
-    setDetailBusy(true);
-    try {
-      const image = await createImagesClient().getImage(imageId);
-      if (requestId !== detailRequestId.current) return;
-      setState({
-        kind: 'detail',
-        passageId: DEFAULT_PASSAGE_ID,
-        page,
-        image,
-      });
-    } catch (err) {
-      if (requestId !== detailRequestId.current) return;
-      setDetailError(formatCaughtError(err));
-    } finally {
-      if (requestId === detailRequestId.current) {
-        setDetailBusy(false);
-      }
+    if (imageId === null) {
+      setDetail({ kind: 'idle' });
+      setPassageRejected(false);
+      return;
     }
-  }
+    const requestedId = imageId;
+    setDetail({ kind: 'loading', imageId: requestedId });
+    setPassageRejected(false);
+    void (async () => {
+      try {
+        const image = await createImagesClient().getImage(requestedId);
+        if (requestId !== detailRequestId.current) return;
+        setDetail({ kind: 'ready', imageId: requestedId, image });
+      } catch (err) {
+        if (requestId !== detailRequestId.current) return;
+        setDetail({
+          kind: 'error',
+          imageId: requestedId,
+          message: formatCaughtError(err),
+        });
+      }
+    })();
+  }, [imageId]);
 
-  function backToList(page: Collection<VerseImage>) {
-    detailRequestId.current += 1;
-    setDetailBusy(false);
-    setDetailError(null);
-    setState({ kind: 'list', passageId: DEFAULT_PASSAGE_ID, page });
+  function readPassage(passageId: string) {
+    if (parseUsfmReference(passageId) === null) {
+      setPassageRejected(true);
+      return;
+    }
+    setPassageRejected(false);
+    onReadInBible(passageId);
   }
 
   return (
@@ -119,33 +130,32 @@ export function ImagesPage() {
         </p>
       </header>
 
-      {state.kind === 'loading' ? <p className="text-sm">Loading list…</p> : null}
+      {list.kind === 'loading' ? <p className="text-sm">Loading list…</p> : null}
 
-      {state.kind === 'error' ? (
+      {list.kind === 'error' ? (
         <p className="text-sm text-destructive" role="alert">
-          {state.message}
+          {list.message}
         </p>
       ) : null}
 
-      {state.kind === 'empty' ? (
+      {list.kind === 'empty' ? (
         <p className="text-sm text-muted-foreground">No images for this passage.</p>
       ) : null}
 
-      {state.kind === 'list' || state.kind === 'detail' ? (
+      {list.kind === 'ready' ? (
         <>
           <p className="text-sm text-muted-foreground">
-            {state.page.data.length} shown
-            {state.page.total_size != null ? ` · total_size ${state.page.total_size}` : null}
-            {state.page.next_page_token ? ' · more pages available' : ' · last page'}
+            {list.page.data.length} shown
+            {list.page.total_size != null ? ` · total_size ${list.page.total_size}` : null}
+            {list.page.next_page_token ? ' · more pages available' : ' · last page'}
           </p>
           <ul className="flex flex-col gap-2">
-            {state.page.data.map((item) => (
+            {list.page.data.map((item) => (
               <li key={item.id}>
-                <button
-                  type="button"
-                  className="w-full rounded border px-3 py-2 text-start text-sm hover:bg-muted disabled:opacity-50"
-                  disabled={detailBusy}
-                  onClick={() => void openDetail(state.page, item.id)}
+                <a
+                  href={formatHash({ destination: 'content', imageId: item.id })}
+                  className="block w-full rounded border px-3 py-2 text-start text-sm hover:bg-muted"
+                  aria-current={item.id === imageId ? 'page' : undefined}
                 >
                   <div className="font-mono text-xs break-all">{item.id}</div>
                   <div className="text-muted-foreground">
@@ -154,55 +164,68 @@ export function ImagesPage() {
                   <div className="truncate font-mono text-xs text-muted-foreground">
                     {item.image_url}
                   </div>
-                </button>
+                </a>
               </li>
             ))}
           </ul>
         </>
       ) : null}
 
-      {detailBusy ? <p className="text-sm">Loading detail…</p> : null}
-      {detailError ? (
+      {detail.kind === 'loading' && detail.imageId === imageId ? (
+        <p className="text-sm">Loading detail…</p>
+      ) : null}
+      {detail.kind === 'error' && detail.imageId === imageId ? (
         <p className="text-sm text-destructive" role="alert">
-          Detail: {detailError}
+          Detail: {detail.message}
         </p>
       ) : null}
 
-      {state.kind === 'detail' ? (
+      {imageId !== null ? (
+        <p className="text-sm">
+          <a href={formatHash({ destination: 'content', imageId: null })} className="underline">
+            Back to list
+          </a>
+        </p>
+      ) : null}
+
+      {detail.kind === 'ready' && detail.imageId === imageId ? (
         <section className="flex flex-col gap-3 rounded border p-4">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold">Detail</h2>
-            <button
-              type="button"
-              className="text-sm underline"
-              onClick={() => backToList(state.page)}
-            >
-              Back to list
-            </button>
-          </div>
+          <h2 className="text-sm font-semibold">Detail</h2>
           <dl className="grid gap-1 text-sm">
             <div>
               <dt className="text-muted-foreground">id</dt>
-              <dd className="font-mono text-xs break-all">{state.image.id}</dd>
+              <dd className="font-mono text-xs break-all">{detail.image.id}</dd>
             </div>
             <div>
               <dt className="text-muted-foreground">passage_id</dt>
-              <dd>{state.image.passage_id}</dd>
+              <dd>{detail.image.passage_id}</dd>
             </div>
             <div>
               <dt className="text-muted-foreground">attribution</dt>
-              <dd>{state.image.attribution || '(empty)'}</dd>
+              <dd>{detail.image.attribution || '(empty)'}</dd>
             </div>
             <div>
               <dt className="text-muted-foreground">image_url</dt>
-              <dd className="font-mono text-xs break-all">{state.image.image_url}</dd>
+              <dd className="font-mono text-xs break-all">{detail.image.image_url}</dd>
             </div>
           </dl>
           <img
-            src={thumbUrl(state.image.image_url)}
+            src={thumbUrl(detail.image.image_url)}
             alt=""
             className="max-h-64 w-auto self-start rounded"
           />
+          <button
+            type="button"
+            className="self-start text-sm underline"
+            onClick={() => readPassage(detail.image.passage_id)}
+          >
+            Read in Bible
+          </button>
+          {passageRejected ? (
+            <p className="text-sm text-destructive" role="alert">
+              Passage ID is not a Bible reference the reader can open.
+            </p>
+          ) : null}
         </section>
       ) : null}
     </div>
