@@ -27,7 +27,9 @@ export function ImageStack({
 }) {
   const [flight, setFlight] = useState<CardFlight | null>(null);
   const [offset, setOffset] = useState(0);
-  const gesture = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const gesture = useRef<{ pointerId: number; x: number; y: number; canShuffle: boolean } | null>(
+    null,
+  );
   const suppressClick = useRef(false);
   const index = Math.max(
     0,
@@ -55,6 +57,7 @@ export function ImageStack({
     const dy = event.clientY - start.y;
     suppressClick.current = Math.abs(dx) > 8 || Math.abs(dy) > 8;
     if (
+      start.canShuffle &&
       Math.abs(dx) > Math.max(40, event.currentTarget.clientWidth * 0.2) &&
       Math.abs(dx) > Math.abs(dy)
     )
@@ -100,9 +103,10 @@ export function ImageStack({
                   className="image-open"
                   aria-label="View full-screen image"
                   onPointerDown={(event) => {
-                    if (!event.isPrimary || event.button !== 0 || flight) return;
+                    if (!event.isPrimary || event.button !== 0) return;
                     gesture.current = {
                       pointerId: event.pointerId,
+                      canShuffle: !flight,
                       x: event.clientX,
                       y: event.clientY,
                     };
@@ -115,6 +119,8 @@ export function ImageStack({
                     const dx = event.clientX - start.x;
                     const dy = event.clientY - start.y;
                     if (
+                      start.canShuffle &&
+                      !flight &&
                       Math.abs(dx) > Math.abs(dy) &&
                       !window.matchMedia('(prefers-reduced-motion: reduce)').matches
                     )

@@ -287,14 +287,39 @@ test('shuffle, share the selected artwork, view scripture and return to the load
     }
   });
   await page.screenshot({ path: test.info().outputPath('shuffle-out.png') });
+  await expect(nextImage).toBeFocused();
+  const duringFlight = page.getByRole('button', { name: 'View full-screen image' });
+  await duringFlight.scrollIntoViewIfNeeded();
+  const duringBox = await duringFlight.boundingBox();
+  await page.mouse.move(duringBox.x + duringBox.width / 2, duringBox.y + duringBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    duringBox.x + duringBox.width / 2 + 100,
+    duringBox.y + duringBox.height / 2,
+    { steps: 5 },
+  );
+  await page.mouse.up();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByText('2 of 3', { exact: true })).toBeVisible();
   await page.evaluate(() => {
     for (const animation of document.getAnimations()) animation.currentTime = 350;
   });
   await page.screenshot({ path: test.info().outputPath('shuffle-return.png') });
+  await page.mouse.move(duringBox.x + duringBox.width / 2, duringBox.y + duringBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    duringBox.x + duringBox.width / 2 + 100,
+    duringBox.y + duringBox.height / 2,
+    { steps: 5 },
+  );
   await page.evaluate(() => {
     for (const animation of document.getAnimations()) animation.finish();
   });
-  await expect(nextImage).toBeFocused();
+  await expect(nextImage).toBeEnabled();
+  await page.mouse.up();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByText('2 of 3', { exact: true })).toBeVisible();
+  await expect(duringFlight).toBeFocused();
   await page.getByRole('button', { name: 'Share image', exact: true }).click();
   await expect
     .poll(() => page.evaluate(() => window.sharedImages))
