@@ -1203,3 +1203,81 @@ test('a shorter replacement retains its outgoing card until the shuffle finishes
   await next.click();
   await expect(page.getByText('1 of 3', { exact: true })).toBeVisible();
 });
+
+test('shorter replacements clear obsolete shuffle and pointer interactions', async ({ page }) => {
+  let retrying = false;
+  let replacement = Promise.withResolvers();
+  await setup(page, async (url) => {
+    if (url.pathname === '/v1/images' && url.searchParams.has('passage_id')) {
+      if (retrying) {
+        await replacement.promise;
+        return { data: [art('a')], next_page_token: null };
+      }
+      if (url.searchParams.has('page_token'))
+        return { status: 503, body: { message: 'Failed continuation' } };
+      return { data: [art('a'), art('b')], next_page_token: 'failed' };
+    }
+    return detailResponses(url);
+  });
+  const offset = () =>
+    page.locator('.image-stack-selected').evaluate((element) => {
+      const card = element.getBoundingClientRect();
+      const stack = element.closest('.image-stack').getBoundingClientRect();
+      return Math.abs(card.x + card.width / 2 - stack.x - stack.width / 2);
+    });
+  await page.getByRole('link', { name: 'Open JHN.3.16' }).click();
+  await expect(page.getByRole('button', { name: 'Retry artwork list' })).toBeVisible();
+  retrying = true;
+  const firstStarted = page.waitForRequest(
+    (request) =>
+      request.url().includes('passage_id=JHN.3.16') && !request.url().includes('page_token'),
+  );
+  await page.getByRole('button', { name: 'Retry artwork list' }).click();
+  await firstStarted;
+  const next = page.getByRole('button', { name: 'Next image', exact: true });
+  await next.click();
+  await page.evaluate(() => {
+    for (const animation of document.getAnimations()) {
+      animation.pause();
+      animation.currentTime = 250;
+    }
+  });
+  replacement.resolve();
+  await expect(page.getByText('1 of 1', { exact: true })).toBeVisible();
+  await expect.poll(offset).toBeLessThan(1);
+  const viewer = page.getByRole('button', { name: 'View full-screen image' });
+  await viewer.click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Back to images' }).click();
+
+  retrying = false;
+  replacement = Promise.withResolvers();
+  await page.getByRole('link', { name: 'Open JHN.3.16' }).click();
+  await expect(page.getByRole('button', { name: 'Retry artwork list' })).toBeVisible();
+  await next.click();
+  await expect(next).toBeEnabled();
+  retrying = true;
+  const secondStarted = page.waitForRequest(
+    (request) =>
+      request.url().includes('passage_id=JHN.3.16') && !request.url().includes('page_token'),
+  );
+  await page.getByRole('button', { name: 'Retry artwork list' }).click();
+  await secondStarted;
+  await viewer.scrollIntoViewIfNeeded();
+  const box = await viewer.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 110, box.y + box.height / 2, { steps: 5 });
+  replacement.resolve();
+  await expect(page.getByText('1 of 1', { exact: true })).toBeVisible();
+  await page.mouse.move(0, 0);
+  await page.mouse.up();
+  await expect.poll(offset).toBeLessThan(1);
+  const fallback = await viewer.boundingBox();
+  await page.mouse.move(fallback.x + fallback.width / 2 + 20, fallback.y + fallback.height / 2);
+  await expect.poll(offset).toBeLessThan(1);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await viewer.click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+});

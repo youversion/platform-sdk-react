@@ -1,4 +1,11 @@
-import { useRef, useState, type PointerEvent, type Ref, type CSSProperties } from 'react';
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type PointerEvent,
+  type Ref,
+  type CSSProperties,
+} from 'react';
 import type { VerseImage } from '@youversion/platform-react-ui';
 import { ImageArt } from './image-art';
 
@@ -31,6 +38,12 @@ export function ImageStack({
     null,
   );
   const suppressClick = useRef(false);
+  useLayoutEffect(() => {
+    if (gesture.current) suppressClick.current = true;
+    gesture.current = null;
+    setOffset(0);
+    setFlight((current) => (current?.image.id === selected.id ? null : current));
+  }, [selected.id]);
   const index = Math.max(
     0,
     images.findIndex((image) => image.id === selected.id),
