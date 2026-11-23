@@ -1292,7 +1292,7 @@ function Content() {
       <div
         role="status"
         aria-live="polite"
-        className="yv:empty:sr-only yv:text-center yv:text-destructive"
+        className="yv:sticky yv:[inset-block-start:0] yv:z-10 yv:rounded-md yv:bg-background yv:px-4 yv:py-2 yv:empty:sr-only yv:text-center yv:text-destructive"
       >
         {clipboardFailed ? t('unableToShare') : null}
       </div>
