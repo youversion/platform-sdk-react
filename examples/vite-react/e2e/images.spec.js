@@ -74,14 +74,8 @@ test('language selection, partial search retries, empty cursors and obsolete sea
   page,
 }) => {
   let missing = true;
-  let releaseOld;
-  let oldRequested;
-  const oldStarted = new Promise((resolve) => {
-    oldRequested = resolve;
-  });
-  const oldGate = new Promise((resolve) => {
-    releaseOld = resolve;
-  });
+  const { promise: oldStarted, resolve: oldRequested } = Promise.withResolvers();
+  const { promise: oldGate, resolve: releaseOld } = Promise.withResolvers();
   await setup(page, async (url) => {
     if (url.pathname === '/v1/bibles') {
       const tag = url.searchParams.get('language_ranges[]');
@@ -357,10 +351,7 @@ test('Chinese fallback, no available Bible, query validation and empty search re
 test('language changes invalidate pending browse work; initial errors and empty pages recover', async ({
   page,
 }) => {
-  let release;
-  const gate = new Promise((resolve) => {
-    release = resolve;
-  });
+  const { promise: gate, resolve: release } = Promise.withResolvers();
   let failed = true;
   await setup(page, async (url) => {
     if (url.pathname === '/v1/images') {
@@ -424,10 +415,7 @@ test('narrow touch layout and keyboard viewer controls remain usable', async ({ 
 });
 
 test('leaving a detail view rejects its pending artwork', async ({ page }) => {
-  let release;
-  const gate = new Promise((resolve) => {
-    release = resolve;
-  });
+  const { promise: gate, resolve: release } = Promise.withResolvers();
   await setup(page, async (url) => {
     if (url.pathname === '/v1/images') {
       if (url.searchParams.get('passage_id') === 'JHN.3.16') {

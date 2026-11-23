@@ -184,3 +184,8 @@ Remaining manual/limited evidence:
 - Native OS share-sheet presentation, live API smoke, and Firefox/WebKit have not been verified.
 - 13 (main Bible navigation) and 32 remain blocked by YPE-6574. They are required final ticket evidence, not waived criteria.
 
+
+
+## Simplification audit
+
+Read-only clean-context gpt-6.2-sol / medium audit of implementation checkpoint 778cfa8 covered all 19 files and 31 diff hunks. Worktree and HEAD remained unchanged. All three recommendations passed correctness, necessity and scope gates: use a ref for the non-rendering scroll offset; keep browse page data local instead of a dummy search assignment; replace manually captured promise resolvers with the repository's existing Promise.withResolvers pattern. No lifecycle paths were combined and no new abstraction was introduced.

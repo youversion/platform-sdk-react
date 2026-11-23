@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { clampSearchText, type VerseImage } from '@youversion/platform-react-ui';
 import {
   createImageLibraryClients,
@@ -91,7 +91,7 @@ function ImageResults({
 }) {
   const { images, loading, error, hasMore, load } = useImageResults(clients, language, query);
   const [selected, setSelected] = useState<VerseImage | null>(null);
-  const listScroll = useState(() => ({ y: 0 }))[0];
+  const listScroll = useRef(0);
   return (
     <>
       {selected ? (
@@ -102,7 +102,7 @@ function ImageResults({
           onReadInBible={onReadInBible}
           onBack={() => {
             setSelected(null);
-            requestAnimationFrame(() => window.scrollTo(0, listScroll.y));
+            requestAnimationFrame(() => window.scrollTo(0, listScroll.current));
           }}
         />
       ) : null}
@@ -132,7 +132,7 @@ function ImageResults({
                 type="button"
                 aria-label={`Open ${image.passage_id}`}
                 onClick={() => {
-                  listScroll.y = window.scrollY;
+                  listScroll.current = window.scrollY;
                   setSelected(image);
                   window.scrollTo(0, 0);
                 }}

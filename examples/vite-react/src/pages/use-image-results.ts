@@ -38,7 +38,6 @@ export function useImageResults(clients: ImageLibraryClients, language: string, 
     setLoading(true);
     setError(null);
     try {
-      let pageImages: readonly VerseImage[];
       let nextToken: string | null;
       if (query) {
         if (current.versionId === undefined) {
@@ -74,7 +73,6 @@ export function useImageResults(clients: ImageLibraryClients, language: string, 
         );
         const failed = results.find((result) => result.status === 'rejected');
         if (failed?.status === 'rejected') throw failed.reason;
-        pageImages = [];
         nextToken = pending.nextPageToken;
         current.pending = null;
       } else {
@@ -84,13 +82,12 @@ export function useImageResults(clients: ImageLibraryClients, language: string, 
           page_token: current.token,
         });
         if (!current.active) return;
-        pageImages = page.data;
         nextToken = page.next_page_token;
         setImages((previous) => {
           const known = new Set(previous.map((image) => image.id));
           return [
             ...previous,
-            ...pageImages.filter((image) => {
+            ...page.data.filter((image) => {
               if (known.has(image.id)) return false;
               known.add(image.id);
               return true;
