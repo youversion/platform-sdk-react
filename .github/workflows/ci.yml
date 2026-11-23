@@ -157,6 +157,26 @@ jobs:
           name: coverage-badges
           path: coverage-output/
 
+  image-library-browser:
+    name: Image Library Browser
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec turbo build --filter=@youversion/platform-react-ui
+      - run: pnpm --filter vite-react exec playwright install --with-deps chromium
+      - run: pnpm --filter vite-react test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: image-library-browser-traces
+          path: examples/vite-react/test-results/
+
   # Coverage badges live on an orphan `badges` branch, out of main's history.
   publish-coverage-badges:
     name: Publish coverage badges
