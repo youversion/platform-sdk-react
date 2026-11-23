@@ -15,8 +15,6 @@ const LegacyVideoSchema = object({
   ...VideoFields,
   /** Legacy numeric video identifier. */
   id: z.number(),
-  /** Bible references associated with the legacy video. */
-  references: z.optional(z.nullable(z.array(z.string()))),
 });
 
 /** Legacy v3 video model with numeric IDs and Bible references. */
@@ -93,8 +91,10 @@ export const VideoPlaylistFullCollectionSchema = object({
 const PLAYLIST_PAGE_SIZE_ERROR = 'Page size must be an integer from 1 to 99, or "*"';
 
 export const GetPlaylistsOptionsSchema = object({
+  /** Fields to include. Omit for full resources; wildcard page size requires 1–3 fields. */
   fields: z.optional(z.array(VideoPlaylistFieldSchema).check(z.minLength(1))),
-  page_size: z.optional(
+  /** Results per page (1–99), or "*" with 1–3 selected fields. */
+  pageSize: z.optional(
     z.union([
       z
         .int({ error: PLAYLIST_PAGE_SIZE_ERROR })
@@ -102,14 +102,17 @@ export const GetPlaylistsOptionsSchema = object({
       z.literal('*'),
     ]),
   ),
-  page_token: z.optional(z.string()),
-  accept_language: z.optional(z.string().check(z.minLength(1))),
+  /** Opaque cursor. Omit or pass null for the first page; empty strings are preserved. */
+  pageToken: z.optional(z.nullable(z.string())),
+  /** Accept-Language preference. Defaults to English. */
+  acceptLanguage: z.optional(z.string().check(z.minLength(1))),
 });
 
 export type GetPlaylistsOptions = z.infer<typeof GetPlaylistsOptionsSchema>;
 
 export const GetPlaylistOptionsSchema = object({
-  accept_language: z.optional(z.string().check(z.minLength(1))),
+  /** Accept-Language preference. Defaults to English. */
+  acceptLanguage: z.optional(z.string().check(z.minLength(1))),
 });
 
 export type GetPlaylistOptions = z.infer<typeof GetPlaylistOptionsSchema>;

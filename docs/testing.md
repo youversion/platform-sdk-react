@@ -142,10 +142,22 @@ snapshot (SHA-256 `e2458ce1008a5d5a1d6151e08b7769e6edf27f36abfdb40d06133b15c0a54
 not substitutes for that contract. The mocked client tests cover video detail,
 playlist-to-detail and unified-search-to-detail lookup, thumbnail renditions,
 nullable and absent video metadata, required fields, pagination and HTTP errors.
-Video search requires `videos`, `user_intent`, `did_you_mean` and
-`search_instead_for`; nullable fields must still be present. Its undocumented
-204 response rejects, while playlist 204 returns an empty page. Malformed full
-video resources reject rather than being silently dropped.
+Video search requires the `videos` and `did_you_mean` arrays. Absent or null
+`user_intent` and `search_instead_for` normalize to absent intent and a null
+correction, matching sibling SDK tolerance. Its undocumented 204 response still
+rejects, while playlist 204 returns an empty page; this deliberate difference is
+called out in the changeset. Malformed full video resources reject rather than
+being silently dropped.
+
+Review follow-up adds optional nullable `passage_ids` (string array) and
+`organization_id` (UUID), as specified in the review's newer `compiled-2.yaml`,
+while retaining singular `passage_id` from the original beta snapshot. That newer
+attachment was not available locally; these are additive metadata-preservation
+changes, not proof that the beta deployment serves the newer stable contract.
+Optional `references` is also preserved for compatibility with sibling SDKs.
+Thumbnail URLs remain strings, preserving absolute, relative and protocol-relative
+forms without inventing a base URL. Video queries reuse the existing 100-grapheme
+search validator, matching Swift, Kotlin and the other core search methods.
 
 Routing deliberately follows both SDK implementations during rollout, overriding
 the ticket instruction against splitting unified search by selected fields:
@@ -153,7 +165,11 @@ the ticket instruction against splitting unified search by selected fields:
 - Video detail, playlist collection/detail and dedicated video search use `/v1-beta`.
 - Unified search uses `/v1-beta/search-unified` only when `fields` includes `videos`.
   Other selections, including omitted `fields`, stay on `/v1/search-unified`.
-- Playlist language defaults to English, and wildcard page size remains explicit.
+- Playlist language defaults to English for YPE-6461; explicit preferences are
+  honored. Dedicated video search defaults to English per the search API.
+- `VideosClient` options use camelCase (`acceptLanguage`, `pageSize`, `pageToken`,
+  `thumbnailSize`). Wire parameters and collection response cursors keep their
+  API names. Null input cursors are omitted; empty string cursors are preserved.
 
 The supplied spec names stable routes for video details, playlists and unified
 search; this temporary routing exception is separate from response validation.

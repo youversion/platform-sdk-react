@@ -30,7 +30,20 @@ type PlaylistsQuery = {
   page_token?: string;
 };
 
-/** Client for beta video detail and playlist resources. Requires a beta-enabled app key. */
+/**
+ * Client for beta video detail and playlist resources. Requires a beta-enabled app key.
+ *
+ * Playlist requests explicitly default to English for YPE-6461, which can return
+ * a cached empty catalog when the language header is absent. Explicit caller
+ * preferences are honored. Video details preserve the runtime's language default.
+ *
+ * Failures:
+ * - Invalid options or IDs throw schema errors before a request.
+ * - Playlist collection 204 or empty wire bodies return an empty collection.
+ * - Nonempty malformed payloads, including JSON null, throw contract errors.
+ * - Detail calls require a resource body; a 204 or empty body rejects.
+ * - Non-2xx responses throw; read their status with `getHttpStatus`.
+ */
 export class VideosClient {
   private client: ApiClient;
 
@@ -74,8 +87,10 @@ export class VideosClient {
    * Lists an organization's localized video playlists.
    * @param organizationId Organization UUID.
    * @param options Field selection, pagination, and language. Language defaults to English.
-   *   `page_size: '*'` requires one to three selected fields.
+   *   `pageSize: '*'` requires one to three selected fields.
    * @returns One page, or an empty page when no language catalog matches.
+   * @throws Invalid input, malformed nonempty payloads (including JSON null), or
+   *   HTTP errors. Read HTTP status with `getHttpStatus`.
    */
   async getPlaylists(
     organizationId: string,
@@ -84,22 +99,20 @@ export class VideosClient {
     const id = OrganizationIdSchema.parse(organizationId);
     const parsedOptions = GetPlaylistsOptionsSchema.parse(options);
     if (
-      parsedOptions.page_size === '*' &&
-      (parsedOptions.fields === undefined ||
-        parsedOptions.fields.length < 1 ||
-        parsedOptions.fields.length > 3)
+      parsedOptions.pageSize === '*' &&
+      (parsedOptions.fields === undefined || parsedOptions.fields.length > 3)
     ) {
-      throw new Error('page_size="*" requires 1-3 fields to be specified');
+      throw new Error('pageSize="*" requires 1-3 fields to be specified');
     }
     const query: PlaylistsQuery = {};
     if (parsedOptions.fields !== undefined) query['fields[]'] = parsedOptions.fields;
-    if (parsedOptions.page_size !== undefined) query.page_size = parsedOptions.page_size;
-    if (parsedOptions.page_token !== undefined) query.page_token = parsedOptions.page_token;
+    if (parsedOptions.pageSize !== undefined) query.page_size = parsedOptions.pageSize;
+    if (parsedOptions.pageToken != null) query.page_token = parsedOptions.pageToken;
 
     const response = await this.client.getWithStatus<unknown>(
       `/v1-beta/organizations/${encodeURIComponent(id)}/playlists`,
       query,
-      { 'Accept-Language': parsedOptions.accept_language ?? 'en' },
+      { 'Accept-Language': parsedOptions.acceptLanguage ?? 'en' },
     );
     if (response.status === 204 || response.emptyBody) {
       return { data: [], next_page_token: null };
@@ -116,7 +129,15 @@ export class VideosClient {
     return parsed.data;
   }
 
-  /** Fetches one localized playlist. Language defaults to English. */
+  /**
+   * Fetches one full localized playlist. Language defaults to English.
+   * @param organizationId Publisher organization UUID.
+   * @param playlistId Numeric playlist identifier.
+   * @param options Accept-Language preference.
+   * @returns The validated full playlist, with every resource field present.
+   * @throws Invalid input, malformed/empty responses, or HTTP errors. Read HTTP
+   *   status with `getHttpStatus`.
+   */
   async getPlaylist(
     organizationId: string,
     playlistId: number,
@@ -128,7 +149,7 @@ export class VideosClient {
     const body = await this.client.get<unknown>(
       `/v1-beta/organizations/${encodeURIComponent(organization)}/playlists/${playlist}`,
       undefined,
-      { 'Accept-Language': parsedOptions.accept_language ?? 'en' },
+      { 'Accept-Language': parsedOptions.acceptLanguage ?? 'en' },
     );
     const parsed = VideoPlaylistFullSchema.safeParse(body);
     if (!parsed.success) {

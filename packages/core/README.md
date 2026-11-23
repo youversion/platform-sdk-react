@@ -161,6 +161,25 @@ not image URLs. Image selection requires backend support. A production check on
 2026-10-20 returned HTTP 400 for `fields: ['images']`; successful verse/topic
 responses omitted images, which the SDK returns as `images: []`.
 
+### Video details, playlists, and search
+
+`VideosClient` uses camelCase options: `acceptLanguage`, `thumbnailSize`,
+`pageSize`, and `pageToken`. API query parameters and collection response keys
+retain their wire names, such as `page_size` and `next_page_token`. A null input
+cursor requests the first page; an empty string cursor is sent unchanged.
+
+Video detail and dedicated search preserve optional nullable `passage_ids`,
+`organization_id`, and `references`, plus singular `passage_id` from earlier beta
+responses. Thumbnail URL strings are preserved whether absolute, relative, or
+protocol-relative; selecting a rendition only updates the size parameter.
+Queries use the same 100-grapheme validator as other search methods. Optional
+query intent/correction fields may be absent or null. Unlike the sibling SDKs,
+video search intentionally rejects undocumented HTTP 204 responses.
+
+Playlist requests default to English to avoid the missing-language catalog issue
+tracked in YPE-6461, while explicit caller preferences are honored. Video details
+keep the runtime language default; dedicated video search defaults to English.
+
 ### Display Bible HTML
 
 Use `getPassageDisplay` when you need transformed HTML together with current

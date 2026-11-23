@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { ApiClient, getHttpStatus, SearchClient } from '../index';
+import { ApiClient, getHttpStatus, SearchClient, VideosClient } from '../index';
 import { server } from './setup';
 
 const apiHost = process.env.YVP_API_HOST;
@@ -35,6 +35,9 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
           videos: [
             {
               id: 'opaque-video-id',
+              passage_ids: ['JHN.3.16', 'ROM.8.28'],
+              organization_id: '550e8400-e29b-41d4-a716-446655440000',
+              references: ['JHN.3.16', 'ROM.8.28'],
               title: 'Teaching clip',
               thumbnail: {
                 url: 'https://cdn.example/video.jpg?size=card&token=x%2Fy#poster',
@@ -63,6 +66,9 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
       videos: [
         {
           id: 'opaque-video-id',
+          passage_ids: ['JHN.3.16', 'ROM.8.28'],
+          organization_id: '550e8400-e29b-41d4-a716-446655440000',
+          references: ['JHN.3.16', 'ROM.8.28'],
           title: 'Teaching clip',
           thumbnail: {
             url: 'https://cdn.example/video.jpg?token=x%2Fy#poster',
@@ -162,7 +168,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
       await expect(search.searchVideos('', {})).rejects.toThrow(
         'Query must be between 1 and 100 characters',
       );
-      await expect(search.searchVideos('é'.repeat(51))).rejects.toThrow(
+      await expect(search.searchVideos('é'.repeat(101))).rejects.toThrow(
         'Query must be between 1 and 100 characters',
       );
       await expect(search.searchVideos('hope', { pageSize: 100 })).rejects.toThrow();
@@ -210,7 +216,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
     }
   });
 
-  it('requires query metadata fields while allowing nullable values', async () => {
+  it('requires result arrays while normalizing absent or null optional query metadata', async () => {
     const search = createSearchClient();
     const valid = {
       videos: [],
@@ -227,7 +233,27 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
       searchInsteadFor: null,
       nextPageToken: null,
     });
-    for (const field of ['videos', 'user_intent', 'did_you_mean', 'search_instead_for']) {
+    for (const field of ['user_intent', 'search_instead_for']) {
+      const missing = Object.fromEntries(Object.entries(valid).filter(([name]) => name !== field));
+      server.use(
+        http.get(`https://${apiHost}/v1-beta/search-videos`, () => HttpResponse.json(missing)),
+      );
+      await expect(search.searchVideos('love')).resolves.toEqual({
+        videos: [],
+        didYouMean: [],
+        searchInsteadFor: null,
+        nextPageToken: null,
+      });
+      server.use(
+        http.get(`https://${apiHost}/v1-beta/search-videos`, () =>
+          HttpResponse.json({ ...valid, [field]: 42 }),
+        ),
+      );
+      await expect(search.searchVideos('love')).rejects.toThrow(
+        'Unexpected search-videos API response',
+      );
+    }
+    for (const field of ['videos', 'did_you_mean']) {
       const payload = Object.fromEntries(Object.entries(valid).filter(([name]) => name !== field));
       server.use(
         http.get(`https://${apiHost}/v1-beta/search-videos`, () => HttpResponse.json(payload)),
@@ -236,6 +262,61 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
         'Unexpected search-videos API response',
       );
     }
+  });
+
+  it('accepts multi-code-point queries and treats null search cursors as omitted', async () => {
+    const search = createSearchClient();
+    const queries = ['👨‍👩‍👧‍👦'.repeat(15), 'é'.repeat(100)];
+    server.use(
+      http.get(`https://${apiHost}/v1-beta/search-videos`, ({ request }) => {
+        const url = new URL(request.url);
+        expect(queries).toContain(url.searchParams.get('query'));
+        expect(url.searchParams.has('page_token')).toBe(false);
+        return HttpResponse.json({ videos: [], did_you_mean: [] });
+      }),
+    );
+    for (const query of queries) {
+      await expect(search.searchVideos(query, { pageToken: null })).resolves.toEqual({
+        videos: [],
+        didYouMean: [],
+        searchInsteadFor: null,
+        nextPageToken: null,
+      });
+    }
+  });
+
+  it('preserves relative thumbnails without dropping sibling video search results', async () => {
+    const api = new ApiClient({ apiHost, appKey: 'test-app' });
+    const search = new SearchClient(api);
+    const videos = new VideosClient(api);
+    const records = [
+      {
+        id: 'relative',
+        thumbnail: { url: '/images/art.jpg?signature=a%2Fb&size=thumb' },
+        playback_sources: [],
+        playback_preview_sources: [],
+      },
+      {
+        id: 'protocol-relative',
+        thumbnail: { url: '//cdn.example/art.jpg?size=card' },
+        playback_sources: [],
+        playback_preview_sources: [],
+      },
+    ];
+    server.use(
+      http.get(`https://${apiHost}/v1-beta/search-videos`, () =>
+        HttpResponse.json({ videos: records, did_you_mean: [] }),
+      ),
+      http.get(`https://${apiHost}/v1-beta/videos/relative`, () => HttpResponse.json(records[0])),
+    );
+    const page = await search.searchVideos('love');
+    expect(page.videos.map((video) => video.thumbnail?.url)).toEqual([
+      '/images/art.jpg?signature=a%2Fb',
+      '//cdn.example/art.jpg',
+    ]);
+    expect(page.videos.map((video) => video.id)).toEqual(['relative', 'protocol-relative']);
+    const detail = await videos.getVideo('relative', { thumbnailSize: 'card' });
+    expect(detail.thumbnail?.url).toBe('/images/art.jpg?signature=a%2Fb&size=card');
   });
 
   it('preserves a missing-app-key response as an HTTP status error', async () => {

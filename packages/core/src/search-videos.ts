@@ -20,7 +20,8 @@ type SearchVideosQuery = {
 /**
  * Searches the beta video catalog and returns full video resource records.
  * When continuing with a page token, repeat the query, organization filters, and
- * language from the previous request. The page size may change.
+ * language from the previous request. The page size may change. A null input
+ * cursor requests the first page. Language defaults to English, as in the search API.
  */
 export async function searchVideos(
   client: ApiClient,
@@ -34,7 +35,7 @@ export async function searchVideos(
     params['organization_ids[]'] = [...parsedOptions.organizationIds];
   }
   if (parsedOptions.pageSize !== undefined) params.page_size = parsedOptions.pageSize;
-  if (parsedOptions.pageToken !== undefined) params.page_token = parsedOptions.pageToken;
+  if (parsedOptions.pageToken != null) params.page_token = parsedOptions.pageToken;
 
   const body = await client.get<unknown>('/v1-beta/search-videos', params, {
     'Accept-Language': parsedOptions.acceptLanguage ?? 'en',
@@ -46,7 +47,7 @@ export async function searchVideos(
   const response: SearchVideosResponse = {
     videos: parsed.data.videos.map((video) => resolveVideoThumbnail(video)),
     didYouMean: parsed.data.did_you_mean,
-    searchInsteadFor: parsed.data.search_instead_for,
+    searchInsteadFor: parsed.data.search_instead_for ?? null,
     nextPageToken: parsed.data.next_page_token ?? null,
   };
   return parsed.data.user_intent == null

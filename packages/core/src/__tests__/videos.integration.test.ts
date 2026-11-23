@@ -12,7 +12,7 @@ it.skipIf(INTEGRATION_TESTS !== 'true' || !YVP_APP_KEY || !YVP_VIDEO_ORGANIZATIO
     const videos = new VideosClient(new ApiClient({ appKey: YVP_APP_KEY, apiHost: YVP_API_HOST }));
     const page = await videos.getPlaylists(YVP_VIDEO_ORGANIZATION_ID, {
       fields: ['id', 'videos'],
-      page_size: '*',
+      pageSize: '*',
     });
     const id = page.data.flatMap((playlist) => playlist.videos ?? [])[0];
     if (!id) throw new Error('The test organization needs a playlist containing a video');

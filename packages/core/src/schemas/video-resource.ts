@@ -22,7 +22,7 @@ export type VideoPlaybackSource = Readonly<z.infer<typeof VideoPlaybackSourceSch
 /** A thumbnail image for a video. */
 export const VideoThumbnailSchema = object({
   /** URL for the thumbnail image. */
-  url: z.optional(z.nullable(z.url())),
+  url: z.optional(z.nullable(z.string())),
   /** Thumbnail width in pixels. */
   width: z.optional(z.nullable(z.int())),
   /** Thumbnail height in pixels. */
@@ -33,6 +33,8 @@ export type VideoThumbnail = Readonly<z.infer<typeof VideoThumbnailSchema>>;
 
 /** Metadata shared by Content Library resources and the legacy v3 video model. */
 export const VideoFields = {
+  /** Bible references supplied by older video catalogs. */
+  references: z.optional(z.nullable(z.array(z.string()))),
   /** Video title. */
   title: z.optional(z.nullable(z.string())),
   /** Video description. */
@@ -60,6 +62,10 @@ export const ContentLibraryVideoSchema = object({
   id: VideoIdSchema,
   /** Bible passage associated with the video (e.g., `1SA.17.45`). */
   passage_id: z.optional(z.nullable(z.string())),
+  /** Bible passages associated with the video in the newer resource contract. */
+  passage_ids: z.optional(z.nullable(z.array(z.string()))),
+  /** Publisher organization identifier. */
+  organization_id: z.optional(z.nullable(z.uuid())),
 });
 
 export type ContentLibraryVideo = Readonly<z.infer<typeof ContentLibraryVideoSchema>>;

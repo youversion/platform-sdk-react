@@ -38,6 +38,9 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
           title: 'La historia',
           description: null,
           passage_id: 'JHN.3.16',
+          passage_ids: ['JHN.3.16', 'ROM.8.28'],
+          organization_id: '550e8400-e29b-41d4-a716-446655440000',
+          references: ['JHN.3.16', 'ROM.8.28'],
           language_tag: 'es',
           runtime: 90,
           orientation: 'landscape',
@@ -68,6 +71,9 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
       title: 'La historia',
       description: null,
       passage_id: 'JHN.3.16',
+      passage_ids: ['JHN.3.16', 'ROM.8.28'],
+      organization_id: '550e8400-e29b-41d4-a716-446655440000',
+      references: ['JHN.3.16', 'ROM.8.28'],
       language_tag: 'es',
       runtime: 90,
       orientation: 'landscape',
@@ -115,8 +121,8 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
 
     const page = await videos.getPlaylists(organizationId, {
       fields: ['id', 'videos', 'title'],
-      page_size: '*',
-      page_token: 'playlist-page',
+      pageSize: '*',
+      pageToken: 'playlist-page',
     });
     const videoId = page.data[0]?.videos?.[0] ?? '';
     const video = await videos.getVideo(videoId, { acceptLanguage: 'fr' });
@@ -181,7 +187,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
     );
 
     await expect(
-      videos.getPlaylist(organizationId, 3669, { accept_language: 'es' }),
+      videos.getPlaylist(organizationId, 3669, { acceptLanguage: 'es' }),
     ).resolves.toEqual({
       id: 3669,
       title: 'Clips de enseñanza',
@@ -190,7 +196,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
       total: 1,
       videos: ['52186'],
     });
-    await expect(videos.getPlaylists(organizationId, { page_token: '' })).resolves.toEqual({
+    await expect(videos.getPlaylists(organizationId, { pageToken: '' })).resolves.toEqual({
       data: [
         {
           id: 3669,
@@ -203,11 +209,11 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
       ],
       next_page_token: '',
     });
-    await expect(videos.getPlaylists(organizationId, { accept_language: 'de' })).resolves.toEqual({
+    await expect(videos.getPlaylists(organizationId, { acceptLanguage: 'de' })).resolves.toEqual({
       data: [],
       next_page_token: null,
     });
-    await expect(videos.getPlaylists(organizationId, { accept_language: 'it' })).resolves.toEqual({
+    await expect(videos.getPlaylists(organizationId, { acceptLanguage: 'it' })).resolves.toEqual({
       data: [],
       next_page_token: null,
     });
@@ -260,6 +266,9 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
       title: null,
       description: null,
       passage_id: null,
+      passage_ids: null,
+      organization_id: null,
+      references: null,
       language_tag: null,
       runtime: null,
       orientation: null,
@@ -296,6 +305,41 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
         'Unexpected videos API response',
       );
     }
+  });
+
+  it('treats null playlist cursors as omitted with camelCase options', async () => {
+    const videos = createVideosClient();
+    const organizationId = '550e8400-e29b-41d4-a716-446655440000';
+    const requests: string[] = [];
+    server.use(
+      http.get(
+        `https://${apiHost}/v1-beta/organizations/:organizationId/playlists`,
+        ({ request }) => {
+          const url = new URL(request.url);
+          requests.push(request.url);
+          expect(url.searchParams.has('page_token')).toBe(false);
+          expect(url.searchParams.get('page_size')).toBe('1');
+          expect(url.searchParams.getAll('fields[]')).toEqual(['id']);
+          expect(request.headers.get('Accept-Language')).toBe('fr');
+          return HttpResponse.json({ data: [{ id: 7 }], next_page_token: null });
+        },
+      ),
+    );
+    const first = await videos.getPlaylists(organizationId, {
+      fields: ['id'],
+      pageSize: 1,
+      acceptLanguage: 'fr',
+    });
+    await expect(
+      videos.getPlaylists(organizationId, {
+        fields: ['id'],
+        pageSize: 1,
+        pageToken: null,
+        acceptLanguage: 'fr',
+      }),
+    ).resolves.toEqual(first);
+    expect(requests).toHaveLength(2);
+    expect(requests[1]).toBe(requests[0]);
   });
 
   it('validates playlist inputs and full detail responses while preserving HTTP status errors', async () => {
@@ -342,19 +386,19 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
       await expect(videos.getPlaylists('not-a-uuid')).rejects.toThrow(
         'Organization ID must be a valid UUID',
       );
-      await expect(videos.getPlaylists(organizationId, { page_size: '*' })).rejects.toThrow(
-        'page_size="*" requires 1-3 fields to be specified',
+      await expect(videos.getPlaylists(organizationId, { pageSize: '*' })).rejects.toThrow(
+        'pageSize="*" requires 1-3 fields to be specified',
       );
       await expect(
         videos.getPlaylists(organizationId, {
-          page_size: '*',
+          pageSize: '*',
           fields: ['id', 'title', 'total', 'videos'],
         }),
       ).rejects.toThrow('requires 1-3 fields');
-      await expect(videos.getPlaylists(organizationId, { page_size: 0 })).rejects.toThrow(
+      await expect(videos.getPlaylists(organizationId, { pageSize: 0 })).rejects.toThrow(
         'Page size must be an integer from 1 to 99',
       );
-      await expect(videos.getPlaylists(organizationId, { page_size: 100 })).rejects.toThrow(
+      await expect(videos.getPlaylists(organizationId, { pageSize: 100 })).rejects.toThrow(
         'Page size must be an integer from 1 to 99',
       );
       await expect(videos.getPlaylist(organizationId, 2_147_483_648)).rejects.toThrow(
@@ -372,17 +416,17 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('VideosClient', () => {
       expect(fetchSpy).not.toHaveBeenCalled();
 
       await expect(
-        videos.getPlaylists(organizationId, { page_token: 'forbidden' }),
+        videos.getPlaylists(organizationId, { pageToken: 'forbidden' }),
       ).rejects.toMatchObject({ status: 403 });
 
       await expect(
-        videos.getPlaylists(organizationId, { page_token: 'out-of-range' }),
+        videos.getPlaylists(organizationId, { pageToken: 'out-of-range' }),
       ).rejects.toThrow('Unexpected playlists API response');
+      await expect(videos.getPlaylists(organizationId, { pageToken: 'null-body' })).rejects.toThrow(
+        'Unexpected playlists API response',
+      );
       await expect(
-        videos.getPlaylists(organizationId, { page_token: 'null-body' }),
-      ).rejects.toThrow('Unexpected playlists API response');
-      await expect(
-        videos.getPlaylists(organizationId, { page_token: 'json-string' }),
+        videos.getPlaylists(organizationId, { pageToken: 'json-string' }),
       ).rejects.toThrow('Unexpected playlists API response');
       await expect(videos.getPlaylist(organizationId, 3669)).rejects.toThrow(
         'Unexpected playlists API response',
