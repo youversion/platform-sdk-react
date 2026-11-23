@@ -28,8 +28,8 @@ const NotePassageSchema = z.pipe(
 const optionalWriteFields = {
   /** An optional short title. */
   title,
-  /** Six lowercase hex digits without `#`. */
-  color: z.optional(z.nullable(z.string().check(z.regex(/^[0-9a-f]{6}$/)))),
+  /** Six hex digits without `#`, sent lowercase. */
+  color: z.optional(z.nullable(z.string().check(z.toLowerCase(), z.regex(/^[0-9a-f]{6}$/)))),
   /** A note can attach to at most one passage. */
   passage: z.optional(z.nullable(NotePassageInputSchema)),
   /** Two-letter language code, optionally with an uppercase region (e.g. `en-US`). */

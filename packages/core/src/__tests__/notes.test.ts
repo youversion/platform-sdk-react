@@ -75,7 +75,7 @@ it('creates, gets, partially updates, and deletes a note on the regular Notes ro
     request_id: requestId,
     title: note.title,
     content: note.content,
-    color: note.color,
+    color: '44AA44',
     passage: note.passage,
     language_tag: note.language_tag,
     tags: note.tags,
@@ -90,8 +90,12 @@ it('creates, gets, partially updates, and deletes a note on the regular Notes ro
   server.use(
     http.post(collectionUrl, async ({ request }) => {
       expect(request.headers.get('authorization')).toBe('Bearer writer');
-      expect(await request.json()).toEqual({ ...create, passage: wireNote.passage });
-      stored = wireNote;
+      expect(await request.json()).toEqual({
+        ...create,
+        color: note.color,
+        passage: wireNote.passage,
+      });
+      stored = { ...wireNote, color: create.color };
       return HttpResponse.json(stored, { status: 201 });
     }),
     http.get(resourceUrl, ({ request }) => {
@@ -100,8 +104,9 @@ it('creates, gets, partially updates, and deletes a note on the regular Notes ro
     }),
     http.patch(resourceUrl, async ({ request }) => {
       expect(request.headers.get('authorization')).toBe('Bearer writer');
-      expect(await request.json()).toEqual(update);
-      stored = { ...wireNote, ...update };
+      const fields = stored?.color === create.color ? { color: note.color } : update;
+      expect(await request.json()).toEqual(fields);
+      stored = { ...wireNote, ...fields };
       return HttpResponse.json(stored);
     }),
     http.delete(resourceUrl, ({ request }) => {
@@ -112,8 +117,10 @@ it('creates, gets, partially updates, and deletes a note on the regular Notes ro
   );
 
   const created = await client.createNote(create, 'writer');
-  expect(created).toEqual(note);
-  expect(await client.getNote(created.id, 'reader')).toEqual(note);
+  expect(created).toEqual({ ...note, color: create.color });
+  const read = await client.getNote(created.id, 'reader');
+  expect(read).toEqual(created);
+  expect(await client.updateNote(read.id, { color: read.color }, 'writer')).toEqual(note);
   const updated = await client.updateNote(created.id, update, 'writer');
   expect(updated).toEqual({ ...note, ...update });
   expect(await client.getNote(updated.id, 'reader')).toEqual(updated);
@@ -137,7 +144,7 @@ it('rejects invalid writes, pagination, and missing auth before sending a reques
   await expect(
     client.updateNote(noteId, { passage: { version_id: 0, passage_id: passageId } }, 'writer'),
   ).rejects.toThrow('version_id');
-  await expect(client.updateNote(noteId, { color: '44AA44' }, 'writer')).rejects.toThrow('color');
+  await expect(client.updateNote(noteId, { color: '#44AA44' }, 'writer')).rejects.toThrow('color');
   await expect(
     client.createNote({ request_id: 'not-a-uuid', content: 'Note', status: 'private' }, 'writer'),
   ).rejects.toThrow('request_id');
@@ -146,6 +153,23 @@ it('rejects invalid writes, pagination, and missing auth before sending a reques
   );
   const passage = { ...note.passage, unexpected: 'field' };
   await expect(client.updateNote(noteId, { passage }, 'writer')).rejects.toThrow('unexpected');
+  expect(requests).toBe(0);
+});
+
+it('rejects dot-segment note IDs before making a request', async () => {
+  const client = createClient();
+  let requests = 0;
+  server.use(
+    http.all(`https://${apiHost}/*`, () => {
+      requests += 1;
+      return new HttpResponse(null, { status: 500 });
+    }),
+  );
+
+  await Promise.all([
+    expect(client.getNote('.', 'reader')).rejects.toThrow('Note ID'),
+    expect(client.deleteNote('..', 'writer')).rejects.toThrow('Note ID'),
+  ]);
   expect(requests).toBe(0);
 });
 
