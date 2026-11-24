@@ -26,7 +26,7 @@ Package-specific guidance: read `packages/core/AGENTS.md`, `packages/hooks/AGENT
 Testing or coverage: read `docs/testing.md`.
 
 ## Read these, do not copy them
-- PR review: `docs/review-guidelines.md` (from the pinned PR head revision). Greptile loads `greptile.json`.
+- PR review: `docs/review-guidelines.md` (from the pinned PR head revision). Greptile rules and scoped references live in `.greptile/`.
 - User-facing strings: `docs/i18n-guidelines.md`.
 - CI: the `.github/workflows` directory.
 - Decisions: `docs/adr/README.md`.
