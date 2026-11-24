@@ -68,7 +68,7 @@ Language tags are BCP 47 (`en`, `es`, `zh-Hans`). Version ids are YouVersion Bib
 
 ### Data hooks
 
-Import `usePassage` and `useVersions` from this package and call them under the same `YouVersionProvider` as your UI components. You do not need to install the hooks package. If you install both packages directly, pin them to the same exact version so they share one React context.
+Import `usePassage`, `useVersions`, and `YouVersionProvider` from this package using the same module format (ES modules or CommonJS). Call the hooks under the same provider as your UI components. You do not need to install the hooks package directly.
 
 ```tsx
 import { useVersions } from '@youversion/platform-react-ui';
