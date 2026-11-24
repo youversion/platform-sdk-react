@@ -256,47 +256,8 @@ export const SettingsCloseShowsFocusThroughToolbar: Story = {
     });
     if (!nativeKeyAvailable) return;
     await verifyNativeBrowserKey('{Enter}', async () => {
-      try {
-        await waitFor(async () => {
-          const overlay = await getReaderOverlay(root);
-          await expect(overlay.getByRole('dialog')).toBeVisible();
-        });
-      } catch (error) {
-        const dialog = root.querySelector<HTMLElement>('[role="dialog"]');
-        const ancestors = [];
-        for (let element = dialog; element; element = element.parentElement) {
-          const style = getComputedStyle(element);
-          ancestors.push({
-            tag: element.tagName,
-            slot: element.dataset.slot,
-            connected: element.isConnected,
-            display: style.display,
-            visibility: style.visibility,
-            opacity: style.opacity,
-            animationName: style.animationName,
-            rect: element.getBoundingClientRect().toJSON(),
-            popoverOpen: element.hasAttribute('popover') ? element.matches(':popover-open') : null,
-          });
-        }
-        const close = dialog?.querySelector('button');
-        const rect = close?.getBoundingClientRect();
-        const hit = rect
-          ? root.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
-          : null;
-        throw new Error(
-          '[DEBUG-pr492-visibility] ' +
-            JSON.stringify({
-              ancestors,
-              closeHit: Boolean(close && hit && close.contains(hit)),
-              animations: dialog?.getAnimations().map((animation) => ({
-                playState: animation.playState,
-                currentTime: animation.currentTime,
-                timing: animation.effect?.getComputedTiming(),
-              })),
-            }),
-          { cause: error },
-        );
-      }
+      const overlay = await getReaderOverlay(root);
+      await expect(overlay.getByRole('dialog')).toHaveAttribute('data-state', 'open');
     });
     const settings = await getReaderOverlay(root);
     const closeButton = await settings.findByRole('button', { name: i18n.t('close') });
@@ -308,6 +269,7 @@ export const SettingsCloseShowsFocusThroughToolbar: Story = {
     });
     const focusedIndicator = await waitFor(async () => {
       await expect(root.activeElement).toBe(closeButton);
+      await expect(closeButton).toBeVisible();
       await expect(closeButton.matches(':focus-visible')).toBe(true);
       const style = getComputedStyle(closeButton);
       await expect(style.boxShadow).toContain('inset');

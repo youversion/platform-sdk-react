@@ -18,15 +18,6 @@ if [ "$has_story_filter" = true ]; then
   exit
 fi
 
-if [ "${VITEST_BROWSER:-chromium}" = webkit ]; then
-  for visibility_probe in 1 2 3; do
-    echo "[DEBUG-pr492-stress] WebKit visibility probe $visibility_probe"
-    VITEST_STORY_TAG=shadow-dom,cross-browser \
-      VITEST_STORY_EXCLUDE_TAG=shadow-recovery \
-      vitest run --project storybook --maxWorkers=8 "$@"
-  done
-fi
-
 if [ "${VITEST_BROWSER:-chromium}" = firefox ]; then
   # Firefox replaces preview clients between serialized files, which resets
   # runtime MSW handlers. Discover every isolated file so future tagged stories
