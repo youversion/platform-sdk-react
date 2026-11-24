@@ -45,6 +45,7 @@ import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
 import { peekPendingHighlights } from '@/lib/pending-highlight';
 import { fillFor, mockUserInfo } from '@/test/highlights-test-utils';
 import { installResizeObserverStub } from '@/test/dom-stubs';
+import { BibleReaderNavigation } from './bible-reader-navigation';
 
 installResizeObserverStub();
 
@@ -1272,6 +1273,201 @@ it('does not restore the verse menu after an outside click if the permission gra
     sessionStorage.clear();
     localStorage.clear();
   }
+});
+
+it('selects and anchors iframe verses and resets highlight fills and label colors', async ({
+  onTestFinished,
+}) => {
+  const iframe = document.createElement('iframe');
+  document.body.append(iframe);
+  onTestFinished(() => iframe.remove());
+  const iframeDocument = iframe.contentDocument;
+  if (!iframeDocument) throw new Error('same-origin iframe document not available');
+  Object.defineProperty(Object.getPrototypeOf(iframeDocument.createElement('main')), 'scrollTo', {
+    value: vi.fn(),
+    configurable: true,
+  });
+  const mount = iframeDocument.createElement('div');
+  iframeDocument.body.append(mount);
+  const onVerseSelect = verseSelectSpy();
+  const view = render(
+    wrapReader({
+      highlights: [{ version_id: 111, passage_id: 'JHN.1.1', color: YELLOW }],
+      onVerseSelect,
+    }),
+    { container: mount, baseElement: iframeDocument.body },
+  );
+  onTestFinished(() => view.unmount());
+  const verse = getVerseEl(mount, 1);
+  const label = verse.querySelector<HTMLElement>('.yv-vlbl');
+  if (!label) throw new Error('verse number label not rendered');
+  expect(verse.ownerDocument).toBe(iframeDocument);
+  expect(verse).not.toBeInstanceOf(HTMLElement);
+  expect(label.ownerDocument).toBe(iframeDocument);
+  expect(label).not.toBeInstanceOf(HTMLElement);
+  expect(verse.style.backgroundColor).toBe(fillFor(YELLOW));
+  expect(label.style.color).toBe('inherit');
+  vi.spyOn(verse, 'getBoundingClientRect').mockReturnValue(new DOMRect(100, 100, 240, 24));
+
+  fireEvent.click(verse);
+
+  expect(lastSelection(onVerseSelect).verses).toEqual([1]);
+  expect(verse).toHaveClass('yv-v-selected');
+  await waitFor(() => {
+    const popover = document.querySelector<HTMLElement>('[data-radix-popper-content-wrapper]');
+    expect(popover?.style.getPropertyValue('--radix-popper-anchor-width')).toBe('240px');
+  });
+
+  view.rerender(wrapReader({ highlights: [], onVerseSelect }));
+
+  const unhighlightedVerse = getVerseEl(mount, 1);
+  const unhighlightedLabel = unhighlightedVerse.querySelector<HTMLElement>('.yv-vlbl');
+  if (!unhighlightedLabel)
+    throw new Error('verse number label not rendered after highlight removal');
+  expect(unhighlightedVerse.style.backgroundColor).toBe('');
+  expect(unhighlightedLabel.style.color).toBe('');
+});
+
+function renderIframeReader(
+  props: Partial<BibleReaderRootProps> = {},
+  overrides = defaultOverrides(),
+) {
+  const iframe = document.createElement('iframe');
+  document.body.append(iframe);
+  const iframeDocument = iframe.contentDocument;
+  if (!iframeDocument) throw new Error('same-origin iframe document unavailable');
+  Object.defineProperty(Object.getPrototypeOf(iframeDocument.createElement('main')), 'scrollTo', {
+    value: vi.fn(),
+    configurable: true,
+  });
+  const mount = iframeDocument.createElement('div');
+  iframeDocument.body.append(mount);
+  const view = render(wrapReader({ highlights: [], ...props }, overrides), {
+    container: mount,
+    baseElement: iframeDocument.body,
+  });
+  onTestFinished(() => {
+    view.unmount();
+    iframe.remove();
+  });
+  expect(getVerseEl(mount, 1).ownerDocument).toBe(iframeDocument);
+  expect(getVerseEl(mount, 1)).not.toBeInstanceOf(HTMLElement);
+  return { ...view, mount, iframeDocument };
+}
+
+it('matches top-document selection and Copy payloads in an iframe and clears on a second verse tap', async () => {
+  const topSelections = verseSelectSpy();
+  const topView = renderReader({ highlights: [], onVerseSelect: topSelections });
+  selectVerse(topView.container, 1);
+  selectVerse(topView.container, 3);
+  const expected = lastSelection(topSelections);
+  expect(expected).toEqual(selection([1, 3]));
+  expect(expected.shareData?.verseText).toBe(
+    'In the beginning was the Word. ... Through him all things were made.',
+  );
+  topView.unmount();
+
+  const iframeSelections = verseSelectSpy();
+  const onCopy = vi.fn<(data: BibleReaderShareData) => void>();
+  const view = renderIframeReader({ onVerseSelect: iframeSelections, onCopy });
+  selectVerse(view.mount, 1);
+  selectVerse(view.mount, 3);
+  expect.soft(lastSelection(iframeSelections)).toEqual(expected);
+
+  fireEvent.click(await screen.findByRole('button', { name: /^copy$/i }));
+  expect.soft(onCopy).toHaveBeenCalledExactlyOnceWith(expected.shareData);
+
+  const verse = getVerseEl(view.mount, 1);
+  fireEvent.click(verse);
+  expect(verse).toHaveClass('yv-v-selected');
+  fireEvent.click(verse);
+  expect(lastSelection(iframeSelections)).toEqual(selection([]));
+  expect(verse).not.toHaveClass('yv-v-selected');
+  expect(screen.queryByRole('button', { name: /^copy$/i })).toBeNull();
+});
+
+it('paints and focuses the requested iframe verse until user input', async () => {
+  const navigation = new BibleReaderNavigation();
+  const onVerseSelect = verseSelectSpy();
+  const view = renderIframeReader({ navigation, onVerseSelect });
+  const verse = getVerseEl(view.mount, 1);
+  const renderer = view.mount.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+  if (!renderer) throw new Error('reader renderer unavailable');
+
+  act(() => navigation.focusReference({ versionId: 111, passageId: 'JHN.1.1' }, false));
+
+  await waitFor(() => expect(renderer).toHaveAttribute('data-yv-verse-focus'));
+  expect.soft(verse).toHaveClass('yv-v-focused');
+  expect.soft(view.iframeDocument.activeElement === verse).toBe(true);
+  expect(onVerseSelect).not.toHaveBeenCalled();
+
+  fireEvent.pointerDown(verse);
+  expect(renderer).not.toHaveAttribute('data-yv-verse-focus');
+  expect(verse).not.toHaveClass('yv-v-focused');
+});
+
+it('extracts iframe footnote verse HTML without verse labels or note text', async () => {
+  const onFootnotePress = vi.fn<NonNullable<BibleReaderRootProps['onFootnotePress']>>();
+  const overrides: HookOverrides = {
+    ...defaultOverrides(),
+    usePassage: () => ({
+      passage: {
+        ...mockPassage,
+        content: mockPassage.content.replace(
+          'In the beginning was the Word.',
+          'In the beginning was the Word.<span class="yv-n f"><span class="fr">1:1 </span><span class="ft">A note.</span></span>',
+        ),
+      },
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+  };
+  const view = renderIframeReader({ onFootnotePress }, overrides);
+  const footnote = await waitFor(() => {
+    const button = view.mount.querySelector<HTMLButtonElement>('[data-verse-footnote="1"] button');
+    if (!button) throw new Error('iframe footnote button unavailable');
+    return button;
+  });
+
+  fireEvent.click(footnote);
+
+  expect(onFootnotePress).toHaveBeenCalledTimes(1);
+  const payload = onFootnotePress.mock.lastCall?.[0];
+  expect(payload?.verseHtml).toContain('In the beginning was the Word.');
+  expect(payload?.verseHtml).toContain('<sup');
+  expect(payload?.verseHtml).not.toContain('yv-vlbl');
+  expect(payload?.verseHtml).not.toContain('A note.');
+});
+
+it('uses the iframe motion preference and viewport for scrolling and focus cleanup', async () => {
+  const navigation = new BibleReaderNavigation();
+  const view = renderIframeReader({ navigation });
+  const ownerWindow = view.iframeDocument.defaultView;
+  if (!ownerWindow) throw new Error('iframe window unavailable');
+  const matchMedia = vi.fn(() => ({ matches: true }));
+  Object.defineProperty(ownerWindow, 'matchMedia', { value: matchMedia, configurable: true });
+  const verse = getVerseEl(view.mount, 1);
+  const scrollVerse = vi.fn();
+  verse.scrollIntoView = scrollVerse;
+  const renderer = view.mount.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+  if (!renderer) throw new Error('reader renderer unavailable');
+  const scrollContainer = vi.fn();
+  renderer.scrollIntoView = scrollContainer;
+
+  act(() => navigation.focusReference({ versionId: 111, passageId: 'JHN.1.1' }));
+
+  await waitFor(() => expect(renderer).toHaveAttribute('data-yv-verse-focus'));
+  expect.soft(matchMedia).toHaveBeenCalledWith('(prefers-reduced-motion: reduce)');
+  expect.soft(scrollVerse).toHaveBeenCalledWith({ block: 'center', behavior: 'auto' });
+  expect.soft(scrollContainer).not.toHaveBeenCalled();
+  expect.soft(verse).toHaveClass('yv-v-focused');
+  expect.soft(view.iframeDocument.activeElement === verse).toBe(true);
+
+  fireEvent.wheel(view.iframeDocument.documentElement);
+
+  expect(renderer).not.toHaveAttribute('data-yv-verse-focus');
+  expect(verse).not.toHaveClass('yv-v-focused');
 });
 
 it('clears failed clipboard feedback on navigation after closing the verse menu', async ({
