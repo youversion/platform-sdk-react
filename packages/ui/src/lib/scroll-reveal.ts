@@ -22,23 +22,3 @@ export function revealElementWithinScrollContainer(
   const fits = elementRect.height <= container.clientHeight * scale;
   container.scrollTop += (fits === (start < 0) ? start : end) / scale;
 }
-
-export function findNearestVerticalScrollContainer(element: HTMLElement): HTMLElement | undefined {
-  const { ownerDocument } = element;
-  const view = ownerDocument.defaultView;
-  if (!view) return;
-  let node: Element = element;
-  for (;;) {
-    const root = node.getRootNode();
-    const parent = node.parentElement ?? (root instanceof view.ShadowRoot ? root.host : null);
-    if (!parent || parent === ownerDocument.body || parent === ownerDocument.documentElement) return;
-    if (
-      parent instanceof view.HTMLElement &&
-      parent.scrollHeight > parent.clientHeight &&
-      ['auto', 'scroll', 'overlay'].includes(view.getComputedStyle(parent).overflowY)
-    ) {
-      return parent;
-    }
-    node = parent;
-  }
-}

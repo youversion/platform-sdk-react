@@ -255,7 +255,10 @@ export const SettingsCloseShowsFocusThroughToolbar: Story = {
       await expect(settingsButton.matches(':focus-visible')).toBe(true);
     });
     if (!nativeKeyAvailable) return;
-    await verifyNativeBrowserKey('{Enter}', () => undefined);
+    await verifyNativeBrowserKey('{Enter}', async () => {
+      const overlay = await getReaderOverlay(root);
+      await expect(await overlay.findByRole('dialog')).toBeVisible();
+    });
     const settings = await getReaderOverlay(root);
     const closeButton = await settings.findByRole('button', { name: i18n.t('close') });
     const dialog = closeButton.closest<HTMLElement>('[role="dialog"]');

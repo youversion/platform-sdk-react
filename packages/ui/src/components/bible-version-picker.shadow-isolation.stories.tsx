@@ -380,6 +380,7 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
     await expect(reflectedControls).toEqual([panel]);
     if (!__YV_STORYBOOK_VITEST__) return;
 
+    await expect(getComputedStyle(panel).overflowY).toBe('auto');
     panel.style.blockSize = '8rem';
     panel.style.inlineSize = '18rem';
     const closeButton = within(panel).getByRole('button', { name: /close/i });

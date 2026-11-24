@@ -724,10 +724,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
           }}
         >
           {view === 'versions' ? (
-            <VersionList
-              onRequestClose={() => setIsPopoverOpen(false)}
-              scrollPanelRef={popoverContentRef}
-            />
+            <VersionList onRequestClose={() => setIsPopoverOpen(false)} />
           ) : (
             <LanguagePanel onRequestClose={closeLanguagePanel} />
           )}

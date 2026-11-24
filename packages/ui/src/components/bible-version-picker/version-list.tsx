@@ -7,14 +7,7 @@ import { revealElementWithinScrollContainer } from '@/lib/scroll-reveal';
 import { cn } from '@/lib/utils';
 import { type BibleVersion } from '@youversion/platform-core';
 import { useLanguage, useOrganizations } from '@youversion/platform-react-hooks';
-import {
-  useEffect,
-  useRef,
-  useState,
-  type FocusEvent,
-  type ReactElement,
-  type RefObject,
-} from 'react';
+import { useEffect, useRef, useState, type FocusEvent, type ReactElement } from 'react';
 import { ChevronForwardIcon } from '../icons/chevron-forward';
 import { GlobeIcon } from '../icons/globe';
 import { LoaderIcon } from '../icons/loader';
@@ -168,16 +161,14 @@ function LanguageEntry({ name }: { name: string }): ReactElement {
   );
 }
 
-// Publisher line, two title lines, row padding, and borders.
+// Publisher line (0.875rem × 1.5) and block padding (1.5rem) total 2.8125rem.
+// Two title lines at 13px × 1.25 plus 2px borders total 34.5px.
 const versionRowMinBlockSize = 'yv:[min-block-size:calc(2.8125rem+34.5px)]';
 
 export function VersionList({
   open,
   onRequestClose,
-  scrollPanelRef,
-}: BibleVersionPickerContentProps & {
-  scrollPanelRef?: RefObject<HTMLDivElement | null>;
-} = {}): ReactElement {
+}: BibleVersionPickerContentProps = {}): ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   const interfaceDirection = useInterfaceDirection();
   const {
@@ -237,22 +228,14 @@ export function VersionList({
     'yv:rounded-[6px] yv:size-12 yv:bg-secondary yv:border yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center';
   const versionRowClassName = (selected: boolean) =>
     cn('yv:hover:bg-muted yv:rounded-lg', selected ? 'yv:bg-muted' : '');
-  const versionListRootRef = useRef<HTMLDivElement>(null);
   const versionScrollRegionRef = useRef<HTMLDivElement>(null);
   const revealFocusedVersion = (event: FocusEvent<HTMLButtonElement>) => {
-    const containers = [
-      versionScrollRegionRef.current,
-      versionListRootRef.current,
-      scrollPanelRef?.current,
-    ];
-    for (const container of containers) {
-      if (container) revealElementWithinScrollContainer(event.currentTarget, container);
-    }
+    const container = versionScrollRegionRef.current;
+    if (container) revealElementWithinScrollContainer(event.currentTarget, container);
   };
 
   return (
     <div
-      ref={versionListRootRef}
       className={cn(
         'yv:overflow-y-auto yv:h-full yv:flex yv:flex-col yv:font-sans yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center',
         headerOwnsChrome ? versionRowMinBlockSize : 'yv:min-h-0',

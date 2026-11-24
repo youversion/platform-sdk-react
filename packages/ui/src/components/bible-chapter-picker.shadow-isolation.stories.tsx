@@ -343,6 +343,7 @@ export const PublicRootJourney: Story = {
     await expect(tabOrder.at(-2)).toBe(lastChapterButton);
     await expect(tabOrder.at(-1)).toBe(initialSearch);
     await expect(bookList.scrollHeight).toBeGreaterThan(bookList.clientHeight);
+    await expect(getComputedStyle(panel).overflowY).toBe('auto');
     panel.style.blockSize = '10rem';
     bookList.scrollTop = 0;
     const clippedBookRect = firstKingsBook.getBoundingClientRect();
@@ -362,7 +363,14 @@ export const PublicRootJourney: Story = {
       const listRect = bookList.getBoundingClientRect();
       await expect(bookRect.top).toBeGreaterThanOrEqual(listRect.top - 1);
       await expect(bookRect.bottom).toBeLessThanOrEqual(listRect.bottom + 1);
-      await expect(getComputedStyle(firstKingsBook).boxShadow).toContain('inset');
+      const style = getComputedStyle(firstKingsBook);
+      await expect(style.boxShadow).toContain('inset');
+      await expect(style.boxShadow).toContain('0px 0px 0px 3px');
+      await expect(style.getPropertyValue('--tw-ring-color').trim()).toBe(
+        style.getPropertyValue('--yv-ring').trim(),
+      );
+      await expect(Number.parseFloat(style.paddingInlineStart)).toBeGreaterThanOrEqual(3);
+      await expect(Number.parseFloat(style.paddingInlineEnd)).toBeGreaterThanOrEqual(3);
     });
     await browserUserEvent.keyboard('{ArrowDown}');
     await expect(root.activeElement).toBe(psalmsBook);
@@ -374,10 +382,10 @@ export const PublicRootJourney: Story = {
     await waitFor(async () => {
       await expect(expandedPsalms.scrollHeight).toBeGreaterThan(bookList.clientHeight);
     });
-    const compactPanel = panel;
     await waitFor(async () => {
       await expect(root.activeElement).toBe(psalmsBook);
-      const panelRect = compactPanel.getBoundingClientRect();
+      if (!panel) throw new Error('chapter picker panel not rendered');
+      const panelRect = panel.getBoundingClientRect();
       const listRect = bookList.getBoundingClientRect();
       await expect(psalmsBook.getBoundingClientRect().top).toBeGreaterThanOrEqual(
         Math.max(panelRect.top, listRect.top) - 1,
@@ -439,7 +447,7 @@ export const PublicRootJourney: Story = {
   },
 };
 
-export const StandaloneContentRevealsFocusedBookInConsumerScroll: Story = {
+export const StandaloneContentSupportsArrowNavigationInConsumerScroll: Story = {
   render: () => (
     <FixtureProviders>
       <StandaloneBibleChapterPicker />
@@ -457,18 +465,22 @@ export const StandaloneContentRevealsFocusedBookInConsumerScroll: Story = {
     const matthewBook = within(shell).getByRole('button', { name: /matthew/i });
     host.scrollTop = 0;
     shell.scrollTop = 0;
-    const pageScrollTop = canvasElement.ownerDocument.scrollingElement?.scrollTop;
     const initialShellRect = shell.getBoundingClientRect();
     await expect(matthewBook.getBoundingClientRect().top).toBeGreaterThanOrEqual(
       initialShellRect.bottom,
     );
 
-    matthewBook.focus({ preventScroll: true });
+    const { userEvent: browserUserEvent } = await import('vitest/browser');
+    const bookTriggers = Array.from(
+      shell.querySelectorAll<HTMLElement>('[data-slot="accordion-trigger"]'),
+    );
+    bookTriggers[0]!.focus();
+    for (let index = 0; index < bookTriggers.indexOf(matthewBook); index += 1) {
+      await browserUserEvent.keyboard('{ArrowDown}');
+    }
     await waitFor(async () => {
       await expect(root.activeElement).toBe(matthewBook);
       await expect(shell.scrollTop).toBeGreaterThan(0);
-      await expect(host.scrollTop).toBe(0);
-      await expect(canvasElement.ownerDocument.scrollingElement?.scrollTop).toBe(pageScrollTop);
       const bookRect = matthewBook.getBoundingClientRect();
       const shellRect = shell.getBoundingClientRect();
       await expect(bookRect.top).toBeGreaterThanOrEqual(shellRect.top - 1);

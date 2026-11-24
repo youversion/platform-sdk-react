@@ -130,6 +130,7 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
     void expect(controls).toHaveLength(5);
     const decreaseFontSizeButton = settings.getByTestId('decrease-font-size');
     void expect(controls[0]).toBe(decreaseFontSizeButton);
+    const selectedFontButton = settings.getByRole('button', { name: `${i18n.t('font')} Inter` });
     const serifButton = settings.getByRole('button', {
       name: `${i18n.t('font')} ${i18n.t('untitledSerifFontName')}`,
     });
@@ -158,15 +159,10 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
     void expect(canvas.getByTestId('settings-boundary')).toHaveAttribute('data-font-size', '14');
 
     let focusedControlReceivedTab = false;
-    if (nativeKeyAvailable && forwardTraversalKey === '{Tab}') {
-      decreaseFontSizeButton.addEventListener(
-        'keydown',
-        (event) => {
-          if (event.key === 'Tab') focusedControlReceivedTab = true;
-        },
-        { once: true },
-      );
-    }
+    const recordFocusedControlTab = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') focusedControlReceivedTab = true;
+    };
+    decreaseFontSizeButton.addEventListener('keydown', recordFocusedControlTab);
     for (const control of controls.slice(1)) {
       if (nativeKeyAvailable) {
         await verifyNativeBrowserKey(forwardTraversalKey, async () => {
@@ -176,7 +172,7 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
             const style = getComputedStyle(control);
             await expect(style.boxShadow).toContain('inset');
             await expect(style.boxShadow).toContain('0px 0px 0px 3px');
-            if (control === controls[3]) {
+            if (control === selectedFontButton) {
               await expect(style.getPropertyValue('--tw-ring-color').trim()).toBe(
                 style.getPropertyValue('--yv-primary-foreground').trim(),
               );
@@ -188,9 +184,8 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
         void expect(settingsRoot.activeElement).toBe(control);
       }
     }
-    if (nativeKeyAvailable && forwardTraversalKey === '{Tab}') {
-      void expect(focusedControlReceivedTab).toBe(true);
-    }
+    decreaseFontSizeButton.removeEventListener('keydown', recordFocusedControlTab);
+    void expect(focusedControlReceivedTab).toBe(true);
     await userEvent.keyboard('{Enter}');
     void expect(canvas.getByTestId('settings-boundary')).toHaveAttribute(
       'data-font-family',

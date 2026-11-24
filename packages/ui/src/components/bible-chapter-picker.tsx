@@ -28,10 +28,6 @@ import { useInterfaceDirection } from '@/lib/direction';
 import { prefersReducedMotion } from '@/lib/reduced-motion';
 import { cn } from '@/lib/utils';
 import { ShadowIsolationBoundary } from '@/lib/shadow-isolation';
-import {
-  findNearestVerticalScrollContainer,
-  revealElementWithinScrollContainer,
-} from '@/lib/scroll-reveal';
 
 export interface BibleChapterPickerPressData {
   book: string;
@@ -61,28 +57,15 @@ type BibleChapterPickerContextType = {
   setExpandedBook: (bookId: string) => void;
   filteredBooks: BibleBook[] | null;
   registerBookElement: (bookId: string, node: HTMLDivElement | null) => void;
-  markBookFocused: (button: HTMLButtonElement) => void;
+  markBookFocused: () => void;
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
 };
 
-function revealExpandedBook(element: HTMLElement, usesConsumerScroll: boolean): void {
-  if (usesConsumerScroll) {
-    element.scrollIntoView?.({
-      block: 'start',
-      behavior: prefersReducedMotion(element.ownerDocument.defaultView) ? 'instant' : 'smooth',
-    });
-    return;
-  }
-  const list = element.closest<HTMLElement>('[data-slot="accordion"]');
-  if (!list) return;
-  revealElementWithinScrollContainer(element, list, 'start');
-  const panel = list.closest<HTMLElement>('[data-slot="popover-content"]');
-  if (!panel) return;
-  const firstChapter = element.querySelector('[data-slot="accordion-content"] button');
-  if (firstChapter) revealElementWithinScrollContainer(firstChapter, panel);
-  // Preserve the book trigger when the panel cannot fit both targets.
-  const trigger = element.querySelector('[data-slot="accordion-trigger"]');
-  if (trigger) revealElementWithinScrollContainer(trigger, panel);
+function revealExpandedBook(element: HTMLElement): void {
+  element.scrollIntoView?.({
+    block: 'start',
+    behavior: prefersReducedMotion(element.ownerDocument.defaultView) ? 'auto' : 'smooth',
+  });
 }
 
 type TriggerElementProps = React.HTMLAttributes<HTMLButtonElement> & {
@@ -172,6 +155,7 @@ function RootImplementation({
   const usesConsumerScroll = Boolean(onChapterPickerPress);
   const openRevealTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  // Changing scroll ownership invalidates a reveal scheduled by the previous trigger.
   useEffect(() => () => clearTimeout(openRevealTimeout.current), [usesConsumerScroll]);
 
   const registerBookElement = (bookId: string, node: HTMLDivElement | null) => {
@@ -202,10 +186,10 @@ function RootImplementation({
         if (bookFocusSequenceRef.current !== focusSequence) return;
         const element = bookElementsRef.current[bookId];
         if (!element || shouldPreserveFocusedBook(element)) return;
-        revealExpandedBook(element, usesConsumerScroll);
+        revealExpandedBook(element);
       }, 200);
     },
-    [shouldPreserveFocusedBook, usesConsumerScroll],
+    [shouldPreserveFocusedBook],
   );
 
   const scrollToCurrentBook = () => {
@@ -277,16 +261,8 @@ function RootImplementation({
     setExpandedBook,
     filteredBooks,
     registerBookElement,
-    markBookFocused: (button) => {
+    markBookFocused: () => {
       bookFocusSequenceRef.current += 1;
-      const list = usesConsumerScroll
-        ? findNearestVerticalScrollContainer(button)
-        : button.closest<HTMLElement>('[data-slot="accordion"]');
-      if (!list) return;
-      revealElementWithinScrollContainer(button, list);
-      if (usesConsumerScroll) return;
-      const panel = panelRef.current;
-      if (panel) revealElementWithinScrollContainer(button, panel);
     },
     onChapterPickerPress,
   };
@@ -509,7 +485,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
             >
               <AccordionTrigger
                 className="yv:rounded-none yv:text-base yv:font-normal yv:leading-normal yv:text-foreground yv:focus-visible:ring-inset yv:focus-visible:ring-ring yv:-mx-1 yv:px-1 yv:data-[state=open]:font-bold"
-                onFocus={(event) => markBookFocused(event.currentTarget)}
+                onFocus={markBookFocused}
               >
                 <bdi dir="auto">{bookItem.title}</bdi>
               </AccordionTrigger>

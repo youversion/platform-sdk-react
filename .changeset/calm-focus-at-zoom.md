@@ -2,4 +2,4 @@
 '@youversion/platform-react-ui': patch
 ---
 
-Keep picker targets visible and preserve control focus indicators at high browser zoom.
+Kept focused version rows visible and preserved control focus indicators at high browser zoom. Updated chapter expansion to honor reduced-motion preferences.

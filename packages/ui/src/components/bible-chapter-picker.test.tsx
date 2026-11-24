@@ -109,7 +109,7 @@ function standaloneContent(onChapterPickerPress: () => void): ReactElement {
   );
 }
 
-it('keeps a newly focused book visible when the initial reveal was already scheduled', async () => {
+it('skips the scheduled reveal after focus moves to a host control', async () => {
   vi.useFakeTimers();
   const scrollSpy = vi.spyOn(Element.prototype, 'scrollIntoView');
   try {
@@ -202,7 +202,7 @@ it('does not let focus in a sibling accordion suppress the current-book reveal',
 
 it.each([
   { prefersReduced: false, behavior: 'smooth' },
-  { prefersReduced: true, behavior: 'instant' },
+  { prefersReduced: true, behavior: 'auto' },
 ])(
   'reveals the current book with $behavior scrolling based on motion preference',
   async ({ prefersReduced, behavior }) => {
@@ -225,28 +225,27 @@ it.each([
   },
 );
 
-it('keeps standalone content usable when scrollIntoView is unavailable', async () => {
+it('cancels pending book reveals when the picker unmounts', async () => {
   vi.useFakeTimers();
-  const scrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(
-    Element.prototype,
-    'scrollIntoView',
-  );
-  Object.defineProperty(Element.prototype, 'scrollIntoView', {
-    configurable: true,
-    value: undefined,
-  });
+  const scheduleSpy = vi.spyOn(globalThis, 'setTimeout');
+  const cancelSpy = vi.spyOn(globalThis, 'clearTimeout');
+  const scrollSpy = vi.spyOn(Element.prototype, 'scrollIntoView');
   try {
-    render(standaloneContent(() => undefined));
+    const { unmount } = render(standaloneContent(() => undefined));
+    scheduleSpy.mockClear();
+    screen.getByRole('button', { name: 'Genesis 1' }).click();
+    expect(scheduleSpy).toHaveBeenCalledTimes(1);
+    const revealTimer = scheduleSpy.mock.results[0]!.value;
+    unmount();
+    expect(cancelSpy).toHaveBeenCalledWith(revealTimer);
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
     });
-    expect(findAccordionTrigger(/Genesis/i)).toBeInTheDocument();
+    expect(scrollSpy).not.toHaveBeenCalled();
   } finally {
-    if (scrollIntoViewDescriptor) {
-      Object.defineProperty(Element.prototype, 'scrollIntoView', scrollIntoViewDescriptor);
-    } else {
-      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
-    }
+    scheduleSpy.mockRestore();
+    cancelSpy.mockRestore();
+    scrollSpy.mockRestore();
     vi.useRealTimers();
   }
 });

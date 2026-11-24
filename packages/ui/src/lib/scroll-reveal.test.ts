@@ -23,4 +23,13 @@ it('reveals targets against the scrollport of a scaled, bordered container with 
 
   revealElementWithinScrollContainer(row, container, 'start');
   expect(container.scrollTop).toBe(7);
+
+  // An oversized row wholly below the scrollport aligns its start; wholly above
+  // aligns its end. A row spanning both edges was already left in place above.
+  rowRect.mockReturnValue(new DOMRect(0, 300, 100, 180));
+  revealElementWithinScrollContainer(row, container);
+  expect(container.scrollTop).toBe(103);
+  rowRect.mockReturnValue(new DOMRect(0, -100, 100, 180));
+  revealElementWithinScrollContainer(row, container);
+  expect(container.scrollTop).toBe(9);
 });

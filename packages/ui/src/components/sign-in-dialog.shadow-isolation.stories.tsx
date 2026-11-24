@@ -177,6 +177,7 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
     await expect(focusStyle(confirmButton)).not.toEqual(unfocusedButtonStyles.get(confirmButton));
     await waitFor(async () => {
       const style = getComputedStyle(confirmButton);
+      await expect(style.boxShadow).toContain('inset');
       await expect(style.boxShadow).toContain('0px 0px 0px 3px');
       await expect(style.getPropertyValue('--tw-ring-color').trim()).toBe(
         style.getPropertyValue('--yv-primary-foreground').trim(),
