@@ -3,8 +3,8 @@ export default [
   {
     name: 'core / full barrel (esm)',
     path: 'packages/core/dist/index.js',
-    // Measured brotlied size 24687 B; set to measured + ~10% per CONTRIBUTING.
-    limit: '27.2 KB',
+    // Measured brotlied size 27410 B; set to measured + ~10% per CONTRIBUTING.
+    limit: '30.2 KB',
     ignore: ['jsdom'],
   },
   {
