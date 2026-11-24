@@ -22,6 +22,8 @@ type SearchVideosQuery = {
  * When continuing with a page token, repeat the query, organization filters, and
  * language from the previous request. The page size may change. A null input
  * cursor requests the first page. Language defaults to English, as in the search API.
+ * Empty pages can have continuation tokens. Continue until `nextPageToken` is
+ * null. Empty string tokens are preserved unchanged. No total count is returned.
  */
 export async function searchVideos(
   client: ApiClient,

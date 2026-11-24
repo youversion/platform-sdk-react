@@ -126,7 +126,7 @@ Bind on new/edited tests. When touching a file, bend the cases you edit toward t
 
 ## Env
 
-To verify beta playlist-to-video lookup against a deployment, set `YVP_API_HOST`, a beta-enabled
+To verify beta playlist-to-video lookup against a deployment, set `YVP_API_HOST` (a hostname such as `api.youversion.com`), a beta-enabled
 `YVP_APP_KEY` with access to the video catalog, and `YVP_VIDEO_ORGANIZATION_ID` for an organization
 with a populated video playlist. Run `pnpm --filter @youversion/platform-core test:integration src/__tests__/videos.integration.test.ts`.
 
@@ -151,7 +151,7 @@ being silently dropped.
 
 Review follow-up adds optional nullable `passage_ids` (string array) and
 `organization_id` (UUID), as specified in the review's newer `compiled-2.yaml`,
-while retaining singular `passage_id` from the original beta snapshot. That newer
+while retaining singular `passage_id` from the original supplied snapshot. That newer
 attachment was not available locally; these are additive metadata-preservation
 changes, not proof that the beta deployment serves the newer stable contract.
 Optional `references` is also preserved for compatibility with sibling SDKs.
@@ -173,9 +173,41 @@ the ticket instruction against splitting unified search by selected fields:
 
 The supplied spec names stable routes for video details, playlists and unified
 search; this temporary routing exception is separate from response validation.
-Promote the beta routes only after confirming deployment and catalog access.
+Promote a route only after confirming that its stable `/v1` endpoint supports the
+required request and response contract. Successful beta catalog access alone does
+not establish stable-route support.
 The live smoke remains optional deployment evidence, not a replacement for the
 contract tests or a requirement for adding UI. No UI is added by YPE-6573.
+
+### Live Content Library checks (2026-11-24)
+
+Manual requests and the built core SDK at `c748d1f` verified populated beta
+playlist collection/detail and video detail responses. The English BibleProject
+catalog returned 18 playlists; pagination completed across nine pages of two
+playlists, without duplicate playlist IDs. Spanish and Portuguese requests returned
+localized playlists and video details with the corresponding language tags.
+
+Dedicated search and unified search selecting `videos` returned videos for
+“Bible,” “Jesus,” and “What Is The Bible?” The first ID from each search resolved
+through the video detail client. Detail validation preserved passage and publisher
+metadata, and the card thumbnail rendition was applied.
+
+The thumbnail, both HLS playback sources (manifests and sampled media segments,
+including initialization data where applicable), and the MP4 preview were accessible
+without an App Key. Media responses allowed cross-origin access. Full player
+playback was not tested. These manual checks are deployment evidence, not additional
+automated test coverage or proof of the complete newer OpenAPI contract.
+
+Dedicated search returned empty pages with continuation tokens for all three
+queries. For “Jesus” with `page_size=5`, the first four pages contained 4, 1, 0,
+and 3 videos. A bounded SDK check followed 30 pages, returning 17 unique videos
+without duplicates and 20 empty pages; another token remained. Direct HTTP requests
+reproduced empty pages with tokens independently of SDK parsing. Eventual
+termination was not verified, and the response provides no total result count.
+
+We accept this service behavior and retain the current implementation. Consumers
+must follow non-null tokens even after empty pages. Any required behavior change
+will be handled in a follow-up after clarification or a service contract change.
 
 ## Before pushing
 

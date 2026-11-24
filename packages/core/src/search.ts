@@ -86,6 +86,8 @@ export class SearchClient {
    * Searches video metadata through `/v1-beta/search-videos`.
    * Send the same query, organization filters, and language with a continuation
    * token; `pageSize` may change. Language defaults to English.
+   * Empty pages can have continuation tokens. Continue until `nextPageToken` is
+   * null. Empty string tokens are preserved unchanged. No total count is returned.
    */
   async searchVideos(query: string, options?: SearchVideosOptions): Promise<SearchVideosResponse> {
     return searchVideos(this.client, query, options);

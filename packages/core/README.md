@@ -137,7 +137,8 @@ A blank `passage_id` is rejected before the request. Pass a single verse or a
 verse range, such as `JHN.3.16` or `JHN.3.16-18`.
 
 Unified search returns one snapshot of top results, not the entire verse result
-set. Omit `fields` for all available kinds, or pass a nonempty selection.
+set. Omit `fields` for the stable endpoint's default selection, or pass a nonempty
+selection. Explicitly include `videos` to use the beta unified-search route.
 `userIntent` accepts `unknown`, `topical`, `text`, or `reference`; response intent
 strings remain open-ended.
 
@@ -163,6 +164,38 @@ responses omitted images, which the SDK returns as `images: []`.
 
 ### Video details, playlists, and search
 
+There are two ways to find videos:
+
+- Search by text. Unified search returns video IDs; pass each ID unchanged to
+  `VideosClient.getVideo`. Dedicated `SearchClient.searchVideos` returns full
+  video resources, including playback sources, so a second detail request is
+  usually unnecessary.
+- Browse an organization's playlists. `VideosClient.getPlaylists` returns a
+  collection; `getPlaylist` returns one full playlist, including its ordered
+  video IDs. Pass those IDs unchanged to `getVideo` for metadata and playback URLs.
+
+These calls require an App Key with access to the beta video catalog.
+Video details, playlist collection/detail, and dedicated video search use
+`/v1-beta`. Unified search uses `/v1-beta/search-unified` only when `fields`
+explicitly includes `videos`; other selections use `/v1/search-unified`.
+Unified search returns one unpaginated set of top results.
+
+Dedicated video search supports `pageSize` from 1 to 99. Repeat the query,
+organization filters, and language when passing `nextPageToken` as `pageToken`;
+`pageSize` may change. An empty video array can still include a continuation token,
+and later pages can contain videos. Stop when `nextPageToken` is `null`, not when
+`videos` is empty. Empty string tokens are preserved and must be passed unchanged.
+No total result count is returned. Live checks reproduced empty pages with tokens
+both through the SDK and with direct HTTP requests. We accept this service behavior;
+eventual termination was not verified in the bounded live checks.
+
+Playlist collections use `data` and `next_page_token`. Follow that token until
+it is `null`. `pageSize` accepts 1 to 99, or `'*'` when `fields` selects one to
+three fields. Omitting `fields` requests full playlists; a selected field set can
+omit IDs or video IDs, so include the fields needed for subsequent requests.
+Playlist collection HTTP 204 or an empty response body returns an empty collection;
+malformed nonempty responses and empty detail responses reject.
+
 `VideosClient` uses camelCase options: `acceptLanguage`, `thumbnailSize`,
 `pageSize`, and `pageToken`. API query parameters and collection response keys
 retain their wire names, such as `page_size` and `next_page_token`. A null input
@@ -171,7 +204,11 @@ cursor requests the first page; an empty string cursor is sent unchanged.
 Video detail and dedicated search preserve optional nullable `passage_ids`,
 `organization_id`, and `references`, plus singular `passage_id` from earlier beta
 responses. Thumbnail URL strings are preserved whether absolute, relative, or
-protocol-relative; selecting a rendition only updates the size parameter.
+protocol-relative. `getVideo` accepts `thumbnailSize: 'thumb'`, `'card'`, or
+`'full'`. Omitting it removes any existing `size` parameter for the full-size
+image; dedicated search also removes that parameter. Other query bytes and
+fragments are preserved. Relative URLs remain relative; the SDK does not resolve
+them against a base URL.
 Queries use the same 100-grapheme validator as other search methods. Optional
 query intent/correction fields may be absent or null. Unlike the sibling SDKs,
 video search intentionally rejects undocumented HTTP 204 responses.
