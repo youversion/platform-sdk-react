@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { act, render as rtlRender, waitFor } from '@testing-library/react';
+import { act, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
@@ -365,6 +365,22 @@ describe('Verse.Html - Footnotes', () => {
       const listItems = popover?.querySelectorAll('ul li');
       expect(listItems?.length).toBe(2);
     });
+  });
+
+  it('should not render HTML planted in data-verse-footnote-content', async () => {
+    const plantedHtml =
+      '<div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text<span data-verse-footnote="1" data-verse-footnote-content="&lt;img src=x onerror=alert(1)&gt;Planted"></span></div>';
+
+    render(<Verse.Html html={plantedHtml} renderNotes={true} />);
+
+    await userEvent.click(await screen.findByRole('button'));
+
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(() => {
+      expect(within(dialog).getByText('Planted')).toBeInTheDocument();
+    });
+    expect(dialog.querySelector('img')).toBeNull();
+    expect(dialog.innerHTML).not.toContain('onerror');
   });
 
   it('should use alphabetic markers beyond z in the popover list', async () => {
