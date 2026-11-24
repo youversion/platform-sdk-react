@@ -374,7 +374,12 @@ export function Toolbar({
               </Button>
             </PopoverTrigger>
 
-            <PopoverContent sideOffset={16} heading={t('readerSettingsHeading')} theme={background}>
+            <PopoverContent
+              sideOffset={16}
+              heading={t('readerSettingsHeading')}
+              theme={background}
+              closeButtonClassName="yv:focus-visible:ring-inset yv:focus-visible:ring-ring"
+            >
               <ReuseShadowBoundary>
                 <BibleThemeSettingsContent
                   theme={background}
