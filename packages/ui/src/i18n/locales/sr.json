@@ -34,7 +34,7 @@
   "backToBibleVersionsAriaLabel": "Nazad na prevode Biblije",
   "selectLanguageHeading": "Izaberite jezik",
   "selectLanguageAriaLabel": "Izaberite jezik",
-  "recentlyUsedVersionsHeading": "Nedavno korišćeni prevodi",
+  "recentlyUsedVersionsHeading": "Nedavni prevodi",
   "allVersionsHeading": "Svi prevodi",
   "regionalHeading": "Regionalno",
   "allLanguagesHeading": "Svi jezici",
@@ -103,7 +103,7 @@
   "regional": "Regionalno",
   "retry": "Pokušaj ponovo",
   "search": "Pretraži",
-  "searchLanguages": "Pretraži jezike",
+  "searchLanguages": "Pretražite jezike",
   "searchVersions": "Pretražite prevode",
   "selectLanguage": "Izaberite jezik",
   "suggested": "Predloženo",
@@ -120,5 +120,8 @@
   "bibleSearchFilterOldTestament": "Stari zavet",
   "bibleSearchFiltersButton": "Filteri",
   "bibleSearchRecentHeading": "Nedavne pretrage",
-  "bibleSearchTrendingHeading": "Popularne pretrage"
+  "bibleSearchTrendingHeading": "Popularne pretrage",
+  "bibleLanguagesHeading": "Jezici Biblije",
+  "languageVersionsHeading": "{{language}} prevodi",
+  "versionsStatistics": "{{versionsCount}} prevoda na {{languagesCount}} jezika"
 }

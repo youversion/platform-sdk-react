@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import type { BibleReaderNavigationRequest } from '@/components/bible-reader-navigation';
 import { isElementFromOwnerDocument } from './shadow-root-host';
+import { prefersReducedMotion } from './reduced-motion';
 
 export type VerseFocusRequest = BibleReaderNavigationRequest &
   Readonly<{
@@ -23,10 +24,6 @@ function clearFocusPaint(container: HTMLElement): void {
   container.querySelectorAll('.yv-v-focused').forEach((node) => {
     node.classList.remove('yv-v-focused');
   });
-}
-
-function prefersReducedMotion(ownerWindow: Window): boolean {
-  return Boolean(ownerWindow.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 }
 
 function overflowAncestor(start: HTMLElement): HTMLElement {
