@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { Dialog } from 'radix-ui';
 import { ChevronDown } from 'lucide-react';
@@ -65,48 +66,55 @@ export function ImageLanguagePicker({
       }}
     >
       <Dialog.Trigger asChild>
-        <button
+        <Button
           type="button"
-          className="image-button"
+          variant="outline"
+          className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
           aria-label={`Content language: ${displayNames.of(language) ?? language}`}
         >
           {displayNames.of(language) ?? language}
           <ChevronDown size={16} className="shrink-0" aria-hidden="true" />
-        </button>
+        </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="image-dialog-overlay" />
+        <Dialog.Overlay className="fixed inset-0 z-60 bg-black/60" />
         <Dialog.Content
-          className="image-dialog"
+          className="fixed inset-4 z-[61] overflow-y-auto rounded-3xl bg-background p-[clamp(1rem,3vw,2rem)] text-foreground motion-reduce:[&_*]:scroll-auto"
           onCloseAutoFocus={(event) => {
             if (!active) event.preventDefault();
           }}
         >
-          <div className="image-dialog-inner">
-            <div className="image-dialog-header">
+          <div className="mx-auto max-w-[40rem]">
+            <div className="mb-6 flex items-center justify-between gap-2 max-[30rem]:grid max-[30rem]:grid-cols-[auto_1fr] max-[30rem]:[&_h2]:text-end">
               <Dialog.Title>Content language</Dialog.Title>
               <Dialog.Close asChild>
-                <button type="button" className="image-button">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
+                >
                   Close languages
-                </button>
+                </Button>
               </Dialog.Close>
             </div>
-            <Dialog.Description className="image-eyebrow">
+            <Dialog.Description className="mb-1 text-[0.8rem] text-muted-foreground">
               Choose a language for images and their Bible passages.
             </Dialog.Description>
-            <div className="image-toolbar">
+            <div className="mb-6 flex items-center gap-2 rounded-[2rem] bg-muted p-2">
               <input
+                className="min-w-0 flex-1 rounded-[2rem] bg-transparent px-3 py-2 outline-offset-3 focus-visible:outline-2 focus-visible:outline-foreground"
                 type="search"
                 aria-label="Search languages"
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
               />
             </div>
-            <div className="image-language-options">
+            <div className="mt-4 flex flex-col gap-2">
               {languages.map(({ tag, name }) => (
-                <button
+                <Button
                   type="button"
-                  className="image-button"
+                  variant="outline"
+                  className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50 justify-between"
                   key={tag}
                   aria-pressed={language === tag}
                   onClick={() => {
@@ -117,10 +125,12 @@ export function ImageLanguagePicker({
                 >
                   {name}
                   {language === tag ? <span aria-hidden="true">✓</span> : null}
-                </button>
+                </Button>
               ))}
             </div>
-            {!languages.length ? <p className="image-status">No languages found.</p> : null}
+            {!languages.length ? (
+              <p className="py-4 text-muted-foreground">No languages found.</p>
+            ) : null}
           </div>
         </Dialog.Content>
       </Dialog.Portal>

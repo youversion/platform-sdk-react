@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import type { VerseImage } from '@youversion/platform-react-ui';
 import { imageError } from './image-library-api';
@@ -32,32 +33,44 @@ export function ImageShare({ image }: { image: VerseImage }) {
     }
   }
   return (
-    <div className="image-share">
+    <div className="image-share max-[30rem]:col-span-full">
       {supportsSharing ? (
-        <button
+        <Button
           type="button"
-          className="image-button"
+          variant="outline"
+          className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
           disabled={busy}
           onClick={() => void share()}
           aria-label="Share image"
         >
           Share
-        </button>
+        </Button>
       ) : null}
       {!supportsSharing || fallback ? (
-        <div className="image-actions">
-          <a className="image-button" href={image.image_url} target="_blank" rel="noreferrer">
-            Open image link
-          </a>
+        <div className="my-4 flex flex-wrap items-center gap-3 max-[30rem]:in-[[role=dialog]]:my-0">
+          <Button
+            asChild
+            variant="outline"
+            className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
+          >
+            <a href={image.image_url} target="_blank" rel="noreferrer">
+              Open image link
+            </a>
+          </Button>
           {navigator.clipboard ? (
-            <button type="button" className="image-button" onClick={() => void copy()}>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
+              onClick={() => void copy()}
+            >
               {copied ? 'Copied' : 'Copy image link'}
-            </button>
+            </Button>
           ) : null}
         </div>
       ) : null}
       {error ? (
-        <p role="alert" className="image-status">
+        <p role="alert" className="py-4 text-muted-foreground">
           {error}
         </p>
       ) : null}

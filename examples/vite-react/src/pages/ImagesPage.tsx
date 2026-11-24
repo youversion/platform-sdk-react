@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { clampSearchText, type VerseImage } from '@youversion/platform-react-ui';
 import {
@@ -41,11 +42,13 @@ export function ImagesPage({
     setQuery(value);
   }
   return (
-    <div className="image-library">
-      <header>
+    <div className="image-library mx-auto max-w-[68rem] p-[clamp(1.25rem,4vw,3rem)] motion-reduce:[&_*]:scroll-auto">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="image-eyebrow">Content library</p>
-          <h1>Verse images</h1>
+          <p className="mb-1 text-[0.8rem] text-muted-foreground">Content library</p>
+          <h1 className="text-[clamp(1.75rem,4vw,2.5rem)] font-bold tracking-[-0.035em]">
+            Verse images
+          </h1>
         </div>
         <ImageLanguagePicker
           language={language}
@@ -56,8 +59,13 @@ export function ImagesPage({
           }}
         />
       </header>
-      <form role="search" className="image-toolbar" onSubmit={submit}>
+      <form
+        role="search"
+        className="mb-6 flex items-center gap-2 rounded-[2rem] bg-muted p-2"
+        onSubmit={submit}
+      >
         <input
+          className="min-w-0 flex-1 rounded-[2rem] bg-transparent px-3 py-2 outline-offset-3 focus-visible:outline-2 focus-visible:outline-foreground"
           type="search"
           aria-label="Search images"
           placeholder="Search by verse or text"
@@ -65,8 +73,9 @@ export function ImagesPage({
           onChange={(event) => setDraft(event.target.value)}
         />
         {draft || query ? (
-          <button
-            className="image-button"
+          <Button
+            variant="outline"
+            className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
             type="button"
             aria-label="Clear search"
             onClick={() => {
@@ -77,14 +86,17 @@ export function ImagesPage({
             }}
           >
             Clear
-          </button>
+          </Button>
         ) : null}
-        <button className="image-button image-primary" type="submit">
+        <Button
+          className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
+          type="submit"
+        >
           Search
-        </button>
+        </Button>
       </form>
       {validation ? (
-        <p role="alert" className="image-status">
+        <p role="alert" className="py-4 text-muted-foreground">
           {validation}
         </p>
       ) : null}
@@ -178,27 +190,31 @@ function ImageResults({
       ) : null}
       <div hidden={imageId !== null}>
         {error ? (
-          <div className="image-error">
+          <div className="my-4 border-s-[3px] border-destructive ps-4">
             <p role="alert">{error}</p>
-            <button
+            <Button
               type="button"
-              className="image-button"
+              variant="outline"
+              className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
               disabled={loading}
               onClick={() => void load()}
             >
               Retry
-            </button>
+            </Button>
           </div>
         ) : null}
-        <ul className="image-grid" aria-label="Verse images">
+        <ul
+          className="image-grid grid list-none grid-cols-2 gap-x-4 gap-y-6 p-0 md:gap-7 md:grid-cols-3"
+          aria-label="Verse images"
+        >
           {images.map((image) => (
-            <li key={image.id}>
+            <li className="relative min-w-0" key={image.id}>
               <ImageArt image={image} size="thumb" />
-              <span className="image-reference" dir="auto">
+              <span className="mt-[0.65rem] block text-[0.85rem] font-semibold" dir="auto">
                 {image.passage_id}
               </span>
               <a
-                className="image-open"
+                className="image-open absolute inset-0 cursor-pointer rounded-[1.125rem] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground"
                 href={formatHash({ destination: 'content', imageId: image.id })}
                 aria-label={`Open ${image.passage_id}`}
                 onClick={(event) => {
@@ -222,25 +238,26 @@ function ImageResults({
           ))}
         </ul>
         {loading ? (
-          <p className="image-status" role="status">
+          <p className="py-4 text-muted-foreground" role="status">
             Loading images…
           </p>
         ) : null}
         {!loading && !error && images.length === 0 ? (
-          <p role="status" aria-label="Empty image results" className="image-status">
+          <p role="status" aria-label="Empty image results" className="py-4 text-muted-foreground">
             No images found{query ? ` for “${query}”` : ''}.
           </p>
         ) : null}
         {hasMore && !error ? (
-          <div className="image-actions">
-            <button
-              className="image-button"
+          <div className="my-4 flex flex-wrap items-center gap-3">
+            <Button
+              variant="outline"
+              className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
               disabled={loading}
               type="button"
               onClick={() => void load()}
             >
               Load more
-            </button>
+            </Button>
           </div>
         ) : null}
       </div>
@@ -302,22 +319,28 @@ function RoutedImageDetail({
     );
   return (
     <section>
-      <button type="button" className="image-button" onClick={onBack}>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
+        onClick={onBack}
+      >
         Back to images
-      </button>
+      </Button>
       {error ? (
-        <div className="image-error">
+        <div className="my-4 border-s-[3px] border-destructive ps-4">
           <p role="alert">{error}</p>
-          <button
+          <Button
             type="button"
-            className="image-button"
+            variant="outline"
+            className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
             onClick={() => setRetry((value) => value + 1)}
           >
             Retry image details
-          </button>
+          </Button>
         </div>
       ) : (
-        <p role="status" className="image-status">
+        <p role="status" className="py-4 text-muted-foreground">
           Loading image details…
         </p>
       )}

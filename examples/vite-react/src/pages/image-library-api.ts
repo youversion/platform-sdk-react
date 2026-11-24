@@ -24,6 +24,7 @@ export function createImageLibraryClients() {
 }
 
 export type ImageLibraryClients = ReturnType<typeof createImageLibraryClients>;
+export type ImageRendition = 'thumb' | 'card' | 'full';
 export type ReadImagePassage = (passageId: string, versionId: number) => void;
 
 export function imageError(error: Error): string {
@@ -32,7 +33,7 @@ export function imageError(error: Error): string {
   return status === undefined ? message : `HTTP ${status}: ${message}`;
 }
 
-export function imageUrl(source: string, size: 'thumb' | 'card' | 'full'): string {
+export function imageUrl(source: string, size: ImageRendition): string {
   try {
     const url = new URL(source);
     url.searchParams.set('size', size);

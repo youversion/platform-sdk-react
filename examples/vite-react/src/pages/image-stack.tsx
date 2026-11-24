@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import {
   useLayoutEffect,
   useRef,
@@ -81,7 +82,7 @@ export function ImageStack({
   }
   return (
     <>
-      <div className="image-stack">
+      <div className="image-stack relative isolate mx-auto aspect-[0.85] w-full max-w-[30rem] touch-pan-y overflow-clip p-7">
         {cards.map((image, imageIndex) => {
           const depth =
             imageIndex < images.length ? (imageIndex - index + images.length) % images.length : 3;
@@ -105,7 +106,7 @@ export function ImageStack({
           return (
             <div
               key={image.id}
-              className={`image-stack-card ${isSelected ? 'image-stack-selected' : 'image-stack-back'}${isFlying ? ' image-stack-flight' : ''}`}
+              className={`image-stack-card absolute inset-7 rounded-[1.125rem] shadow-[0_0.6rem_1.5rem_#0002] ${isSelected ? 'image-stack-selected' : 'image-stack-back pointer-events-none'}${isFlying ? ' image-stack-flight' : ''}`}
               style={style}
               aria-hidden={!isSelected || undefined}
               onAnimationEnd={isFlying ? () => setFlight(null) : undefined}
@@ -115,7 +116,7 @@ export function ImageStack({
                 <button
                   ref={viewerButtonRef}
                   type="button"
-                  className="image-open"
+                  className="image-open z-1 absolute inset-0 cursor-pointer rounded-[1.125rem] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground"
                   aria-label="View full-screen image"
                   onPointerDown={(event) => {
                     if (!event.isPrimary || event.button !== 0) return;
@@ -158,19 +159,20 @@ export function ImageStack({
           );
         })}
       </div>
-      <p className="image-position" role="status">
+      <p className="text-center text-[0.8rem] text-muted-foreground" role="status">
         {index + 1} of {images.length}
       </p>
       {images.length > 1 ? (
-        <div className="image-actions" style={{ justifyContent: 'center' }}>
-          <button
+        <div className="my-4 flex flex-wrap items-center justify-center gap-3">
+          <Button
             type="button"
-            className="image-button"
+            variant="outline"
+            className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
             aria-disabled={flight !== null}
             onClick={() => shuffle()}
           >
             Next image
-          </button>
+          </Button>
         </div>
       ) : null}
     </>
