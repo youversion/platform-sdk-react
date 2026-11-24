@@ -1275,6 +1275,51 @@ it('does not restore the verse menu after an outside click if the permission gra
   }
 });
 
+it.each([
+  { action: 'Copy', failure: 'synchronous throw' },
+  { action: 'Share', failure: 'synchronous throw' },
+  { action: 'Copy', failure: 'rejected promise' },
+  { action: 'Share', failure: 'rejected promise' },
+])(
+  'clears selection and dismisses $action after a host callback $failure',
+  async ({ action, failure }) => {
+    const callbackError = new Error('Host callback failed');
+    const reportedErrors: unknown[] = [];
+    const onError = (event: ErrorEvent) => {
+      if (event.error !== callbackError) return;
+      reportedErrors.push(event.error);
+      // Observe the deliberate error without letting it abort the state assertions.
+      event.preventDefault();
+    };
+    window.addEventListener('error', onError);
+    onTestFinished(() => window.removeEventListener('error', onError));
+    const callback = vi.fn<(data: BibleReaderShareData) => void | Promise<void>>(() => {
+      if (failure === 'synchronous throw') throw callbackError;
+      return Promise.reject(callbackError);
+    });
+    const onVerseSelect = verseSelectSpy();
+    const { container } = renderReader({
+      highlights: [],
+      onVerseSelect,
+      onCopy: action === 'Copy' ? callback : undefined,
+      onShare: action === 'Share' ? callback : undefined,
+    });
+    selectVerse(container, 1);
+    expect(getVerseEl(container, 1)).toHaveClass('yv-v-selected');
+    const button = await screen.findByRole('button', { name: new RegExp(`^${action}$`, 'i') });
+    onVerseSelect.mockClear();
+
+    fireEvent.click(button);
+    expect(callback).toHaveBeenCalledTimes(1);
+    await Promise.resolve();
+
+    expect.soft(reportedErrors).toEqual([]);
+    expect.soft(onVerseSelect).toHaveBeenLastCalledWith(selection([]));
+    expect.soft(getVerseEl(container, 1)).not.toHaveClass('yv-v-selected');
+    expect.soft(screen.queryByRole('button', { name: new RegExp(`^${action}$`, 'i') })).toBeNull();
+  },
+);
+
 it('selects and anchors iframe verses and resets highlight fills and label colors', async ({
   onTestFinished,
 }) => {

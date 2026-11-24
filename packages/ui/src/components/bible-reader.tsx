@@ -837,6 +837,17 @@ function Content() {
     };
   }
 
+  async function runHostVerseAction(
+    action: (data: BibleReaderShareData) => void | Promise<void>,
+    data: BibleReaderShareData,
+  ): Promise<void> {
+    try {
+      await action(data);
+    } catch {
+      // Host failure must not interrupt verse-selection and popover cleanup.
+    }
+  }
+
   async function copySelectionText(text: string, attempt: number) {
     const copied = await copyTextToClipboard(text);
     if (actionAttemptRef.current !== attempt) return;
@@ -848,11 +859,7 @@ function Content() {
     setClipboardFailed(false);
     const data = buildSelectionShareData(selectedVerses);
     if (onCopy) {
-      if (data) {
-        void Promise.resolve(onCopy(data)).catch(() => {
-          // Host overrides own their error feedback.
-        });
-      }
+      if (data) void runHostVerseAction(onCopy, data);
       closeAndClearSelection();
       return;
     }
@@ -865,11 +872,7 @@ function Content() {
     setClipboardFailed(false);
     const data = buildSelectionShareData(selectedVerses);
     if (onShare) {
-      if (data) {
-        void Promise.resolve(onShare(data)).catch(() => {
-          // Host rejected or cancelled — mirror the silent navigator.share dismiss.
-        });
-      }
+      if (data) void runHostVerseAction(onShare, data);
       closeAndClearSelection();
       return;
     }
