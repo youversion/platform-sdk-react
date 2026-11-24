@@ -88,10 +88,19 @@ export const NoteSchema = object({
   updated_dt: z.optional(z.nullable(timestamp)),
 });
 
-export const NotesPageSchema = object({
-  data: z.array(NoteSchema),
-  next_page_token: z.optional(z.nullable(z.string())),
-});
+export const NotesPageSchema = z.pipe(
+  object({
+    data: z.array(z.unknown()),
+    next_page_token: z.optional(z.nullable(z.string())),
+  }),
+  z.transform((page) => ({
+    ...page,
+    data: page.data.flatMap((item) => {
+      const parsed = NoteSchema.safeParse(item);
+      return parsed.success ? [parsed.data] : [];
+    }),
+  })),
+);
 
 /** Scripture passage attached to a note, using SDK version IDs. */
 export type NotePassage = z.infer<typeof NotePassageInputSchema>;

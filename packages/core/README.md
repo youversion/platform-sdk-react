@@ -97,6 +97,9 @@ create. For updates, omit fields to keep their values or pass `null` to clear
 `NotesClient` checks the app's Bible version filter when you supply `version_id`
 to a list query or a passage to create or update. A malformed passage in an API
 response is omitted without losing the note's text or the rest of the page.
+List responses skip notes with other malformed fields while preserving valid notes
+and the continuation token, even if no notes remain on that page. Invalid list
+envelopes and invalid single-note responses still reject.
 If your app caches highlights, refetch the affected chapter's highlights after
 creating, updating, or deleting a colored note attached to a passage.
 

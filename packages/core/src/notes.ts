@@ -80,6 +80,7 @@ export class NotesClient {
 
   /**
    * Lists one page of notes with `read_notes` access. An empty page can still have a continuation token.
+   * Malformed notes are skipped without discarding the page's continuation token.
    * @param options - Passage and version filters, page size, and optional cursor.
    * @param lat - Long access token. Defaults to the signed-in session.
    * @returns The notes and the next page token, or `null` when the list ends.

@@ -110,7 +110,7 @@ it('creates, gets, partially updates, and deletes a note on the regular Notes ro
     }),
     http.patch(resourceUrl, async ({ request }) => {
       expect(request.headers.get('authorization')).toBe('Bearer writer');
-      expect(await request.json()).toEqual({ color: note.color });
+      expect(await request.json()).toEqual({ color: note.color, passage: wireNote.passage });
       stored = wireNote;
       return HttpResponse.json(stored);
     }),
@@ -125,7 +125,9 @@ it('creates, gets, partially updates, and deletes a note on the regular Notes ro
   expect(created).toEqual({ ...note, color: create.color });
   const read = await client.getNote(created.id, 'reader');
   expect(read).toEqual(created);
-  expect(await client.updateNote(read.id, { color: read.color }, 'writer')).toEqual(note);
+  expect(
+    await client.updateNote(read.id, { color: read.color, passage: read.passage }, 'writer'),
+  ).toEqual(note);
   server.use(
     http.patch(resourceUrl, async ({ request }) => {
       expect(request.headers.get('authorization')).toBe('Bearer writer');
@@ -139,6 +141,25 @@ it('creates, gets, partially updates, and deletes a note on the regular Notes ro
   expect(await client.getNote(updated.id, 'reader')).toEqual(updated);
   expect(await client.deleteNote(updated.id, 'writer')).toBeUndefined();
   await expect(client.getNote(updated.id, 'reader').catch(getHttpStatus)).resolves.toBe(404);
+});
+
+it('propagates API authentication and permission failures for every Notes operation', async () => {
+  const client = createClient();
+  const create = { request_id: requestId, content: note.content, status: note.status };
+  for (const status of [401, 403]) {
+    server.use(
+      http.all(`${collectionUrl}*`, () => HttpResponse.json({ message: 'Denied' }, { status })),
+    );
+    for (const operation of [
+      () => client.getNotes({}, 'token'),
+      () => client.getNote(noteId, 'token'),
+      () => client.createNote(create, 'token'),
+      () => client.updateNote(noteId, { title: null }, 'token'),
+      () => client.deleteNote(noteId, 'token'),
+    ]) {
+      await expect(operation().catch(getHttpStatus)).resolves.toBe(status);
+    }
+  }
 });
 
 it('rejects invalid writes, pagination, and missing auth before sending a request', async () => {
@@ -324,4 +345,52 @@ it('preserves notes and pagination when a returned passage is malformed', async 
     id: 'note-0',
     passage: undefined,
   });
+});
+
+it('skips malformed notes without losing valid neighbors or continuation pages', async () => {
+  const client = createClient();
+  const invalid = [
+    null,
+    { ...wireNote, id: 123 },
+    { ...wireNote, content: undefined },
+    { ...wireNote, status: 'draft' },
+    { ...wireNote, created_dt: 'not-a-date' },
+  ];
+  const filters = { passage_id: passageId, page_size: 10 };
+  server.use(
+    http.get(collectionUrl, ({ request }) => {
+      const query = new URL(request.url).searchParams;
+      expect(query.get('passage_id')).toBe(passageId);
+      expect(query.get('page_size')).toBe('10');
+      switch (query.get('page_token')) {
+        case null:
+          return HttpResponse.json({
+            data: [wireNote, ...invalid, { ...wireNote, id: 'second' }],
+            next_page_token: 'all-invalid',
+          });
+        case 'all-invalid':
+          return HttpResponse.json({ data: invalid, next_page_token: 'last' });
+        case 'last':
+          return HttpResponse.json({ data: [{ ...wireNote, id: 'last' }] });
+        default:
+          return new HttpResponse(null, { status: 400 });
+      }
+    }),
+  );
+
+  const first = await client.getNotes(filters, 'reader');
+  expect(first).toEqual({
+    data: [note, { ...note, id: 'second' }],
+    next_page_token: 'all-invalid',
+  });
+  const empty = await client.getNotes({ ...filters, page_token: first.next_page_token }, 'reader');
+  expect(empty).toEqual({ data: [], next_page_token: 'last' });
+  expect(
+    await client.getNotes({ ...filters, page_token: empty.next_page_token }, 'reader'),
+  ).toEqual({ data: [{ ...note, id: 'last' }], next_page_token: null });
+
+  for (const envelope of [{}, { data: null }, { data: {} }, { data: [], next_page_token: 123 }]) {
+    server.use(http.get(collectionUrl, () => HttpResponse.json(envelope)));
+    await expect(client.getNotes({}, 'reader')).rejects.toThrow();
+  }
 });
