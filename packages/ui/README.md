@@ -70,6 +70,8 @@ Language tags are BCP 47 (`en`, `es`, `zh-Hans`). Version ids are YouVersion Bib
 
 Import `usePassage`, `useVersions`, and `YouVersionProvider` from this package using the same module format (ES modules or CommonJS). Call the hooks under the same provider as your UI components. You do not need to install the hooks package directly.
 
+If you also install `@youversion/platform-react-hooks` directly, pin it to the exact UI package version and avoid duplicate installations. Separate copies or module formats can create separate React contexts and cause a "context not found" error.
+
 ```tsx
 import { useVersions } from '@youversion/platform-react-ui';
 

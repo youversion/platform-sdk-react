@@ -67,7 +67,6 @@ export default [
     name: 'ui / usePassage only',
     path: 'packages/ui/dist/index.js',
     import: '{ usePassage }',
-    // Measured Brotli size 12.56 kB; allow ~10% headroom per CONTRIBUTING.
     limit: '13.8 KB',
     ignore: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query', 'jsdom'],
   },

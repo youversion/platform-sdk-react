@@ -22,7 +22,13 @@ export interface UseVersionsOptions extends UseApiDataOptions {
 
 export type UseVersionsResult = UseNamedQueryResult<'versions', Collection<BibleVersion>>;
 
-/** Lists Bible versions by language range, with optional license, field, and paging filters. */
+/**
+ * Lists Bible versions by language range, with optional license, field, and paging filters.
+ * @param languageRanges - Language range or ranges to match; defaults to 'en'.
+ * @param licenseId - Optional license ID to filter by.
+ * @param options - Query options and optional field, paging, and availability filters.
+ * @returns The versions collection, loading state, error, and refetch function.
+ */
 export function useVersions(
   languageRanges: string | string[] = 'en',
   licenseId?: string | number,
