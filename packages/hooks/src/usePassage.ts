@@ -26,6 +26,7 @@ export type UsePassageProps = {
 
 export type UsePassageResult = UseNamedQueryResult<'passage', BiblePassage>;
 
+/** Reads a Scripture passage by passage ID in the given Bible version, in HTML or plain text. */
 export function usePassage({
   versionId,
   usfm,

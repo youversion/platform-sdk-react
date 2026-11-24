@@ -22,6 +22,7 @@ export interface UseVersionsOptions extends UseApiDataOptions {
 
 export type UseVersionsResult = UseNamedQueryResult<'versions', Collection<BibleVersion>>;
 
+/** Lists Bible versions by language range, with optional license, field, and paging filters. */
 export function useVersions(
   languageRanges: string | string[] = 'en',
   licenseId?: string | number,

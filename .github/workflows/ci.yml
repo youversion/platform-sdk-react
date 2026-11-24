@@ -212,6 +212,9 @@ jobs:
       - name: Build packages
         run: pnpm build
 
+      - name: Check packed UI consumer
+        run: node scripts/check-ui-consumer.mjs
+
   bundle-size:
     name: Bundle Size
     runs-on: ubuntu-latest

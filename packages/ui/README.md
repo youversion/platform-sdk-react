@@ -15,7 +15,7 @@ Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 
 **Use other packages instead if you:**
 - ❌ Need low-level API access → Use [@youversion/platform-core](../core/README.md)
-- ❌ Want custom UI → Use [@youversion/platform-react-hooks](../hooks/README.md)
+- ❌ Need data hooks but no SDK components → Use [@youversion/platform-react-hooks](../hooks/README.md)
 
 ## Install
 
@@ -65,6 +65,22 @@ By default the version picker offers Bible versions in every available language.
 ```
 
 Language tags are BCP 47 (`en`, `es`, `zh-Hans`). Version ids are YouVersion Bible version ids. An unusable id is refused everywhere — lists, picker, and `versionId` on reader/card/text/VOTD — and surfaces the existing forbidden error. Core-only hosts can set the same lists on `YouVersionPlatformConfiguration`.
+
+### Data hooks
+
+Import `usePassage` and `useVersions` from this package and call them under the same `YouVersionProvider` as your UI components. You do not need to install the hooks package. If you install both packages directly, pin them to the same exact version so they share one React context.
+
+```tsx
+import { useVersions } from '@youversion/platform-react-ui';
+
+function VersionList() {
+  const { versions, loading, error } = useVersions('en');
+  if (loading) return <p>Loading Bible versions…</p>;
+  if (error) return <p>Bible versions are unavailable.</p>;
+
+  return <ul>{versions?.data.map((version) => <li key={version.id}>{version.title}</li>)}</ul>;
+}
+```
 
 ## Styling
 

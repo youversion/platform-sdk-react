@@ -91,7 +91,13 @@ export {
 
 export {
   YouVersionProvider as BaseYouVersionProvider,
+  usePassage,
+  useVersions,
   useYVAuth,
+  type UsePassageProps,
+  type UsePassageResult,
+  type UseVersionsOptions,
+  type UseVersionsResult,
   type UseYVAuthReturn,
 } from '@youversion/platform-react-hooks';
 
