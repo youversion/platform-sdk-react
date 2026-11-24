@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Dialog } from 'radix-ui';
+import { ChevronDown } from 'lucide-react';
 
 const CONTENT_LANGUAGES = [
   'en',
@@ -69,7 +70,8 @@ export function ImageLanguagePicker({
           className="image-button"
           aria-label={`Content language: ${displayNames.of(language) ?? language}`}
         >
-          {displayNames.of(language) ?? language} <span aria-hidden="true">⌄</span>
+          {displayNames.of(language) ?? language}
+          <ChevronDown size={16} className="shrink-0" aria-hidden="true" />
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>

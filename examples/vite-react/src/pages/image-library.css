@@ -38,9 +38,13 @@
   min-inline-size: 0;
   flex: 1;
   background: transparent;
+  border-radius: 2rem;
   padding-inline: 0.75rem;
   padding-block: 0.5rem;
   outline-offset: 3px;
+}
+.image-toolbar input:focus-visible {
+  outline: 2px solid var(--foreground);
 }
 .image-button {
   display: inline-flex;
