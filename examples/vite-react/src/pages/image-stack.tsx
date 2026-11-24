@@ -38,6 +38,7 @@ export function ImageStack({
     null,
   );
   const suppressClick = useRef(false);
+  // A shorter response can replace a card while it owns a gesture or an outgoing flight.
   useLayoutEffect(() => {
     if (gesture.current) suppressClick.current = true;
     gesture.current = null;
@@ -49,6 +50,7 @@ export function ImageStack({
     images.findIndex((image) => image.id === selected.id),
   );
 
+  // Retain the loaded outgoing artwork until its animation finishes, even if a retry removes it.
   const cards =
     flight && !images.some((image) => image.id === flight.image.id)
       ? [...images, flight.image]

@@ -27,6 +27,29 @@ The top bar has four destinations: Bible, Content, Examples, and Profile. Screen
 
 Navigation presets and an image's Read in Bible action open that passage in Bible. The image action uses the Bible version resolved for its content language and asks for the full chapter.
 
+## Content implementation notes
+
+The image library follows [Swift PR #302](https://github.com/youversion/platform-sdk-swift/pull/302).
+The entry point is `src/pages/ImagesPage.tsx`, with `image-*` helpers and
+`use-image-results.ts` beside it. SDK packages provide the API clients and scripture rendering.
+
+- Content language defaults to English, independently of the app's UI locale.
+  Browse and passage artwork use language ranges; text search requires a resolved Bible version.
+- Bible resolution respects integrator version restrictions. It prefers usable English version
+  3034, then an exact language match, then the lowest-ID available candidate. Passage previews
+  also require the version to contain the passage's book.
+- Chinese fallbacks are `zh-CN → zh` and `zh-TW` / `zh-HK → zh-Hant → zh`.
+  Missing versions produce a recoverable error without preventing artwork browsing.
+- Search-hit metadata can resolve out of order or fail partially. Retain successful hits in
+  server order and retry missing metadata before advancing. An empty search cursor is valid;
+  only `null` ends search pagination.
+- Requests reject stale results after query, language, route or active-screen changes.
+  The existing client methods do not accept a per-call AbortSignal.
+- Artwork taps open the viewer; horizontal drags and Next image shuffle the stack.
+  Background cards are decorative, and reduced motion skips flight animations.
+- Sharing sends the selected image URL rather than downloading image bytes. Native share
+  failures expose a link fallback; cancellation stays silent.
+
 ## Image library browser checks
 
 From the repository root:
@@ -38,3 +61,9 @@ pnpm --filter vite-react test:e2e
 ```
 
 The Content library uses the shared hash routes and reader-command adapter. Its Read in Bible callback carries both passage ID and resolved Bible version ID.
+
+The workflows in `e2e/images.spec.js` exercise the running app with controlled API and image
+responses. They cover browsing/search, recovery and ordering, gestures, focus, and reader/history
+integration. Native OS share-sheet presentation, image-feature Firefox/WebKit behavior and
+continuous real-device animation smoothness need manual validation. Live API availability is
+outside the mocked suite.
