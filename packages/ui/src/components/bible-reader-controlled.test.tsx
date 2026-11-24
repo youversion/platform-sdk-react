@@ -39,6 +39,7 @@ import type { HighlightedVerses } from '@/lib/highlight-colors';
 import { HIGHLIGHT_COLORS } from './verse-action-popover';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
+import en from '@/i18n/locales/en.json';
 
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
 import { peekPendingHighlights } from '@/lib/pending-highlight';
@@ -1467,4 +1468,248 @@ it('uses the iframe motion preference and viewport for scrolling and focus clean
 
   expect(renderer).not.toHaveAttribute('data-yv-verse-focus');
   expect(verse).not.toHaveClass('yv-v-focused');
+});
+
+it('clears failed clipboard feedback on navigation after closing the verse menu', async ({
+  onTestFinished,
+}) => {
+  onTestFinished(() => {
+    vi.unstubAllGlobals();
+  });
+  const writes: string[] = [];
+  const writeText = (text: string): Promise<void> => {
+    writes.push(text);
+    return Promise.reject(new DOMException('Clipboard permission denied', 'NotAllowedError'));
+  };
+  vi.stubGlobal('navigator', {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    clipboard: { writeText },
+    share: undefined,
+  });
+  const onVerseSelect = verseSelectSpy();
+  const { container, rerender } = renderReader({ highlights: [], onVerseSelect, chapter: '1' });
+
+  for (const action of ['Copy', 'Share']) {
+    selectVerse(container, 1);
+    expect(getVerseEl(container, 1)).toHaveClass('yv-v-selected');
+    const actionButton = await screen.findByRole('button', {
+      name: new RegExp(`^${action}$`, 'i'),
+    });
+    const previousWrites = writes.length;
+    onVerseSelect.mockClear();
+
+    fireEvent.click(actionButton);
+
+    expect(writes).toHaveLength(previousWrites + 1);
+    expect(writes.at(-1)).toBe('“In the beginning was the Word.”\n\nJohn 1:1 NIV');
+    expect(lastSelection(onVerseSelect)).toEqual(selection([]));
+    expect(getVerseEl(container, 1)).not.toHaveClass('yv-v-selected');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(en.unableToShare));
+    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
+    expect(screen.getByRole('status')).toBeVisible();
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /^copy$/i })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^share$/i })).toBeNull();
+    });
+
+    rerender(wrapReader({ highlights: [], onVerseSelect, chapter: '2' }));
+    await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
+    rerender(wrapReader({ highlights: [], onVerseSelect, chapter: '1' }));
+  }
+});
+
+it.each(['navigation', 'newer success', 'newer failure'])(
+  'ignores an old clipboard result after %s',
+  async (scenario) => {
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+    });
+    const writes: { resolve: () => void; reject: (error: Error) => void }[] = [];
+    const writeText = () =>
+      new Promise<void>((resolve, reject) => {
+        writes.push({ resolve, reject });
+      });
+    vi.stubGlobal('navigator', {
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      clipboard: { writeText },
+      share: undefined,
+    });
+    const { container, rerender } = renderReader({ highlights: [], chapter: '1' });
+    selectVerse(container, 1);
+    fireEvent.click(await screen.findByRole('button', { name: /^copy$/i }));
+    expect(writes).toHaveLength(1);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+
+    if (scenario === 'navigation') {
+      rerender(wrapReader({ highlights: [], chapter: '2' }));
+    } else {
+      selectVerse(container, 1);
+      fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
+      expect(writes).toHaveLength(2);
+      await act(async () => {
+        if (scenario === 'newer failure') writes[1]!.reject(new Error('Permission denied'));
+        else writes[1]!.resolve();
+      });
+    }
+    if (scenario === 'newer failure') {
+      expect(screen.getByRole('status')).toHaveTextContent(en.unableToShare);
+    } else {
+      expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    }
+
+    await act(async () => {
+      if (scenario === 'newer failure') writes[0]!.resolve();
+      else writes[0]!.reject(new Error('Permission denied'));
+    });
+    if (scenario === 'newer failure') {
+      expect(screen.getByRole('status')).toHaveTextContent(en.unableToShare);
+    } else {
+      expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    }
+  },
+);
+
+it('keeps native Share cancellation retryable and falls back to copying other failures', async ({
+  onTestFinished,
+}) => {
+  onTestFinished(() => {
+    vi.unstubAllGlobals();
+  });
+  let shareError: DOMException | null = new DOMException('Cancelled', 'AbortError');
+  const share = vi.fn(async () => {
+    if (shareError) throw shareError;
+  });
+  const writes: string[] = [];
+  const writeText = (text: string): Promise<void> => {
+    writes.push(text);
+    return Promise.resolve();
+  };
+  const browser = {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    clipboard: { writeText },
+    share,
+  };
+  vi.stubGlobal('navigator', browser);
+  const { container } = renderReader({ highlights: [] });
+  selectVerse(container, 1);
+  fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
+  await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
+  expect(writes).toHaveLength(0);
+  expect(getVerseEl(container, 1)).toHaveClass('yv-v-selected');
+  expect(screen.getByRole('button', { name: /^share$/i })).toBeVisible();
+  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+
+  shareError = new DOMException('Not permitted', 'NotAllowedError');
+  fireEvent.click(screen.getByRole('button', { name: /^share$/i }));
+  await waitFor(() => expect(writes).toHaveLength(1));
+  expect(writes[0]).toBe('“In the beginning was the Word.”\n\nJohn 1:1 NIV');
+  await waitFor(() => expectVerseMenuAbsent());
+  expect(getVerseEl(container, 1)).not.toHaveClass('yv-v-selected');
+  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+
+  vi.stubGlobal('navigator', { ...browser, clipboard: undefined });
+  selectVerse(container, 1);
+  fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(en.unableToShare));
+  expectVerseMenuAbsent();
+  expect(getVerseEl(container, 1)).not.toHaveClass('yv-v-selected');
+
+  shareError = null;
+  selectVerse(container, 1);
+  fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
+  await waitFor(() => expectVerseMenuAbsent());
+  expect(getVerseEl(container, 1)).not.toHaveClass('yv-v-selected');
+  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  expect(writes).toHaveLength(1);
+});
+it.each([
+  'original selection',
+  'new selection',
+  'reselected same verse',
+  'new passage',
+  'new passage without selection',
+])('native Share completion only clears its original selection: %s', async (scenario) => {
+  onTestFinished(() => {
+    vi.unstubAllGlobals();
+  });
+  let finishShare: () => void = () => {
+    throw new Error('Share promise not initialized');
+  };
+  const pendingShare = new Promise<void>((resolve) => {
+    finishShare = resolve;
+  });
+  const share = vi.fn(() => pendingShare);
+  vi.stubGlobal('navigator', {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    share,
+  });
+  const onVerseSelect = verseSelectSpy();
+  const overrides: HookOverrides = {
+    ...defaultOverrides(),
+    usePassage: ({ usfm }) => ({
+      passage: {
+        ...mockPassage,
+        id: usfm,
+        reference: usfm,
+        content:
+          usfm === 'JHN.2'
+            ? mockPassage.content.replace('In the beginning was the Word.', 'The second chapter.')
+            : mockPassage.content,
+      },
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+  };
+  const reader = (chapter: string) =>
+    wrapReader({ highlights: [], chapter, onVerseSelect }, overrides);
+  const view = render(reader('1'));
+  selectVerse(view.container, 1);
+  fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
+  expect(share).toHaveBeenCalledExactlyOnceWith({
+    text: '“In the beginning was the Word.”\n\nJohn 1:1 NIV',
+  });
+  expect(getVerseEl(view.container, 1)).toHaveClass('yv-v-selected');
+
+  if (scenario === 'new passage' || scenario === 'new passage without selection') {
+    view.rerender(reader('2'));
+    expect(getVerseEl(view.container, 1)).not.toHaveClass('yv-v-selected');
+    if (scenario === 'new passage') {
+      selectVerse(view.container, 2);
+      expect(lastSelection(onVerseSelect)).toMatchObject({ chapter: '2', verses: [2] });
+    }
+  } else if (scenario === 'new selection') {
+    selectVerse(view.container, 1);
+    selectVerse(view.container, 2);
+    expect(lastSelection(onVerseSelect)).toMatchObject({ chapter: '1', verses: [2] });
+  } else if (scenario === 'reselected same verse') {
+    selectVerse(view.container, 1);
+    selectVerse(view.container, 1);
+    expect(lastSelection(onVerseSelect)).toMatchObject({ chapter: '1', verses: [1] });
+  }
+  onVerseSelect.mockClear();
+
+  await act(async () => {
+    finishShare();
+    await pendingShare;
+  });
+
+  if (scenario === 'original selection') {
+    expect(lastSelection(onVerseSelect)).toEqual(selection([]));
+    expect(getVerseEl(view.container, 1)).not.toHaveClass('yv-v-selected');
+    expect(screen.queryByRole('button', { name: /^share$/i })).toBeNull();
+  } else if (scenario === 'new passage without selection') {
+    expect(onVerseSelect).not.toHaveBeenCalled();
+    expect(getVerseEl(view.container, 1)).not.toHaveClass('yv-v-selected');
+    expect(screen.queryByRole('button', { name: /^share$/i })).toBeNull();
+  } else {
+    expect.soft(onVerseSelect).not.toHaveBeenCalled();
+    const selectedVerse = scenario === 'reselected same verse' ? 1 : 2;
+    expect.soft(getVerseEl(view.container, selectedVerse)).toHaveClass('yv-v-selected');
+    expect.soft(screen.queryByRole('button', { name: /^share$/i })).not.toBeNull();
+  }
 });

@@ -43,6 +43,7 @@ export default defineConfig({
     'src/search-unified.ts',
     'src/search-videos.ts',
     'src/highlights.ts',
+    'src/notes.ts',
     'src/images.ts',
     'src/videos.ts',
     'src/organizations.ts',

@@ -53,6 +53,8 @@
     "!dist/search-videos.cjs",
     "!dist/highlights.js",
     "!dist/highlights.cjs",
+    "!dist/notes.js",
+    "!dist/notes.cjs",
     "!dist/images.js",
     "!dist/images.cjs",
     "!dist/videos.js",

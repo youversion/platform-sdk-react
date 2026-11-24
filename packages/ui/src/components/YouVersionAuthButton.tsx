@@ -21,10 +21,11 @@ interface SignInAuthProps {
    * @param error - The error thrown by the sign-in flow.
    */
   onAuthError?: (error: Error) => void;
+  /** OAuth scopes to request, including `read_notes` and `write_notes` for Notes access. */
   scopes?: AuthenticationScopes[];
   /**
    * YouVersion data-exchange permissions to request at sign-in (e.g. `highlights`).
-   * These are distinct from OIDC `scopes` and are sent as `requested_permissions`.
+   * These are distinct from OAuth `scopes` and are sent as `requested_permissions`.
    */
   permissions?: SignInWithYouVersionPermissionValues[];
 }

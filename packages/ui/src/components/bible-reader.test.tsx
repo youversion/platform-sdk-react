@@ -849,7 +849,8 @@ it('uses the host sign-in action instead of starting web authentication', async 
       </YouVersionContext.Provider>,
     );
     await user.click(screen.getByTestId('user-menu-trigger'));
-    await user.click(await screen.findByRole('button', { name: 'Sign in' }));
+    const menu = await screen.findByRole('dialog', { name: i18n.t('signIn') });
+    await user.click(within(menu).getByRole('button', { name: i18n.t('signIn') }));
     expect(onSignInPress).toHaveBeenCalledTimes(1);
     expect(signIn).not.toHaveBeenCalled();
   } finally {
@@ -890,4 +891,41 @@ it('keeps toolbar snapshots on committed settings while a host update is suspend
   expect(screen.getByText('Host settings ready')).toBeVisible();
   await user.click(screen.getByRole('button', { name: 'Settings' }));
   expect(onOpen.mock.lastCall?.[0].fontSize).toBe(16);
+});
+
+it('names the signed-out user menu trigger and supports keyboard sign-in through the host callback', async () => {
+  const user = userEvent.setup();
+  const onSignInPress = vi.fn();
+  render(
+    <TestQueryClientProvider>
+      <YouVersionContext.Provider
+        value={{
+          appKey: 'test',
+          theme: 'light',
+          authEnabled: true,
+          hookOverrides: defaultOverrides(),
+        }}
+      >
+        <YouVersionAuthContext.Provider
+          value={{ userInfo: null, setUserInfo: vi.fn(), isLoading: false, error: null }}
+        >
+          <ReuseShadowBoundary>
+            <BibleReader.Root defaultVersionId={3034} onSignInPress={onSignInPress}>
+              <BibleReader.Toolbar />
+            </BibleReader.Root>
+          </ReuseShadowBoundary>
+        </YouVersionAuthContext.Provider>
+      </YouVersionContext.Provider>
+    </TestQueryClientProvider>,
+  );
+
+  const trigger = screen.getByRole('button', { name: i18n.t('signIn') });
+  trigger.focus();
+  await user.keyboard('{Enter}');
+
+  const menu = await screen.findByRole('dialog', { name: i18n.t('signIn') });
+  const signIn = within(menu).getByRole('button', { name: i18n.t('signIn') });
+  signIn.focus();
+  await user.keyboard('{Enter}');
+  expect(onSignInPress).toHaveBeenCalledTimes(1);
 });

@@ -70,7 +70,7 @@ function UserMenu() {
             </ReuseShadowBoundary>
           </Button>
         ) : (
-          <Button size="sm" variant="secondary">
+          <Button size="sm" variant="secondary" aria-label={t('signIn')}>
             <PersonIcon className="yv:text-foreground" />
           </Button>
         )}
