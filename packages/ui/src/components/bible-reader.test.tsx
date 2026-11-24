@@ -5,12 +5,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState, type ReactElement } from 'react';
+import { startTransition, Suspense, useState, type ReactElement } from 'react';
 import { hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
-import type { BibleBook, BibleVersion } from '@youversion/platform-core';
-import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
-import { HookOverrideProvider } from '@/test/hook-overrides';
+import { YouVersionAPIUsers, type BibleBook, type BibleVersion } from '@youversion/platform-core';
+import {
+  YouVersionAuthContext,
+  YouVersionContext,
+  type HookOverrides,
+} from '@youversion/platform-react-hooks';
+import { HookOverrideProvider, TestQueryClientProvider } from '@/test/hook-overrides';
 import { InterfaceDirectionProvider } from '@/lib/direction';
 import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 import {
@@ -690,4 +694,200 @@ describe('BibleReader version picker language', () => {
 
     expect(requestedLanguages.includes('ko')).toBe(true);
   });
+});
+
+// Existing browser journeys exercise normal resizing and saved preferences. These
+// cases cover initialization boundaries, host control, and batched events they miss.
+it('normalizes an invalid default and rejects saved settings outside reader bounds', async () => {
+  localStorage.clear();
+  const user = userEvent.setup();
+  const onOpen = vi.fn<(snapshot: BibleThemeSettingsSnapshot) => void>();
+  const first = renderWithOverrides(
+    <BibleReader.Root defaultFontSize={50}>
+      <BibleReader.Toolbar onOpenBibleThemeSettings={onOpen} />
+    </BibleReader.Root>,
+  );
+  await user.click(screen.getByRole('button', { name: 'Settings' }));
+  expect(onOpen.mock.calls[0]?.[0].fontSize).toBe(16);
+  expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('16');
+  first.unmount();
+
+  localStorage.setItem('youversion-platform:reader:font-size', '99');
+  localStorage.setItem('youversion-platform:reader:line-spacing', '3');
+  renderWithOverrides(
+    <BibleReader.Root defaultFontSize={18} defaultLineSpacing={1.45}>
+      <BibleReader.Toolbar onOpenBibleThemeSettings={onOpen} />
+    </BibleReader.Root>,
+  );
+  await user.click(screen.getByRole('button', { name: 'Settings' }));
+  expect(onOpen.mock.lastCall?.[0]).toMatchObject({ fontSize: 18, lineSpacing: 1.45 });
+  expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('18');
+  expect(localStorage.getItem('youversion-platform:reader:line-spacing')).toBe('1.45');
+});
+
+it('keeps controlled settings and saved preferences independent during initialization', async () => {
+  localStorage.clear();
+  localStorage.setItem('youversion-platform:reader:font-size', '20');
+  localStorage.setItem('youversion-platform:reader:font-family', INTER_FONT);
+  localStorage.setItem('youversion-platform:reader:line-spacing', '2');
+  const user = userEvent.setup();
+  const onOpen = vi.fn<(snapshot: BibleThemeSettingsSnapshot) => void>();
+  const onFontSizeChange = vi.fn();
+  const onFontFamilyChange = vi.fn();
+  const onChangeLineSpacing = vi.fn();
+  renderWithOverrides(
+    <BibleReader.Root
+      fontSize={14}
+      onFontSizeChange={onFontSizeChange}
+      fontFamily={UNTITLED_SERIF_FONT}
+      onFontFamilyChange={onFontFamilyChange}
+      lineSpacing={1.45}
+      onChangeLineSpacing={onChangeLineSpacing}
+    >
+      <BibleReader.Toolbar onOpenBibleThemeSettings={onOpen} />
+    </BibleReader.Root>,
+  );
+  await user.click(screen.getByRole('button', { name: 'Settings' }));
+  expect(onOpen.mock.lastCall?.[0]).toMatchObject({
+    fontSize: 14,
+    fontFamily: UNTITLED_SERIF_FONT,
+    lineSpacing: 1.45,
+  });
+  expect(onFontSizeChange).not.toHaveBeenCalled();
+  expect(onFontFamilyChange).not.toHaveBeenCalled();
+  expect(onChangeLineSpacing).not.toHaveBeenCalled();
+  expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('20');
+  expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(INTER_FONT);
+  expect(localStorage.getItem('youversion-platform:reader:line-spacing')).toBe('2');
+});
+
+it('prefers defaultLineSpacing while retaining the deprecated lineHeight fallback', async () => {
+  localStorage.clear();
+  const user = userEvent.setup();
+  const onOpen = vi.fn<(snapshot: BibleThemeSettingsSnapshot) => void>();
+  const first = renderWithOverrides(
+    <BibleReader.Root defaultLineSpacing={2} lineHeight={1.45}>
+      <BibleReader.Toolbar onOpenBibleThemeSettings={onOpen} />
+    </BibleReader.Root>,
+  );
+  await user.click(screen.getByRole('button', { name: 'Settings' }));
+  expect(onOpen.mock.lastCall?.[0].lineSpacing).toBe(2);
+  first.unmount();
+  localStorage.clear();
+  renderWithOverrides(
+    <BibleReader.Root lineHeight={1.45}>
+      <BibleReader.Toolbar onOpenBibleThemeSettings={onOpen} />
+    </BibleReader.Root>,
+  );
+  await user.click(screen.getByRole('button', { name: 'Settings' }));
+  expect(onOpen.mock.lastCall?.[0].lineSpacing).toBe(1.45);
+});
+
+it('accumulates rapid font changes and uses the latest host value after a rerender', async () => {
+  localStorage.clear();
+  const user = userEvent.setup();
+  const onFontSizeChange = vi.fn();
+  const tree = (fontSize: number) => (
+    <BibleReader.Root fontSize={fontSize} onFontSizeChange={onFontSizeChange}>
+      <BibleReader.Toolbar />
+    </BibleReader.Root>
+  );
+  const view = renderWithOverrides(tree(14));
+  await user.click(screen.getByRole('button', { name: 'Settings' }));
+  const increase = screen.getByRole('button', { name: 'Increase font size' });
+  act(() => {
+    increase.click();
+    increase.click();
+  });
+  expect(onFontSizeChange.mock.calls).toEqual([[16], [18]]);
+
+  // The host rejects both requests and commits another render at the same value.
+  view.rerender(
+    <HookOverrideProvider overrides={defaultOverrides()}>
+      <ReuseShadowBoundary>{tree(14)}</ReuseShadowBoundary>
+    </HookOverrideProvider>,
+  );
+  await user.click(screen.getByRole('button', { name: 'Increase font size' }));
+  expect(onFontSizeChange).toHaveBeenLastCalledWith(16);
+
+  view.rerender(
+    <HookOverrideProvider overrides={defaultOverrides()}>
+      <ReuseShadowBoundary>{tree(16)}</ReuseShadowBoundary>
+    </HookOverrideProvider>,
+  );
+  await user.click(screen.getByRole('button', { name: 'Increase font size' }));
+  expect(onFontSizeChange).toHaveBeenLastCalledWith(18);
+});
+
+it('uses the host sign-in action instead of starting web authentication', async () => {
+  localStorage.clear();
+  const user = userEvent.setup();
+  const onSignInPress = vi.fn();
+  const signIn = vi.spyOn(YouVersionAPIUsers, 'signIn').mockResolvedValue(undefined);
+  try {
+    render(
+      <YouVersionContext.Provider
+        value={{ appKey: 'test', authEnabled: true, hookOverrides: defaultOverrides() }}
+      >
+        <YouVersionAuthContext.Provider
+          value={{
+            userInfo: null,
+            setUserInfo: vi.fn(),
+            isLoading: false,
+            error: null,
+            redirectUri: 'https://host.example/callback',
+          }}
+        >
+          <TestQueryClientProvider>
+            <ReuseShadowBoundary>
+              <BibleReader.Root onSignInPress={onSignInPress}>
+                <BibleReader.Toolbar />
+              </BibleReader.Root>
+            </ReuseShadowBoundary>
+          </TestQueryClientProvider>
+        </YouVersionAuthContext.Provider>
+      </YouVersionContext.Provider>,
+    );
+    await user.click(screen.getByTestId('user-menu-trigger'));
+    await user.click(await screen.findByRole('button', { name: 'Sign in' }));
+    expect(onSignInPress).toHaveBeenCalledTimes(1);
+    expect(signIn).not.toHaveBeenCalled();
+  } finally {
+    signIn.mockRestore();
+  }
+});
+
+it('keeps toolbar snapshots on committed settings while a host update is suspended', async () => {
+  localStorage.clear();
+  const user = userEvent.setup();
+  const onOpen = vi.fn<(snapshot: BibleThemeSettingsSnapshot) => void>();
+  const pending = new Promise<void>(() => undefined);
+  const requestedSettings: number[] = [];
+  function WaitForHostSettings({ fontSize }: { fontSize: number }) {
+    if (fontSize === 18) {
+      requestedSettings.push(fontSize);
+      throw pending;
+    }
+    return <span>Host settings ready</span>;
+  }
+  function Host() {
+    const [fontSize, setFontSize] = useState(16);
+    return (
+      <>
+        <button onClick={() => startTransition(() => setFontSize(18))}>Load host settings</button>
+        <Suspense fallback={<span>Loading host settings</span>}>
+          <BibleReader.Root fontSize={fontSize} onFontSizeChange={setFontSize}>
+            <BibleReader.Toolbar onOpenBibleThemeSettings={onOpen} />
+            <WaitForHostSettings fontSize={fontSize} />
+          </BibleReader.Root>
+        </Suspense>
+      </>
+    );
+  }
+  renderWithOverrides(<Host />);
+  await user.click(screen.getByRole('button', { name: 'Load host settings' }));
+  expect(requestedSettings).toContain(18);
+  expect(screen.getByText('Host settings ready')).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Settings' }));
+  expect(onOpen.mock.lastCall?.[0].fontSize).toBe(16);
 });

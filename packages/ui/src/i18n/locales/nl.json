@@ -114,11 +114,14 @@
   "backToBibleVersionsAriaLabel": "Terug naar Bijbelvertalingen",
   "noLanguageSearchResults": "Het spijt ons, er zijn geen resultaten voor deze zoekopdracht.",
   "noRegionalLanguagesAvailable": "Geen regionale talen beschikbaar",
-  "recentlyUsedVersionsHeading": "Onlangs gebruikte vertalingen",
+  "recentlyUsedVersionsHeading": "Recente vertalingen",
   "changeLineSpacingAriaLabel": "Regelafstand wijzigen",
   "decreaseFontSizeAriaLabel": "Lettergrootte verkleinen",
   "footnoteAriaLabel": "Voetnoot",
   "increaseFontSizeAriaLabel": "Lettergrootte vergroten",
   "interFontName": "Inter",
-  "untitledSerifFontName": "Untitled Serif"
+  "untitledSerifFontName": "Untitled Serif",
+  "bibleLanguagesHeading": "Bijbeltalen",
+  "languageVersionsHeading": "{{language}} vertalingen",
+  "versionsStatistics": "{{versionsCount}} vertalingen in {{languagesCount}} talen"
 }
