@@ -1323,6 +1323,58 @@ it('clears failed clipboard feedback on navigation after closing the verse menu'
   }
 });
 
+it.each(['navigation', 'newer success', 'newer failure'])(
+  'ignores an old clipboard result after %s',
+  async (scenario) => {
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+    });
+    const writes: { resolve: () => void; reject: (error: Error) => void }[] = [];
+    const writeText = () =>
+      new Promise<void>((resolve, reject) => {
+        writes.push({ resolve, reject });
+      });
+    vi.stubGlobal('navigator', {
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      clipboard: { writeText },
+      share: undefined,
+    });
+    const { container, rerender } = renderReader({ highlights: [], chapter: '1' });
+    selectVerse(container, 1);
+    fireEvent.click(await screen.findByRole('button', { name: /^copy$/i }));
+    expect(writes).toHaveLength(1);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+
+    if (scenario === 'navigation') {
+      rerender(wrapReader({ highlights: [], chapter: '2' }));
+    } else {
+      selectVerse(container, 1);
+      fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
+      expect(writes).toHaveLength(2);
+      await act(async () => {
+        if (scenario === 'newer failure') writes[1]!.reject(new Error('Permission denied'));
+        else writes[1]!.resolve();
+      });
+    }
+    if (scenario === 'newer failure') {
+      expect(screen.getByRole('status')).toHaveTextContent(en.unableToShare);
+    } else {
+      expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    }
+
+    await act(async () => {
+      if (scenario === 'newer failure') writes[0]!.resolve();
+      else writes[0]!.reject(new Error('Permission denied'));
+    });
+    if (scenario === 'newer failure') {
+      expect(screen.getByRole('status')).toHaveTextContent(en.unableToShare);
+    } else {
+      expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    }
+  },
+);
+
 it('keeps native Share cancellation retryable and falls back to copying other failures', async ({
   onTestFinished,
 }) => {

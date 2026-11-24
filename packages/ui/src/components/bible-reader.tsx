@@ -555,6 +555,7 @@ function Content() {
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [clipboardFailed, setClipboardFailed] = useState(false);
+  const actionAttemptRef = useRef(0);
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
   const verseFocusRestoreTargetRef = useRef<Element | null>(null);
   const takeVerseFocusRestoreTarget = useCallback(() => {
@@ -614,6 +615,7 @@ function Content() {
   // Navigating away (book/chapter/version) drops the selection — those verses
   // no longer exist on screen (ADR-007).
   useEffect(() => {
+    actionAttemptRef.current += 1;
     setClipboardFailed(false);
     setSelectedVerses([]);
     setPopoverOpen(false);
@@ -832,12 +834,14 @@ function Content() {
     };
   }
 
-  async function copySelectionText(text: string) {
+  async function copySelectionText(text: string, attempt: number) {
     const copied = await copyTextToClipboard(text);
+    if (actionAttemptRef.current !== attempt) return;
     setClipboardFailed(!copied);
   }
 
   function handleCopy() {
+    const attempt = ++actionAttemptRef.current;
     setClipboardFailed(false);
     const data = buildSelectionShareData(selectedVerses);
     if (onCopy) {
@@ -849,11 +853,12 @@ function Content() {
       closeAndClearSelection();
       return;
     }
-    if (data?.text) void copySelectionText(data.text);
+    if (data?.text) void copySelectionText(data.text, attempt);
     closeAndClearSelection();
   }
 
   function handleShare() {
+    const attempt = ++actionAttemptRef.current;
     setClipboardFailed(false);
     const data = buildSelectionShareData(selectedVerses);
     if (onShare) {
@@ -865,16 +870,17 @@ function Content() {
       closeAndClearSelection();
       return;
     }
-    void shareSelectionText(data?.text ?? '');
+    void shareSelectionText(data?.text ?? '', attempt);
   }
 
-  async function shareSelectionText(text: string) {
+  async function shareSelectionText(text: string, attempt: number) {
     if (text && globalThis.navigator?.share instanceof Function) {
       // Each selection update replaces this array, even when the same verses are reselected.
       const sharedSelection = lastSelectionRef.current;
       try {
         await globalThis.navigator.share({ text });
-        if (lastSelectionRef.current !== sharedSelection) return;
+        if (actionAttemptRef.current !== attempt || lastSelectionRef.current !== sharedSelection)
+          return;
         closeAndClearSelectionRef.current();
         return;
       } catch (error) {
@@ -884,11 +890,12 @@ function Content() {
           error.name === 'AbortError'
         )
           return;
-        if (lastSelectionRef.current !== sharedSelection) return;
+        if (actionAttemptRef.current !== attempt || lastSelectionRef.current !== sharedSelection)
+          return;
       }
     }
     // Unsupported or failed Web Share falls back to clipboard.
-    if (text) void copySelectionText(text);
+    if (text) void copySelectionText(text, attempt);
     closeAndClearSelection();
   }
 
