@@ -130,6 +130,7 @@ const CHECKS = [
       source: `import { ApiClient } from '@youversion/platform-core';\nnew ApiClient({ apiHost: 'https://api.youversion.com' });\n`,
       absent: [
         'Color must be a 6-character hex string without #',
+        'At least one note field is required',
         'App key is required to request a data exchange token.',
         'Invalid state parameter - possible CSRF attack',
       ],
@@ -139,6 +140,11 @@ const CHECKS = [
         label: 'HighlightsClient',
         source: `import { HighlightsClient } from '@youversion/platform-core';\nexport { HighlightsClient };\n`,
         present: ['Color must be a 6-character hex string without #'],
+      },
+      {
+        label: 'NotesClient',
+        source: `import { NotesClient } from '@youversion/platform-core';\nexport { NotesClient };\n`,
+        present: ['At least one note field is required'],
       },
       {
         label: 'DataExchangeClient',
@@ -152,6 +158,22 @@ const CHECKS = [
       },
     ],
     focused: [
+      {
+        label: 'SearchClient without playlist validation',
+        source: `import { SearchClient } from '@youversion/platform-core';
+export { SearchClient };
+`,
+        absent: [
+          'Playlist ID must be a 32-bit integer',
+          'Page size must be an integer from 1 to 99, or "*"',
+        ],
+        control: {
+          label: 'VideosClient',
+          source: `import { VideosClient } from '@youversion/platform-core';
+export { VideosClient };
+`,
+        },
+      },
       {
         label: 'Bible reads only',
         source: `import { BibleClient, getBooks } from '@youversion/platform-core';

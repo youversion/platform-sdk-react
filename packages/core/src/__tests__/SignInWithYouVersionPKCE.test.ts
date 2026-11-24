@@ -72,8 +72,9 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
     const none = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
       'test-app-key',
       new URL('https://example.com/callback'),
-      ['profile'],
+      ['read_notes', 'write_notes'],
     );
+    expect(none.url.searchParams.get('scope')).toBe('read_notes write_notes openid');
     expect(none.url.searchParams.has('requested_permissions')).toBe(false);
     cleanupBrowserMocks();
   });

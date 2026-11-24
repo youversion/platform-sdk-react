@@ -8,6 +8,7 @@ import { INTER_FONT, UNTITLED_SERIF_FONT, type FontFamily } from '../lib/verse-h
 import { BibleThemeSettingsContent } from './bible-reader';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { YvComponentStyles } from '../lib/yv-styles-components';
+import { verifyNativeBrowserKey } from '../test/storybook-dom';
 
 function ConstrainedSettings(): React.ReactNode {
   const [boundary, setBoundary] = useState<HTMLDivElement | null>(null);
@@ -101,6 +102,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+function focusStyle(element: HTMLElement) {
+  const style = getComputedStyle(element);
+  return {
+    boxShadow: style.boxShadow,
+    outline: style.outline,
+  };
+}
+
 export const FontControlsRemainReachableInConstrainedSpace: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -121,35 +130,78 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
     void expect(controls).toHaveLength(5);
     const decreaseFontSizeButton = settings.getByTestId('decrease-font-size');
     void expect(controls[0]).toBe(decreaseFontSizeButton);
+    const selectedFontButton = settings.getByRole('button', { name: `${i18n.t('font')} Inter` });
     const serifButton = settings.getByRole('button', {
       name: `${i18n.t('font')} ${i18n.t('untitledSerifFontName')}`,
     });
     void expect(controls[controls.length - 1]).toBe(serifButton);
     const closeButton = within(dialog).getByRole('button', { name: i18n.t('close') });
     void expect(ownerDocument.activeElement).toBe(closeButton);
-    await userEvent.tab();
-    void expect(settingsRoot.activeElement).toBe(decreaseFontSizeButton);
+    await userEvent.click(settingsScope);
+    const unfocusedStyles = new Map(controls.map((control) => [control, focusStyle(control)]));
+    await userEvent.click(decreaseFontSizeButton);
+    closeButton.focus();
+    const forwardTraversalKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      ? '{Alt>}{Tab}{/Alt}'
+      : '{Tab}';
+    const nativeKeyAvailable = await verifyNativeBrowserKey(forwardTraversalKey, async () => {
+      void expect(settingsRoot.activeElement).toBe(decreaseFontSizeButton);
+      void expect(focusStyle(decreaseFontSizeButton)).not.toEqual(
+        unfocusedStyles.get(decreaseFontSizeButton),
+      );
+      void expect(focusStyle(decreaseFontSizeButton).boxShadow).toContain('inset');
+    });
+    if (!nativeKeyAvailable) {
+      await userEvent.tab();
+      void expect(settingsRoot.activeElement).toBe(decreaseFontSizeButton);
+    }
     await userEvent.keyboard('{Enter}');
-    void expect(canvas.getByTestId('settings-boundary')).toHaveAttribute('data-font-size', '15');
+    void expect(canvas.getByTestId('settings-boundary')).toHaveAttribute('data-font-size', '14');
 
     let focusedControlReceivedTab = false;
-    decreaseFontSizeButton.addEventListener(
-      'keydown',
-      (event) => {
-        if (event.key === 'Tab') focusedControlReceivedTab = true;
-      },
-      { once: true },
-    );
+    const recordFocusedControlTab = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') focusedControlReceivedTab = true;
+    };
+    decreaseFontSizeButton.addEventListener('keydown', recordFocusedControlTab);
     for (const control of controls.slice(1)) {
-      await userEvent.tab();
-      void expect(settingsRoot.activeElement).toBe(control);
+      if (nativeKeyAvailable) {
+        await verifyNativeBrowserKey(forwardTraversalKey, async () => {
+          void expect(settingsRoot.activeElement).toBe(control);
+          void expect(focusStyle(control)).not.toEqual(unfocusedStyles.get(control));
+          await waitFor(async () => {
+            const style = getComputedStyle(control);
+            await expect(style.boxShadow).toContain('inset');
+            await expect(style.boxShadow).toContain('0px 0px 0px 3px');
+            if (control === selectedFontButton) {
+              await expect(style.getPropertyValue('--tw-ring-color').trim()).toBe(
+                style.getPropertyValue('--yv-primary-foreground').trim(),
+              );
+            }
+          });
+        });
+      } else {
+        await userEvent.tab();
+        void expect(settingsRoot.activeElement).toBe(control);
+      }
     }
+    decreaseFontSizeButton.removeEventListener('keydown', recordFocusedControlTab);
     void expect(focusedControlReceivedTab).toBe(true);
     await userEvent.keyboard('{Enter}');
     void expect(canvas.getByTestId('settings-boundary')).toHaveAttribute(
       'data-font-family',
       UNTITLED_SERIF_FONT,
     );
+    if (nativeKeyAvailable) {
+      await waitFor(async () => {
+        await expect(settingsRoot.activeElement).toBe(serifButton);
+        const style = getComputedStyle(serifButton);
+        await expect(style.boxShadow).toContain('inset');
+        await expect(style.boxShadow).toContain('0px 0px 0px 3px');
+        await expect(style.getPropertyValue('--tw-ring-color').trim()).toBe(
+          style.getPropertyValue('--yv-primary-foreground').trim(),
+        );
+      });
+    }
     await userEvent.tab();
     void expect(ownerDocument.activeElement).toBe(closeButton);
     for (const control of [...controls].reverse()) {

@@ -3,8 +3,8 @@ export default [
   {
     name: 'core / full barrel (esm)',
     path: 'packages/core/dist/index.js',
-    // Measured brotlied size 24687 B; set to measured + ~10% per CONTRIBUTING.
-    limit: '27.2 KB',
+    // Measured brotlied size 27410 B; set to measured + ~10% per CONTRIBUTING.
+    limit: '30.2 KB',
     ignore: ['jsdom'],
   },
   {
@@ -62,6 +62,13 @@ export default [
     name: 'ui / full barrel',
     path: 'packages/ui/dist/index.js',
     ignore: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query'],
+  },
+  {
+    name: 'ui / usePassage only',
+    path: 'packages/ui/dist/index.js',
+    import: '{ usePassage }',
+    limit: '13.8 KB',
+    ignore: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query', 'jsdom'],
   },
   {
     name: 'ui / tailwind.css',

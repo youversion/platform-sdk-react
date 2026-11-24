@@ -13,10 +13,11 @@ import {
   vi,
   beforeEach,
   afterEach,
+  onTestFinished,
   type Mock,
   type MockInstance,
 } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import {
   DataExchangeClient,
   YouVersionAPIUsers,
@@ -1273,7 +1274,7 @@ it('does not restore the verse menu after an outside click if the permission gra
   }
 });
 
-it('clears the verse selection and closes the menu when Copy or Share clipboard writes fail', async ({
+it('clears failed clipboard feedback on navigation after closing the verse menu', async ({
   onTestFinished,
 }) => {
   onTestFinished(() => {
@@ -1291,7 +1292,7 @@ it('clears the verse selection and closes the menu when Copy or Share clipboard 
     share: undefined,
   });
   const onVerseSelect = verseSelectSpy();
-  const { container } = renderReader({ highlights: [], onVerseSelect });
+  const { container, rerender } = renderReader({ highlights: [], onVerseSelect, chapter: '1' });
 
   for (const action of ['Copy', 'Share']) {
     selectVerse(container, 1);
@@ -1315,6 +1316,10 @@ it('clears the verse selection and closes the menu when Copy or Share clipboard 
       expect(screen.queryByRole('button', { name: /^copy$/i })).toBeNull();
       expect(screen.queryByRole('button', { name: /^share$/i })).toBeNull();
     });
+
+    rerender(wrapReader({ highlights: [], onVerseSelect, chapter: '2' }));
+    await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
+    rerender(wrapReader({ highlights: [], onVerseSelect, chapter: '1' }));
   }
 });
 
@@ -1371,4 +1376,92 @@ it('keeps native Share cancellation retryable and falls back to copying other fa
   expect(getVerseEl(container, 1)).not.toHaveClass('yv-v-selected');
   expect(screen.getByRole('status')).toBeEmptyDOMElement();
   expect(writes).toHaveLength(1);
+});
+it.each([
+  'original selection',
+  'new selection',
+  'reselected same verse',
+  'new passage',
+  'new passage without selection',
+])('native Share completion only clears its original selection: %s', async (scenario) => {
+  onTestFinished(() => {
+    vi.unstubAllGlobals();
+  });
+  let finishShare: () => void = () => {
+    throw new Error('Share promise not initialized');
+  };
+  const pendingShare = new Promise<void>((resolve) => {
+    finishShare = resolve;
+  });
+  const share = vi.fn(() => pendingShare);
+  vi.stubGlobal('navigator', {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    share,
+  });
+  const onVerseSelect = verseSelectSpy();
+  const overrides: HookOverrides = {
+    ...defaultOverrides(),
+    usePassage: ({ usfm }) => ({
+      passage: {
+        ...mockPassage,
+        id: usfm,
+        reference: usfm,
+        content:
+          usfm === 'JHN.2'
+            ? mockPassage.content.replace('In the beginning was the Word.', 'The second chapter.')
+            : mockPassage.content,
+      },
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+  };
+  const reader = (chapter: string) =>
+    wrapReader({ highlights: [], chapter, onVerseSelect }, overrides);
+  const view = render(reader('1'));
+  selectVerse(view.container, 1);
+  fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
+  expect(share).toHaveBeenCalledExactlyOnceWith({
+    text: '“In the beginning was the Word.”\n\nJohn 1:1 NIV',
+  });
+  expect(getVerseEl(view.container, 1)).toHaveClass('yv-v-selected');
+
+  if (scenario === 'new passage' || scenario === 'new passage without selection') {
+    view.rerender(reader('2'));
+    expect(getVerseEl(view.container, 1)).not.toHaveClass('yv-v-selected');
+    if (scenario === 'new passage') {
+      selectVerse(view.container, 2);
+      expect(lastSelection(onVerseSelect)).toMatchObject({ chapter: '2', verses: [2] });
+    }
+  } else if (scenario === 'new selection') {
+    selectVerse(view.container, 1);
+    selectVerse(view.container, 2);
+    expect(lastSelection(onVerseSelect)).toMatchObject({ chapter: '1', verses: [2] });
+  } else if (scenario === 'reselected same verse') {
+    selectVerse(view.container, 1);
+    selectVerse(view.container, 1);
+    expect(lastSelection(onVerseSelect)).toMatchObject({ chapter: '1', verses: [1] });
+  }
+  onVerseSelect.mockClear();
+
+  await act(async () => {
+    finishShare();
+    await pendingShare;
+  });
+
+  if (scenario === 'original selection') {
+    expect(lastSelection(onVerseSelect)).toEqual(selection([]));
+    expect(getVerseEl(view.container, 1)).not.toHaveClass('yv-v-selected');
+    expect(screen.queryByRole('button', { name: /^share$/i })).toBeNull();
+  } else if (scenario === 'new passage without selection') {
+    expect(onVerseSelect).not.toHaveBeenCalled();
+    expect(getVerseEl(view.container, 1)).not.toHaveClass('yv-v-selected');
+    expect(screen.queryByRole('button', { name: /^share$/i })).toBeNull();
+  } else {
+    expect.soft(onVerseSelect).not.toHaveBeenCalled();
+    const selectedVerse = scenario === 'reselected same verse' ? 1 : 2;
+    expect.soft(getVerseEl(view.container, selectedVerse)).toHaveClass('yv-v-selected');
+    expect.soft(screen.queryByRole('button', { name: /^share$/i })).not.toBeNull();
+  }
 });

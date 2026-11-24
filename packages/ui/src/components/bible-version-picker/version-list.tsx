@@ -3,10 +3,11 @@
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { useInterfaceDirection } from '@/lib/direction';
+import { revealElementWithinScrollContainer } from '@/lib/scroll-reveal';
 import { cn } from '@/lib/utils';
 import { type BibleVersion } from '@youversion/platform-core';
 import { useLanguage, useOrganizations } from '@youversion/platform-react-hooks';
-import { useEffect, useRef, useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type FocusEvent, type ReactElement } from 'react';
 import { ChevronForwardIcon } from '../icons/chevron-forward';
 import { GlobeIcon } from '../icons/globe';
 import { LoaderIcon } from '../icons/loader';
@@ -160,6 +161,10 @@ function LanguageEntry({ name }: { name: string }): ReactElement {
   );
 }
 
+// Publisher line (0.875rem × 1.5) and block padding (1.5rem) total 2.8125rem.
+// Two title lines at 13px × 1.25 plus 2px borders total 34.5px.
+const versionRowMinBlockSize = 'yv:[min-block-size:calc(2.8125rem+34.5px)]';
+
 export function VersionList({
   open,
   onRequestClose,
@@ -223,13 +228,22 @@ export function VersionList({
     'yv:rounded-[6px] yv:size-12 yv:bg-secondary yv:border yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center';
   const versionRowClassName = (selected: boolean) =>
     cn('yv:hover:bg-muted yv:rounded-lg', selected ? 'yv:bg-muted' : '');
+  const versionScrollRegionRef = useRef<HTMLDivElement>(null);
+  const revealFocusedVersion = (event: FocusEvent<HTMLButtonElement>) => {
+    const container = versionScrollRegionRef.current;
+    if (container) revealElementWithinScrollContainer(event.currentTarget, container);
+  };
 
   return (
     <div
-      className="yv:overflow-y-auto yv:h-full yv:flex yv:flex-col yv:font-sans yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center"
+      className={cn(
+        'yv:overflow-y-auto yv:h-full yv:flex yv:flex-col yv:font-sans yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center',
+        headerOwnsChrome ? versionRowMinBlockSize : 'yv:min-h-0',
+      )}
       data-yv-sdk
       data-yv-theme={background}
       dir={interfaceDirection}
+      tabIndex={-1}
     >
       <div className="yv:shrink-0">
         <section className="yv:px-4 yv:pt-4">
@@ -250,7 +264,11 @@ export function VersionList({
         {headerOwnsChrome ? <LanguageEntry name={selectedLanguageName} /> : null}
       </div>
       {/* Firefox makes scroll containers a Tab stop; the version rows are the keyboard targets. */}
-      <div className="yv:flex-1 yv:overflow-y-auto yv:py-2" tabIndex={-1}>
+      <div
+        ref={versionScrollRegionRef}
+        className={cn('yv:flex-1 yv:overflow-y-auto yv:py-2', versionRowMinBlockSize)}
+        tabIndex={-1}
+      >
         {filteredRecentVersions.length > 0 && (
           <>
             <h2 className="yv:px-4 yv:py-2 yv:text-xl yv:font-bold yv:leading-6">
@@ -269,7 +287,8 @@ export function VersionList({
                 >
                   <button
                     type="button"
-                    className="yv:w-full"
+                    className="yv:w-full yv:focus-visible:ring-inset"
+                    onFocus={revealFocusedVersion}
                     onClick={() => handleSelectVersion(version)}
                   >
                     <ItemMedia variant="icon" className={versionTileClassName}>
@@ -313,7 +332,8 @@ export function VersionList({
               >
                 <button
                   type="button"
-                  className="yv:w-full"
+                  className="yv:w-full yv:focus-visible:ring-inset"
+                  onFocus={revealFocusedVersion}
                   onClick={() => handleSelectVersion(version)}
                 >
                   <ItemMedia variant="icon" className={versionTileClassName}>

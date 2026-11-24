@@ -64,6 +64,45 @@ const unified = await searchClient.searchUnified('psalm 23', versions.data[0].id
 console.log(trending.queries[0]?.text, verses.verses[0]?.id, unified.topics[0]?.text);
 ```
 
+### Notes
+
+`NotesClient` lists, fetches, creates, updates, and deletes the signed-in user's
+notes through `/v1/notes`. Reads require `read_notes` and writes require
+`write_notes`. With `YouVersionAPIUsers.signIn`, pass these as OAuth scopes in the
+second argument, not as data-exchange permissions. Pass a long access token
+explicitly outside a signed-in browser session.
+
+```ts
+import { ApiClient, NotesClient } from '@youversion/platform-core';
+
+const notes = new NotesClient(new ApiClient({ appKey: 'YOUR_APP_KEY' }));
+const filters = { version_id: 3034, passage_id: 'JHN.3' };
+const page = await notes.getNotes(filters, accessToken);
+if (page.next_page_token !== null) {
+  await notes.getNotes({ ...filters, page_token: page.next_page_token }, accessToken);
+}
+
+const note = await notes.createNote(
+  { request_id: crypto.randomUUID(), content: 'Trust in God.', status: 'private' },
+  accessToken,
+);
+await notes.updateNote(note.id, { title: 'Morning reflection' }, accessToken);
+```
+
+Keep the filters unchanged when paging. A page can be empty and still have a
+next token. Generate a UUID for each new note and reuse it if you retry that
+create. For updates, omit fields to keep their values or pass `null` to clear
+`title`, `color`, `passage`, `language_tag`, or `tags`.
+
+`NotesClient` checks the app's Bible version filter when you supply `version_id`
+to a list query or a passage to create or update. A malformed passage in an API
+response is omitted without losing the note's text or the rest of the page.
+List responses skip notes with other malformed fields while preserving valid notes
+and the continuation token, even if no notes remain on that page. Invalid list
+envelopes and invalid single-note responses still reject.
+If your app caches highlights, refetch the affected chapter's highlights after
+creating, updating, or deleting a colored note attached to a passage.
+
 ### Verse-art images
 
 `ImagesClient` reads image metadata from `GET /v1/images`. Image bytes stay on
@@ -137,14 +176,85 @@ A blank `passage_id` is rejected before the request. Pass a single verse or a
 verse range, such as `JHN.3.16` or `JHN.3.16-18`.
 
 Unified search returns one snapshot of top results, not the entire verse result
-set. Omit `fields` for all available kinds, or pass a nonempty selection.
+set. Omit `fields` for the stable endpoint's default selection, or pass a nonempty
+selection. Explicitly include `videos` to request video hits.
 `userIntent` accepts `unknown`, `topical`, `text`, or `reference`; response intent
 strings remain open-ended.
+
+Unified responses now always include a `videos` array, including stable-route
+searches that return `videos: []`. This adds an enumerable property to returned
+objects, so JSON output, exact snapshots, and `keyof SearchUnifiedResponse` include
+it. The public type keeps the property optional for existing fixtures and hook
+overrides.
+
+Explicit video selection is available through core `SearchClient.searchUnified`
+with `ContentLibrarySearchOptions`. The existing React `useUnifiedSearch` hook
+continues to accept only `verses`, `topics`, and `images`. For options shared with
+the hook, use `SearchUnifiedOptions` or `UseUnifiedSearchProps` rather than deriving
+the wider core selection from `Parameters<SearchClient['searchUnified']>`.
+
+`SearchClient.searchVideos` accepts `organizationIds` as UUID filters combined with
+OR. Omit the option or pass `[]` to search all organizations accessible to the app.
 
 The SDK also accepts `fields: ['images']` and maps image hits to `{ id, passageId }`,
 not image URLs. Image selection requires backend support. A production check on
 2026-10-20 returned HTTP 400 for `fields: ['images']`; successful verse/topic
 responses omitted images, which the SDK returns as `images: []`.
+
+### Video details, playlists, and search
+
+There are two ways to find videos:
+
+- Search by text. Unified search returns video IDs; pass each ID unchanged to
+  `VideosClient.getVideo`. Dedicated `SearchClient.searchVideos` returns full
+  video resources, including playback sources, so a second detail request is
+  usually unnecessary.
+- Browse an organization's playlists. `VideosClient.getPlaylists` returns a
+  collection; `getPlaylist` returns one full playlist, including its ordered
+  video IDs. Pass those IDs unchanged to `getVideo` for metadata and playback URLs.
+
+These calls require an App Key with access to the video catalog.
+Video details, playlist collection/detail, and dedicated video search use
+`/v1`. Unified search always uses `/v1/search-unified`, including when `fields`
+explicitly includes `videos`.
+Unified search returns one unpaginated set of top results.
+
+Dedicated video search supports `pageSize` from 1 to 99. Repeat the query,
+organization filters, and language when passing `nextPageToken` as `pageToken`;
+`pageSize` may change. An empty video array can still include a continuation token,
+and later pages can contain videos. Stop when `nextPageToken` is `null`, not when
+`videos` is empty. Empty string tokens are preserved and must be passed unchanged.
+No total result count is returned. Live checks reproduced empty pages with tokens
+both through the SDK and with direct HTTP requests. We accept this service behavior;
+eventual termination was not verified in the bounded live checks.
+
+Playlist collections use `data` and `next_page_token`. Follow that token until
+it is `null`. `pageSize` accepts 1 to 99, or `'*'` when `fields` selects one to
+three fields. Omitting `fields` requests full playlists; a selected field set can
+omit IDs or video IDs, so include the fields needed for subsequent requests.
+Playlist collection HTTP 204 or an empty response body returns an empty collection;
+malformed nonempty responses and empty detail responses reject.
+
+`VideosClient` uses camelCase options: `acceptLanguage`, `thumbnailSize`,
+`pageSize`, and `pageToken`. API query parameters and collection response keys
+retain their wire names, such as `page_size` and `next_page_token`. A null input
+cursor requests the first page; an empty string cursor is sent unchanged.
+
+Video detail and dedicated search preserve optional nullable `passage_ids`,
+`organization_id`, and `references`, plus singular `passage_id` from earlier
+responses. Thumbnail URL strings are preserved whether absolute, relative, or
+protocol-relative. `getVideo` accepts `thumbnailSize: 'thumb'`, `'card'`, or
+`'full'`. Omitting it removes any existing `size` parameter for the full-size
+image; dedicated search also removes that parameter. Other query bytes and
+fragments are preserved. Relative URLs remain relative; the SDK does not resolve
+them against a base URL.
+Queries use the same 100-grapheme validator as other search methods. Optional
+query intent/correction fields may be absent or null. Unlike the sibling SDKs,
+video search intentionally rejects undocumented HTTP 204 responses.
+
+Playlist requests default to English to avoid the missing-language catalog issue
+tracked in YPE-6461, while explicit caller preferences are honored. Video details
+keep the runtime language default; dedicated video search defaults to English.
 
 ### Display Bible HTML
 

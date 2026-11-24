@@ -14,6 +14,7 @@ export * from './organization';
 export * from './passage';
 export * from './passage-display';
 export * from './search';
+export * from './search-videos';
 export * from './version';
 export * from './verse';
 export * from './video';

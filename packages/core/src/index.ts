@@ -1,4 +1,4 @@
-export { ApiClient, getHttpStatus } from './client';
+export { ApiClient, getHttpStatus, type ApiResponse } from './client';
 export { BibleClient } from './bible';
 export { getChapter, getVersion } from './bible-chapter';
 export {
@@ -32,12 +32,14 @@ export {
   type SearchImagesOptions,
   type SearchUnifiedOptions,
   type SearchVersesOptions,
+  type SearchVideosOptions,
 } from './search';
 export { getSuggestedQueries, getTrendingQueries } from './search-queries';
 export { searchImages } from './search-images';
 export { searchVerses } from './search-verses';
 export { searchTopics } from './search-topics';
 export { searchUnified } from './search-unified';
+export { searchVideos } from './search-videos';
 export {
   MAX_SEARCH_QUERY_GRAPHEMES,
   clampSearchText,
@@ -48,10 +50,17 @@ export { parseUsfmReference, type UsfmReference } from './usfm-reference';
 export { OrganizationsClient } from './organizations';
 export { ImagesClient } from './images';
 export {
+  VideosClient,
+  type GetPlaylistOptions,
+  type GetPlaylistsOptions,
+  type GetVideoOptions,
+} from './videos';
+export {
   HighlightsClient,
   type GetHighlightsOptions,
   type DeleteHighlightOptions,
 } from './highlights';
+export { NotesClient, type GetNotesOptions } from './notes';
 export {
   DataExchangeClient,
   buildDataExchangeUrl,

@@ -4,6 +4,7 @@ import { isHighlightsLive } from '@/lib/feature-flags';
 import { deriveHighlightedVerses } from '@/lib/highlight-projection';
 import { isPaletteHighlightColor, normalizeHighlightHex } from '@/lib/highlight-colors';
 import type { Highlight } from '@youversion/platform-core';
+import type { BibleReaderHighlightIntent } from './bible-reader.types';
 import {
   bibleReaderHighlightsMachine,
   scopesEqual,
@@ -20,19 +21,7 @@ import {
 import { useActorRef, useSelector } from '@xstate/react';
 import { useContext, useEffect, useMemo, useRef } from 'react';
 
-/**
- * Bridge-safe highlight intent emitted in controlled mode. Structurally
- * identical to `BibleReaderHighlightIntent` on `BibleReader` — kept local so
- * this adapter does not import from the compound component.
- */
-export type BibleReaderHighlightIntentPayload = {
-  versionId: number;
-  book: string;
-  chapter: string;
-  verses: number[];
-  passageIds: string[];
-  color: string;
-};
+export type { BibleReaderHighlightIntent as BibleReaderHighlightIntentPayload } from './bible-reader.types';
 
 /**
  * Host-owned highlight slice (YPE-3705). When present, the adapter is fully
@@ -41,8 +30,8 @@ export type BibleReaderHighlightIntentPayload = {
  */
 export type ControlledHighlightsInput = {
   highlights: readonly Highlight[];
-  onApply?: (intent: BibleReaderHighlightIntentPayload) => void;
-  onRemove?: (intent: BibleReaderHighlightIntentPayload) => void;
+  onApply?: (intent: BibleReaderHighlightIntent) => void;
+  onRemove?: (intent: BibleReaderHighlightIntent) => void;
 };
 
 export type UseBibleReaderHighlightsOptions = {
@@ -140,7 +129,7 @@ function buildHighlightIntent(
   chapter: string,
   color: string,
   verses: number[],
-): BibleReaderHighlightIntentPayload {
+): BibleReaderHighlightIntent {
   const sorted = [...new Set(verses)].filter((verse) => verse > 0).sort((a, b) => a - b);
   return {
     versionId,
