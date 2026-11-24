@@ -1,3 +1,24 @@
+import type { FontFamily } from '@/lib/verse-html-utils';
+
+/** Reader typography props shared by the public root and its settings hook. */
+export type BibleReaderSettingsProps = {
+  fontSize?: number;
+  defaultFontSize?: number;
+  onFontSizeChange?: (fontSize: number) => void;
+  fontFamily?: FontFamily;
+  defaultFontFamily?: FontFamily;
+  onFontFamilyChange?: (fontFamily: FontFamily) => void;
+  lineSpacing?: number;
+  defaultLineSpacing?: number;
+  onChangeLineSpacing?: (size: number) => void;
+  /**
+   * @deprecated Use `defaultLineSpacing` (uncontrolled) or `lineSpacing` +
+   * `onChangeLineSpacing` (controlled) instead. When provided, this is used as
+   * the initial line spacing. Will be removed in the next major version.
+   */
+  lineHeight?: number;
+};
+
 /**
  * Serializable payload describing the reader's current verse selection.
  * Bridge-safe primitives only, so React Native / Expo DOM hosts can forward it
