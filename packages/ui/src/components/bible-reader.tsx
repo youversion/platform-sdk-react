@@ -1,6 +1,7 @@
 'use client';
 
 import i18n from '@/i18n';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { useInterfaceDirection } from '@/lib/direction';
 import { useDelayedLoading } from '@/lib/use-delayed-loading';
 import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
@@ -553,6 +554,8 @@ function Content() {
   });
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [clipboardFailed, setClipboardFailed] = useState(false);
+  const actionAttemptRef = useRef(0);
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
   const verseFocusRestoreTargetRef = useRef<Element | null>(null);
   const takeVerseFocusRestoreTarget = useCallback(() => {
@@ -612,6 +615,8 @@ function Content() {
   // Navigating away (book/chapter/version) drops the selection — those verses
   // no longer exist on screen (ADR-007).
   useEffect(() => {
+    actionAttemptRef.current += 1;
+    setClipboardFailed(false);
     setSelectedVerses([]);
     setPopoverOpen(false);
     setAnchorElement(null);
@@ -829,22 +834,32 @@ function Content() {
     };
   }
 
+  async function copySelectionText(text: string, attempt: number) {
+    const copied = await copyTextToClipboard(text);
+    if (actionAttemptRef.current !== attempt) return;
+    setClipboardFailed(!copied);
+  }
+
   function handleCopy() {
+    const attempt = ++actionAttemptRef.current;
+    setClipboardFailed(false);
     const data = buildSelectionShareData(selectedVerses);
     if (onCopy) {
       if (data) {
         void Promise.resolve(onCopy(data)).catch(() => {
-          // Host rejected — mirror the silent failure of navigator.clipboard.
+          // Host overrides own their error feedback.
         });
       }
       closeAndClearSelection();
       return;
     }
-    if (data?.text) void navigator.clipboard?.writeText(data.text);
+    if (data?.text) void copySelectionText(data.text, attempt);
     closeAndClearSelection();
   }
 
   function handleShare() {
+    const attempt = ++actionAttemptRef.current;
+    setClipboardFailed(false);
     const data = buildSelectionShareData(selectedVerses);
     if (onShare) {
       if (data) {
@@ -855,25 +870,32 @@ function Content() {
       closeAndClearSelection();
       return;
     }
-    const text = data?.text ?? '';
+    void shareSelectionText(data?.text ?? '', attempt);
+  }
+
+  async function shareSelectionText(text: string, attempt: number) {
     if (text && globalThis.navigator?.share instanceof Function) {
       // Each selection update replaces this array, even when the same verses are reselected.
       const sharedSelection = lastSelectionRef.current;
-      globalThis.navigator
-        .share({ text })
-        .then(() => {
-          if (lastSelectionRef.current !== sharedSelection) return;
-          closeAndClearSelectionRef.current();
-        })
-        .catch(() => {
-          // Cancelled or failed — keep the popover open (AC 4).
-        });
-      return;
+      try {
+        await globalThis.navigator.share({ text });
+        if (actionAttemptRef.current !== attempt || lastSelectionRef.current !== sharedSelection)
+          return;
+        closeAndClearSelectionRef.current();
+        return;
+      } catch (error) {
+        // A cancelled share keeps the selection and popover available for retry.
+        if (
+          (error instanceof DOMException || error instanceof Error) &&
+          error.name === 'AbortError'
+        )
+          return;
+        if (actionAttemptRef.current !== attempt || lastSelectionRef.current !== sharedSelection)
+          return;
+      }
     }
-    // No Web Share support (e.g. most desktop browsers) — fall back to clipboard.
-    if (text && globalThis.navigator) {
-      void globalThis.navigator.clipboard?.writeText(text);
-    }
+    // Unsupported or failed Web Share falls back to clipboard.
+    if (text) void copySelectionText(text, attempt);
     closeAndClearSelection();
   }
 
@@ -951,6 +973,14 @@ function Content() {
           <bdi dir="auto">{chapterLabel || chapter || '-'}</bdi>
         </span>
       </h1>
+
+      <div
+        role="status"
+        aria-live="polite"
+        className="yv:sticky yv:[inset-block-start:0] yv:z-10 yv:rounded-md yv:bg-background yv:px-4 yv:py-2 yv:empty:sr-only yv:text-center yv:text-destructive"
+      >
+        {clipboardFailed ? t('unableToShare') : null}
+      </div>
 
       {chapterUnavailable ? (
         <p className="yv:text-center yv:text-balance yv:text-muted-foreground">

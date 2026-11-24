@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, expect, it, vi } from 'vitest';
-import { render as rtlRender, screen } from '@testing-library/react';
+import { render as rtlRender, screen, waitFor } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 import type { HookOverrides } from '@youversion/platform-react-hooks';
@@ -348,4 +348,31 @@ describe('VerseOfTheDay - host highlights (controlled mode)', () => {
       hasPermission.mockRestore();
     }
   });
+});
+
+it('reports denied and unavailable Verse of the Day clipboard access', async ({
+  onTestFinished,
+}) => {
+  onTestFinished(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+  const user = userEvent.setup();
+  const writes: string[] = [];
+  const writeText = (text: string): Promise<void> => {
+    writes.push(text);
+    return Promise.reject(new DOMException('Clipboard permission denied', 'NotAllowedError'));
+  };
+  const alert = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+  vi.stubGlobal('navigator', { clipboard: { writeText }, share: undefined });
+  renderVotd(<VerseOfTheDay dayOfYear={1} />);
+  await user.click(screen.getByRole('button', { name: en.share }));
+  await waitFor(() => expect(alert).toHaveBeenCalledWith(en.unableToShare));
+  expect(writes).toHaveLength(1);
+  alert.mockClear();
+
+  vi.stubGlobal('navigator', { share: undefined });
+  await user.click(screen.getByRole('button', { name: en.share }));
+  await waitFor(() => expect(alert).toHaveBeenCalledWith(en.unableToShare));
+  expect(writes).toHaveLength(1);
 });

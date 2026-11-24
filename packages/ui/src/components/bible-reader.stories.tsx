@@ -1926,3 +1926,76 @@ export const ChapterChangeLoadingOverlay: Story = {
     await expect(scroller?.scrollTop).toBe(0);
   },
 };
+
+export const ClipboardFailureAfterScrolling: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  render: (args) => (
+    <div style={{ blockSize: 520, inlineSize: 390 }}>
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    const shareDescriptor = Object.getOwnPropertyDescriptor(navigator, 'share');
+    const writes: string[] = [];
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: (text: string): Promise<void> => {
+          writes.push(text);
+          return Promise.reject(new DOMException('Clipboard permission denied', 'NotAllowedError'));
+        },
+      },
+    });
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    try {
+      const { root, reader } = await getReaderStory(canvasElement);
+      const { scroller, verse } = await waitFor(() => {
+        const scroller = root.querySelector<HTMLElement>('main');
+        const verse = root.querySelector<HTMLElement>('.yv-v[v="40"]');
+        if (!scroller || !verse) throw new Error('long chapter not rendered');
+        return { scroller, verse };
+      });
+      await reader.findByRole('heading', { name: /John/i });
+      const status = reader.getByRole('status', { name: '' });
+      for (const action of ['Copy', 'Share']) {
+        verse.scrollIntoView({ block: 'center' });
+        await waitFor(() => expect(scroller.scrollTop).toBeGreaterThan(scroller.clientHeight));
+        await userEvent.click(verse);
+        const overlay = await getReaderOverlay(root);
+        await userEvent.click(await overlay.findByRole('button', { name: action }));
+        await waitFor(() => expect(status).not.toBeEmptyDOMElement());
+        await expect(status).toHaveAttribute('aria-live', 'polite');
+        await expect(verse).not.toHaveClass('yv-v-selected');
+        await waitFor(() => expect(overlay.queryByRole('dialog')).toBeNull());
+
+        const expectWarningInView = () => {
+          const warningBounds = status.getBoundingClientRect();
+          const readerBounds = scroller.getBoundingClientRect();
+          void expect(warningBounds.height).toBeGreaterThan(0);
+          void expect(warningBounds.top).toBeGreaterThanOrEqual(Math.max(readerBounds.top, 0));
+          void expect(warningBounds.bottom).toBeLessThanOrEqual(
+            Math.min(readerBounds.bottom, window.innerHeight),
+          );
+        };
+        await waitFor(expectWarningInView);
+        scroller.scrollTop += 80;
+        await waitFor(expectWarningInView);
+      }
+      await expect(writes).toHaveLength(2);
+    } finally {
+      if (clipboardDescriptor) Object.defineProperty(navigator, 'clipboard', clipboardDescriptor);
+      else Reflect.deleteProperty(navigator, 'clipboard');
+      if (shareDescriptor) Object.defineProperty(navigator, 'share', shareDescriptor);
+      else Reflect.deleteProperty(navigator, 'share');
+    }
+  },
+};
