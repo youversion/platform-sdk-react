@@ -1,5 +1,6 @@
 import * as z from 'zod/mini';
 import { resolveAuthToken } from './auth-token';
+import { assertUsableVersion } from './bible-chapter';
 import type { ApiClient } from './client';
 import {
   CreateNoteSchema,
@@ -86,6 +87,7 @@ export class NotesClient {
    */
   async getNotes(options: GetNotesOptions = {}, lat?: string): Promise<Collection<Note>> {
     const { version_id, passage_id, page_size, page_token } = GetNotesOptionsSchema.parse(options);
+    if (version_id !== undefined) await assertUsableVersion(this.client, version_id);
     const query: NotesQuery = {};
     if (version_id !== undefined) query.bible_id = version_id;
     if (passage_id !== undefined) query.passage_id = passage_id;
@@ -123,7 +125,9 @@ export class NotesClient {
    * @throws If input, authentication, the request, or the response is invalid.
    */
   async createNote(data: CreateNote, lat?: string): Promise<Note> {
-    const body = toNoteBody(CreateNoteSchema.parse(data));
+    const parsed = CreateNoteSchema.parse(data);
+    if (parsed.passage) await assertUsableVersion(this.client, parsed.passage.version_id);
+    const body = toNoteBody(parsed);
     const response = await this.client.post<unknown>(NOTES_PATH, body, undefined, authHeaders(lat));
     return NoteSchema.parse(response);
   }
@@ -137,7 +141,9 @@ export class NotesClient {
    * @throws If input, authentication, the request, or the response is invalid.
    */
   async updateNote(noteId: string, data: UpdateNote, lat?: string): Promise<Note> {
-    const body = toNoteBody(UpdateNoteSchema.parse(data));
+    const parsed = UpdateNoteSchema.parse(data);
+    if (parsed.passage) await assertUsableVersion(this.client, parsed.passage.version_id);
+    const body = toNoteBody(parsed);
     const response = await this.client.patch<unknown>(
       notePath(noteId),
       body,

@@ -23,7 +23,7 @@ const NotePassageInputSchema = strictObject({
 });
 
 const NotePassageSchema = z.pipe(
-  object({ bible_id: z.int32(), passage_id: z.string() }),
+  object({ bible_id: NoteVersionIdSchema, passage_id: NotePassageIdSchema }),
   z.transform(({ bible_id, passage_id }): NotePassage => ({ version_id: bible_id, passage_id })),
 );
 
@@ -74,8 +74,8 @@ export const NoteSchema = object({
   content: z.string(),
   /** Six hex digits without `#`, preserving the case returned by the API. */
   color: z.optional(z.nullable(z.string().check(z.regex(/^[0-9a-f]{6}$/i)))),
-  /** The attached Scripture passage, if any. */
-  passage: z.optional(z.nullable(NotePassageSchema)),
+  /** The attached Scripture passage, if any. Malformed API passage data is omitted. */
+  passage: z.catch(z.optional(z.nullable(NotePassageSchema)), undefined),
   /** Language tag for the note, if set. */
   language_tag: z.optional(z.nullable(z.string())),
   /** Labels applied to the note, if set. */

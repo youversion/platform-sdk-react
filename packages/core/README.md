@@ -94,10 +94,11 @@ next token. Generate a UUID for each new note and reuse it if you retry that
 create. For updates, omit fields to keep their values or pass `null` to clear
 `title`, `color`, `passage`, `language_tag`, or `tags`.
 
-Notes are account data, so `NotesClient` doesn't apply the app's configured
-Bible version filter to passage references or list queries. If your app caches
-highlights, refetch the affected chapter's highlights after creating, updating,
-or deleting a colored note attached to a passage.
+`NotesClient` checks the app's Bible version filter when you supply `version_id`
+to a list query or a passage to create or update. A malformed passage in an API
+response is omitted without losing the note's text or the rest of the page.
+If your app caches highlights, refetch the affected chapter's highlights after
+creating, updating, or deleting a colored note attached to a passage.
 
 ### Verse-art images
 

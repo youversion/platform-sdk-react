@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
 import { ApiClient, getHttpStatus, NotesClient, type Note, type UpdateNote } from '../index';
 import { server } from './setup';
+import { YouVersionPlatformConfiguration as config } from '../YouVersionPlatformConfiguration';
 
 const apiHost = 'notes.example.test';
 const collectionUrl = `https://${apiHost}/v1/notes`;
@@ -233,4 +234,94 @@ it('preserves lowercase RFC 3339 timestamps but still rejects invalid dates', as
     ),
   );
   await expect(client.getNote(noteId, 'reader')).rejects.toThrow('updated_dt');
+});
+
+it('refuses blocked list and write versions before Notes requests, including language filters', async () => {
+  const client = createClient();
+  const previous = {
+    excludedVersionIds: config.excludedVersionIds,
+    permittedVersionIds: config.permittedVersionIds,
+    permittedLanguageTags: config.permittedLanguageTags,
+  };
+  let noteRequests = 0;
+  let metadataRequests = 0;
+  let language: string | undefined = 'es';
+  const create = {
+    request_id: requestId,
+    content: note.content,
+    status: note.status,
+    passage: note.passage,
+  };
+  server.use(
+    http.get(`https://${apiHost}/v1/bibles/3034`, () => {
+      metadataRequests += 1;
+      return HttpResponse.json({ id: 3034, language_tag: language });
+    }),
+    http.all(`${collectionUrl}*`, ({ request }) => {
+      noteRequests += 1;
+      return request.method === 'GET'
+        ? HttpResponse.json({ data: [wireNote] })
+        : HttpResponse.json(wireNote);
+    }),
+  );
+  try {
+    for (const filters of [
+      { excludedVersionIds: [3034], permittedVersionIds: [3034], permittedLanguageTags: undefined },
+      { excludedVersionIds: undefined, permittedVersionIds: [], permittedLanguageTags: undefined },
+      { excludedVersionIds: undefined, permittedVersionIds: [3034], permittedLanguageTags: ['en'] },
+    ]) {
+      Object.assign(config, filters);
+      await expect(
+        client.getNotes({ version_id: 3034 }, 'reader').catch(getHttpStatus),
+      ).resolves.toBe(403);
+      await expect(client.createNote(create, 'writer').catch(getHttpStatus)).resolves.toBe(403);
+      await expect(
+        client.updateNote(noteId, { passage: note.passage }, 'writer').catch(getHttpStatus),
+      ).resolves.toBe(403);
+      expect(noteRequests).toBe(0);
+      if (filters.permittedLanguageTags === undefined) expect(metadataRequests).toBe(0);
+    }
+    language = undefined;
+    await expect(client.createNote(create, 'writer').catch(getHttpStatus)).resolves.toBe(403);
+    expect(noteRequests).toBe(0);
+
+    language = 'en';
+    expect(await client.getNotes({ version_id: 3034 }, 'reader')).toEqual({
+      data: [note],
+      next_page_token: null,
+    });
+    expect(await client.createNote(create, 'writer')).toEqual(note);
+    expect(await client.updateNote(noteId, { passage: note.passage }, 'writer')).toEqual(note);
+    expect(noteRequests).toBe(3);
+  } finally {
+    Object.assign(config, previous);
+  }
+});
+
+it('preserves notes and pagination when a returned passage is malformed', async () => {
+  const client = createClient();
+  const malformed = [
+    { passage_id: passageId },
+    { bible_id: 3034, passage_id: 123 },
+    { bible_id: -1, passage_id: passageId },
+    { bible_id: 3034, passage_id: '  ' },
+  ];
+  const data = malformed.map((passage, index) => ({ ...wireNote, id: `note-${index}`, passage }));
+  server.use(
+    http.get(collectionUrl, () =>
+      HttpResponse.json({ data: [...data, wireNote], next_page_token: 'continue' }),
+    ),
+    http.get(resourceUrl, () => HttpResponse.json(data[0])),
+  );
+  const page = await client.getNotes({}, 'reader');
+  expect(page.next_page_token).toBe('continue');
+  expect(page.data).toEqual([
+    ...malformed.map((_, index) => ({ ...note, id: `note-${index}`, passage: undefined })),
+    note,
+  ]);
+  expect(await client.getNote(noteId, 'reader')).toEqual({
+    ...note,
+    id: 'note-0',
+    passage: undefined,
+  });
 });
