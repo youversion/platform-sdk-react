@@ -21,6 +21,10 @@ harness-specific app-key override, the demo renders the SDK missing-app-key pane
 shows its own Missing Environment Variables warning before mounting the SDK. Live core integration
 tests remain skipped.
 
+The optional video live smoke also needs `YVP_VIDEO_ORGANIZATION_ID` in the root
+`.env`, identifying an organization with populated video playlists. See
+[the video test command](./testing.md#env).
+
 ## Running the demo
 
 Start the demo and its workspace dependency watchers with:

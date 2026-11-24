@@ -228,6 +228,70 @@ export const Default: Story = {
   },
 };
 
+export const SettingsCloseShowsFocusThroughToolbar: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-fresh-process'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  render: (args) => (
+    <BibleReader.Root {...args}>
+      <BibleReader.Toolbar search="none" />
+    </BibleReader.Root>
+  ),
+  play: async ({ canvasElement }) => {
+    const { root, reader } = await getReaderStory(canvasElement);
+    const versionButton = await reader.findByRole('button', {
+      name: i18n.t('changeBibleVersionAriaLabel'),
+    });
+    const settingsButton = reader.getByRole('button', { name: i18n.t('settingsAriaLabel') });
+    versionButton.focus({ preventScroll: true });
+    const forwardKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      ? '{Alt>}{Tab}{/Alt}'
+      : '{Tab}';
+    const nativeKeyAvailable = await verifyNativeBrowserKey(forwardKey, async () => {
+      await expect(root.activeElement).toBe(settingsButton);
+      await expect(settingsButton.matches(':focus-visible')).toBe(true);
+    });
+    if (!nativeKeyAvailable) return;
+    await verifyNativeBrowserKey('{Enter}', async () => {
+      await waitFor(async () => {
+        const overlay = await getReaderOverlay(root);
+        await expect(overlay.getByRole('dialog')).toBeVisible();
+      });
+    });
+    const settings = await getReaderOverlay(root);
+    const closeButton = await settings.findByRole('button', { name: i18n.t('close') });
+    const dialog = closeButton.closest<HTMLElement>('[role="dialog"]');
+    if (!dialog) throw new Error('reader settings dialog not rendered');
+    dialog.focus({ preventScroll: true });
+    await verifyNativeBrowserKey(forwardKey, async () => {
+      await expect(root.activeElement).toBe(closeButton);
+    });
+    const focusedIndicator = await waitFor(async () => {
+      await expect(root.activeElement).toBe(closeButton);
+      await expect(closeButton.matches(':focus-visible')).toBe(true);
+      const style = getComputedStyle(closeButton);
+      await expect(style.boxShadow).toContain('inset');
+      await expect(style.boxShadow).toContain('0px 0px 0px 3px');
+      await expect(style.getPropertyValue('--tw-ring-color').trim()).toBe(
+        style.getPropertyValue('--yv-ring').trim(),
+      );
+      return { boxShadow: style.boxShadow, outline: style.outline };
+    });
+
+    await userEvent.click(settings.getByTestId('decrease-font-size'));
+    await waitFor(async () => {
+      const unfocusedStyle = getComputedStyle(closeButton);
+      await expect({
+        boxShadow: unfocusedStyle.boxShadow,
+        outline: unfocusedStyle.outline,
+      }).not.toEqual(focusedIndicator);
+    });
+  },
+};
+
 export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
   tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-fresh-process'],
   args: {

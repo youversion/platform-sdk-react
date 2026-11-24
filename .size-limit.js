@@ -64,6 +64,13 @@ export default [
     ignore: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query'],
   },
   {
+    name: 'ui / usePassage only',
+    path: 'packages/ui/dist/index.js',
+    import: '{ usePassage }',
+    limit: '13.8 KB',
+    ignore: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query', 'jsdom'],
+  },
+  {
     name: 'ui / tailwind.css',
     path: 'packages/ui/dist/tailwind.css',
     // Language picker wrap/truncate (whitespace-normal, max-w-full, w-auto).

@@ -159,6 +159,22 @@ const CHECKS = [
     ],
     focused: [
       {
+        label: 'SearchClient without playlist validation',
+        source: `import { SearchClient } from '@youversion/platform-core';
+export { SearchClient };
+`,
+        absent: [
+          'Playlist ID must be a 32-bit integer',
+          'Page size must be an integer from 1 to 99, or "*"',
+        ],
+        control: {
+          label: 'VideosClient',
+          source: `import { VideosClient } from '@youversion/platform-core';
+export { VideosClient };
+`,
+        },
+      },
+      {
         label: 'Bible reads only',
         source: `import { BibleClient, getBooks } from '@youversion/platform-core';
 export { BibleClient, getBooks };

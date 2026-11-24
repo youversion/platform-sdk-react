@@ -31,6 +31,7 @@ export {
   SignInWithYouVersionPermission,
   SignInWithYouVersionResult,
   UNTITLED_SERIF_FONT_ID,
+  VideosClient,
   YouVersionAPI,
   YouVersionAPIUsers,
   YouVersionPlatformConfiguration,
@@ -82,6 +83,7 @@ export {
   searchTopics,
   searchUnified,
   searchVerses,
+  searchVideos,
   setStorageItem,
   throwUnusableBibleVersion,
   transformBibleHtml,
@@ -92,7 +94,13 @@ export {
 
 export {
   YouVersionProvider as BaseYouVersionProvider,
+  usePassage,
+  useVersions,
   useYVAuth,
+  type UsePassageProps,
+  type UsePassageResult,
+  type UseVersionsOptions,
+  type UseVersionsResult,
   type UseYVAuthReturn,
 } from '@youversion/platform-react-hooks';
 

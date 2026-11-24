@@ -126,7 +126,110 @@ Bind on new/edited tests. When touching a file, bend the cases you edit toward t
 
 ## Env
 
+To verify playlist-to-video lookup against a deployment, set `YVP_API_HOST` (a hostname such as `api.youversion.com`), an
+`YVP_APP_KEY` with access to the video catalog, and `YVP_VIDEO_ORGANIZATION_ID` for an organization
+with a populated video playlist. Run `pnpm --filter @youversion/platform-core test:integration src/__tests__/videos.integration.test.ts`.
+
 Missing `YVP_API_HOST` or other env files: read `docs/cursor-cloud.md`.
+
+## Content Library contract and routing
+
+YPE-6573 response validation follows the user-supplied Transformers `compiled.yaml`
+snapshot (SHA-256 `e2458ce1008a5d5a1d6151e08b7769e6edf27f36abfdb40d06133b15c0a5475d`).
+[Swift PR 302](https://github.com/youversion/platform-sdk-swift/pull/302)
+(`bba84a3`) and [Kotlin PR 242](https://github.com/youversion/platform-sdk-kotlin/pull/242)
+(`3e39b55`) are comparison references,
+not substitutes for that contract. The mocked client tests cover video detail,
+playlist-to-detail and unified-search-to-detail lookup, thumbnail renditions,
+nullable and absent video metadata, required fields, pagination and HTTP errors.
+Video search requires the `videos` and `did_you_mean` arrays. Absent or null
+`user_intent` and `search_instead_for` normalize to absent intent and a null
+correction, matching sibling SDK tolerance. Its undocumented 204 response still
+rejects, while playlist 204 returns an empty page; this deliberate difference is
+called out in the changeset. Malformed full video resources reject rather than
+being silently dropped.
+
+Review follow-up adds optional nullable `passage_ids` (string array) and
+`organization_id` (UUID), as specified in the review's newer `compiled-2.yaml`,
+while retaining singular `passage_id` from the original supplied snapshot. That newer
+attachment was not available locally; these are additive metadata-preservation
+changes, not proof that the deployment serves the complete newer contract.
+Optional `references` is also preserved for compatibility with sibling SDKs.
+Thumbnail URLs remain strings, preserving absolute, relative and protocol-relative
+forms without inventing a base URL. Video queries reuse the existing 100-grapheme
+search validator, matching Swift, Kotlin and the other core search methods.
+
+Content Library requests use stable routes:
+
+- Video detail, playlist collection/detail and dedicated video search use `/v1`.
+- Unified search always uses `/v1/search-unified`, including when `fields` includes
+  `videos` or is omitted. Routing does not depend on the selected fields.
+- Playlist language defaults to English for YPE-6461; explicit preferences are
+  honored. Dedicated video search defaults to English per the search API.
+- `VideosClient` options use camelCase (`acceptLanguage`, `pageSize`, `pageToken`,
+  `thumbnailSize`). Wire parameters and collection response cursors keep their
+  API names. Null input cursors are omitted; empty string cursors are preserved.
+
+The original supplied spec names stable routes for video details, playlists and
+unified search. Its dedicated video-search route was `/v1-beta/search-videos`;
+the current implementation uses `/v1/search-videos` per the updated routing direction.
+The pinned Swift and Kotlin revisions used earlier rollout routes and do not define
+the current React routing.
+The live smoke remains optional deployment evidence, not a replacement for the
+contract tests or a requirement for adding UI. No UI is added by YPE-6573.
+
+### Stable-route checks (2026-11-24)
+
+After switching all Content Library requests to `/v1`, the rebuilt SDK returned
+populated dedicated and unified video searches for “Bible,” “Jesus,” and
+“What Is The Bible?” The first video ID from each search resolved through
+`getVideo`. English playlist pagination completed across nine pages of two
+playlists, returning 18 unique playlists. Playlist detail and video detail passed
+response validation. Spanish and Portuguese playlists and video details retained
+the corresponding language tags.
+
+Media returned by stable video detail remained accessible without an App Key:
+the thumbnail, both HLS sources (manifests and sampled media segments, including
+initialization data where applicable), and the MP4 preview. Responses allowed
+cross-origin access; full player playback was not tested.
+
+The accepted search pagination behavior also occurs on `/v1/search-videos`.
+For “Jesus” with `page_size=5`, direct HTTP requests returned 4, 1, 0, and 3
+videos on the first four pages. The SDK followed 30 pages, returning 17 unique
+videos without duplicates and 20 empty pages; a continuation token remained.
+These bounded checks do not establish eventual termination. Consumers must use
+the continuation token rather than the result count to decide whether to continue.
+
+### Earlier rollout checks (2026-11-24)
+
+Before the switch to `/v1`, manual requests and the built core SDK at `c748d1f`
+verified populated `/v1-beta`
+playlist collection/detail and video detail responses. The English BibleProject
+catalog returned 18 playlists; pagination completed across nine pages of two
+playlists, without duplicate playlist IDs. Spanish and Portuguese requests returned
+localized playlists and video details with the corresponding language tags.
+
+Dedicated search and unified search selecting `videos` returned videos for
+“Bible,” “Jesus,” and “What Is The Bible?” The first ID from each search resolved
+through the video detail client. Detail validation preserved passage and publisher
+metadata, and the card thumbnail rendition was applied.
+
+The thumbnail, both HLS playback sources (manifests and sampled media segments,
+including initialization data where applicable), and the MP4 preview were accessible
+without an App Key. Media responses allowed cross-origin access. Full player
+playback was not tested. These manual checks are deployment evidence, not additional
+automated test coverage or proof of the complete newer OpenAPI contract.
+
+Dedicated search returned empty pages with continuation tokens for all three
+queries. For “Jesus” with `page_size=5`, the first four pages contained 4, 1, 0,
+and 3 videos. A bounded SDK check followed 30 pages, returning 17 unique videos
+without duplicates and 20 empty pages; another token remained. Direct HTTP requests
+reproduced empty pages with tokens independently of SDK parsing. Eventual
+termination was not verified, and the response provides no total result count.
+
+We accept this service behavior and retain the current implementation. Consumers
+must follow non-null tokens even after empty pages. Any required behavior change
+will be handled in a follow-up after clarification or a service contract change.
 
 ## Before pushing
 
