@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
-import { ApiClient, getHttpStatus, NotesClient, type Note } from '../index';
+import { ApiClient, getHttpStatus, NotesClient, type Note, type UpdateNote } from '../index';
 import { server } from './setup';
 
 const apiHost = 'notes.example.test';
@@ -27,7 +27,7 @@ function createClient(): NotesClient {
   return new NotesClient(new ApiClient({ apiHost, appKey: 'test-key' }));
 }
 
-it('follows a cursor from an empty filtered page and handles both forms of terminal page', async () => {
+it('omits a null cursor, follows an empty filtered page, and handles terminal pages', async () => {
   const client = createClient();
   const cursor = 'next+/=';
   const filters = { version_id: 3034, passage_id: passageId, page_size: 2 };
@@ -37,7 +37,12 @@ it('follows a cursor from an empty filtered page and handles both forms of termi
       expect(request.headers.get('authorization')).toBe('Bearer reader');
       expect(request.headers.get('x-yvp-app-key')).toBe('test-key');
       const query = Object.fromEntries(new URL(request.url).searchParams);
-      if (Object.keys(query).length === 0) return new HttpResponse(null, { status: 204 });
+      if (Object.keys(query).length === 0) {
+        return new HttpResponse(null, {
+          status: 204,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
       const expectedFilters = { bible_id: '3034', passage_id: passageId, page_size: '2' };
       if (!('page_token' in query)) {
         expect(query).toEqual(expectedFilters);
@@ -48,7 +53,7 @@ it('follows a cursor from an empty filtered page and handles both forms of termi
     }),
   );
 
-  const first = await client.getNotes(filters, 'reader');
+  const first = await client.getNotes({ ...filters, page_token: null }, 'reader');
   expect(first).toEqual({ data: [], next_page_token: cursor });
   const last = await client.getNotes({ ...filters, page_token: first.next_page_token }, 'reader');
   expect(last).toEqual({ data: [{ ...note, color }], next_page_token: null });
@@ -104,9 +109,8 @@ it('creates, gets, partially updates, and deletes a note on the regular Notes ro
     }),
     http.patch(resourceUrl, async ({ request }) => {
       expect(request.headers.get('authorization')).toBe('Bearer writer');
-      const fields = stored?.color === create.color ? { color: note.color } : update;
-      expect(await request.json()).toEqual(fields);
-      stored = { ...wireNote, ...fields };
+      expect(await request.json()).toEqual({ color: note.color });
+      stored = wireNote;
       return HttpResponse.json(stored);
     }),
     http.delete(resourceUrl, ({ request }) => {
@@ -121,6 +125,14 @@ it('creates, gets, partially updates, and deletes a note on the regular Notes ro
   const read = await client.getNote(created.id, 'reader');
   expect(read).toEqual(created);
   expect(await client.updateNote(read.id, { color: read.color }, 'writer')).toEqual(note);
+  server.use(
+    http.patch(resourceUrl, async ({ request }) => {
+      expect(request.headers.get('authorization')).toBe('Bearer writer');
+      expect(await request.json()).toEqual(update);
+      stored = { ...wireNote, ...update };
+      return HttpResponse.json(stored);
+    }),
+  );
   const updated = await client.updateNote(created.id, update, 'writer');
   expect(updated).toEqual({ ...note, ...update });
   expect(await client.getNote(updated.id, 'reader')).toEqual(updated);
@@ -139,8 +151,12 @@ it('rejects invalid writes, pagination, and missing auth before sending a reques
   );
 
   await expect(client.getNotes()).rejects.toThrow('Authentication required');
-  await expect(client.getNotes({ page_size: 100 }, 'reader')).rejects.toThrow('page_size');
-  await expect(client.getNotes({ version_id: -1 }, 'reader')).rejects.toThrow('version_id');
+  for (const page_size of [0, 1.5, 100]) {
+    await expect(client.getNotes({ page_size }, 'reader')).rejects.toThrow('page_size');
+  }
+  for (const version_id of [-1, 2 ** 31]) {
+    await expect(client.getNotes({ version_id }, 'reader')).rejects.toThrow('version_id');
+  }
   await expect(
     client.updateNote(noteId, { passage: { version_id: 0, passage_id: passageId } }, 'writer'),
   ).rejects.toThrow('version_id');
@@ -153,10 +169,28 @@ it('rejects invalid writes, pagination, and missing auth before sending a reques
   );
   const passage = { ...note.passage, unexpected: 'field' };
   await expect(client.updateNote(noteId, { passage }, 'writer')).rejects.toThrow('unexpected');
+  const unexpected = { title: 'Title', unexpected: 'field' };
+  await expect(client.updateNote(noteId, unexpected, 'writer')).rejects.toThrow('unexpected');
+  await expect(
+    client.createNote(
+      { ...unexpected, request_id: requestId, content: 'Note', status: 'private' },
+      'writer',
+    ),
+  ).rejects.toThrow('unexpected');
+  for (const [fields, field] of [
+    [{ language_tag: 'fil' }, 'language_tag'],
+    [{ language_tag: 'en-us' }, 'language_tag'],
+    [{ tags: ['a,b'] }, 'tags'],
+    [{ tags: [''] }, 'tags'],
+    [{ content: '' }, 'content'],
+    [{ passage: { ...note.passage, passage_id: '  ' } }, 'passage_id'],
+  ] as const satisfies ReadonlyArray<readonly [UpdateNote, string]>) {
+    await expect(client.updateNote(noteId, fields, 'writer')).rejects.toThrow(field);
+  }
   expect(requests).toBe(0);
 });
 
-it('rejects dot-segment note IDs before making a request', async () => {
+it('rejects blank and dot-segment note IDs before making a request', async () => {
   const client = createClient();
   let requests = 0;
   server.use(
@@ -167,6 +201,8 @@ it('rejects dot-segment note IDs before making a request', async () => {
   );
 
   await Promise.all([
+    expect(client.getNote('', 'reader')).rejects.toThrow('Note ID'),
+    expect(client.getNote('  ', 'reader')).rejects.toThrow('Note ID'),
     expect(client.getNote('.', 'reader')).rejects.toThrow('Note ID'),
     expect(client.deleteNote('..', 'writer')).rejects.toThrow('Note ID'),
   ]);
@@ -176,6 +212,7 @@ it('rejects dot-segment note IDs before making a request', async () => {
 it.each([
   ['status', 'draft'],
   ['color', '#44AA44'],
+  ['id', 123],
 ])('rejects an invalid %s in a note response', async (field, value) => {
   server.use(http.get(resourceUrl, () => HttpResponse.json({ ...wireNote, [field]: value })));
   await expect(createClient().getNote(noteId, 'reader')).rejects.toThrow(field);

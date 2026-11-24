@@ -10,7 +10,13 @@ type JsonPrimitive = string | number | boolean | null;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 type RequestData = Record<string, JsonValue>;
 type RequestHeaders = Record<string, string>;
-type ApiResponse<T> = { status: number; data: T };
+/** The HTTP status and decoded body of a successful API request. */
+export type ApiResponse<T> = {
+  /** Successful HTTP response status. */
+  status: number;
+  /** Decoded response body. Choose `T` to match the endpoint's body, including empty responses. */
+  data: T;
+};
 
 const HttpStatusCarrierSchema = object({
   status: z.number(),
@@ -186,7 +192,14 @@ export class ApiClient {
     return data;
   }
 
-  /** Sends a GET request and returns its status alongside the decoded body. */
+  /**
+   * Sends a GET request and returns its status alongside the decoded body.
+   * @typeParam T - The expected response body type.
+   * @param path - The API endpoint path (relative to baseURL).
+   * @param params - Optional query parameters to include in the request.
+   * @param headers - Optional headers merged over the default headers.
+   * @returns The HTTP status and decoded response body.
+   */
   async getWithStatus<T>(
     path: string,
     params?: QueryParams,
@@ -224,7 +237,15 @@ export class ApiClient {
     return response.data;
   }
 
-  /** Sends a JSON PATCH request and returns the decoded response. */
+  /**
+   * Sends a JSON PATCH request and returns the decoded response.
+   * @typeParam T - The expected response body type.
+   * @param path - The API endpoint path (relative to baseURL).
+   * @param data - JSON request body. Explicit `null` values are preserved.
+   * @param params - Optional query parameters to include in the request.
+   * @param headers - Optional headers merged over the default headers.
+   * @returns The decoded response body.
+   */
   async patch<T>(
     path: string,
     data: RequestData,

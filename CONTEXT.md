@@ -107,6 +107,11 @@ content."). Hooks surface that `error`. UI does not throw, does not
 render an empty tree, does not swap in another version. Dev: one
 `console.warn` for a host-passed unusable `versionId`.
 
+`NotesClient` manages a user's account notes, not Scripture content. It does
+not apply the app's version filter to a note's passage reference or to a
+Notes list query. Highlights and Scripture clients still apply their own
+version filtering when reading or writing those resources.
+
 Language-only allowlists need `language_tag`. Content methods may fetch
 version metadata once; if metadata is missing, refuse (fail closed).
 `getVersion` itself is refused when the id is already unusable without

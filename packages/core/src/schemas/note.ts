@@ -1,8 +1,10 @@
 import * as z from 'zod/mini';
 import { object, strictObject } from './object';
 
-const passageId = z.string().check(z.refine((value) => value.trim().length > 0));
-const versionId = z.int32().check(z.positive('Version ID must be a positive integer'));
+export const NotePassageIdSchema = z.string().check(z.refine((value) => value.trim().length > 0));
+export const NoteVersionIdSchema = z
+  .int32()
+  .check(z.positive('Version ID must be a positive integer'));
 const title = z.optional(z.nullable(z.string()));
 const status = z.enum(['private', 'public']);
 const isoTimestamp = z.iso.datetime({ offset: true });
@@ -15,9 +17,9 @@ const timestamp = z
 
 const NotePassageInputSchema = strictObject({
   /** Bible version identifier, sent on the wire as `bible_id`. */
-  version_id: versionId,
+  version_id: NoteVersionIdSchema,
   /** Single verse, same-chapter range, or same-chapter verses joined by `+`. */
-  passage_id: passageId,
+  passage_id: NotePassageIdSchema,
 });
 
 const NotePassageSchema = z.pipe(
@@ -44,6 +46,7 @@ export const CreateNoteSchema = strictObject({
   ...optionalWriteFields,
   /** Reuse this UUID to retry the same logical create without duplicating the note. */
   request_id: z.uuid(),
+  /** Non-empty note text. */
   content: nonEmptyContent,
   /** `private` is visible only to the author; `public` is visible to others. */
   status,
@@ -51,7 +54,9 @@ export const CreateNoteSchema = strictObject({
 
 export const UpdateNoteSchema = strictObject({
   ...optionalWriteFields,
+  /** Replacement note text. Must not be empty. */
   content: z.optional(nonEmptyContent),
+  /** `private` is visible only to the author; `public` is visible to others. */
   status: z.optional(status),
 }).check(
   z.refine(
@@ -63,15 +68,23 @@ export const UpdateNoteSchema = strictObject({
 export const NoteSchema = object({
   /** Opaque identifier. Pass it unchanged to get, update, or delete this note. */
   id: z.string(),
+  /** Optional short title. */
   title,
+  /** Text written by the note's author. */
   content: z.string(),
   /** Six hex digits without `#`, preserving the case returned by the API. */
   color: z.optional(z.nullable(z.string().check(z.regex(/^[0-9a-f]{6}$/i)))),
+  /** The attached Scripture passage, if any. */
   passage: z.optional(z.nullable(NotePassageSchema)),
+  /** Language tag for the note, if set. */
   language_tag: z.optional(z.nullable(z.string())),
+  /** Labels applied to the note, if set. */
   tags: z.optional(z.nullable(z.array(z.string()))),
+  /** `private` is visible only to the author; `public` is visible to others. */
   status,
+  /** Creation timestamp in RFC 3339 format, when supplied by the API. */
   created_dt: z.optional(timestamp),
+  /** Last update timestamp in RFC 3339 format, if supplied and non-null. */
   updated_dt: z.optional(z.nullable(timestamp)),
 });
 
@@ -80,20 +93,11 @@ export const NotesPageSchema = object({
   next_page_token: z.optional(z.nullable(z.string())),
 });
 
-export const GetNotesOptionsSchema = object({
-  /** Filter by Bible version. Sent on the wire as `bible_id`. */
-  version_id: z.optional(versionId),
-  /** Filter by overlapping verses, range, or chapter. */
-  passage_id: z.optional(passageId),
-  /** Results per page, from 1 to 99. The API default is 25. */
-  page_size: z.optional(z.int().check(z.gte(1), z.lte(99))),
-  /** Cursor from the previous response. Keep both filters unchanged when paging. */
-  page_token: z.optional(z.nullable(z.string())),
-});
-
+/** Scripture passage attached to a note, using SDK version IDs. */
 export type NotePassage = z.infer<typeof NotePassageInputSchema>;
+/** A note returned by the regular Notes API. */
 export type Note = z.infer<typeof NoteSchema>;
+/** Fields for creating a note, including an idempotency UUID. */
 export type CreateNote = z.infer<typeof CreateNoteSchema>;
 /** Omit fields to leave them unchanged; pass `null` to clear nullable fields. */
 export type UpdateNote = z.infer<typeof UpdateNoteSchema>;
-export type GetNotesOptions = z.infer<typeof GetNotesOptionsSchema>;
