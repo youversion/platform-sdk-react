@@ -6,11 +6,19 @@ import { SDK_VERSION_HEADER_NAME, buildSdkVersionHeaderValue } from './version';
 type PrimitiveQueryParam = string | number | boolean;
 type QueryParamValue = PrimitiveQueryParam | PrimitiveQueryParam[];
 type QueryParams = Record<string, QueryParamValue>;
-type JsonPrimitive = string | number | boolean;
+type JsonPrimitive = string | number | boolean | null;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 type RequestData = Record<string, JsonValue>;
 type RequestHeaders = Record<string, string>;
-type ApiResponse<T> = Readonly<{ data: T; emptyBody: boolean; status: number }>;
+/** The HTTP status and decoded body of a successful API request. */
+export type ApiResponse<T> = Readonly<{
+  /** Successful HTTP response status. */
+  status: number;
+  /** Decoded response body. Choose `T` to match the endpoint's body, including empty responses. */
+  data: T;
+  /** Whether the HTTP body is empty, distinct from a JSON empty string or null. */
+  emptyBody: boolean;
+}>;
 
 const HttpStatusCarrierSchema = object({
   status: z.number(),
@@ -182,15 +190,18 @@ export class ApiClient {
    * @returns A promise resolving to the response data of type T.
    */
   async get<T>(path: string, params?: QueryParams, headers?: RequestHeaders): Promise<T> {
-    const url = `${this.baseURL}${path}${this.buildQueryString(params)}`;
-    const response = await this.request<T>(url, {
-      method: 'GET',
-      headers,
-    });
-    return response.data;
+    const { data } = await this.getWithStatus<T>(path, params, headers);
+    return data;
   }
 
-  /** @internal GET variant for endpoint clients that must inspect a successful status. */
+  /**
+   * Sends a GET request and returns its status alongside the decoded body.
+   * @typeParam T - The expected response body type.
+   * @param path - The API endpoint path (relative to baseURL).
+   * @param params - Optional query parameters to include in the request.
+   * @param headers - Optional headers merged over the default headers.
+   * @returns The HTTP status and decoded response body.
+   */
   async getWithStatus<T>(
     path: string,
     params?: QueryParams,
@@ -223,6 +234,30 @@ export class ApiClient {
     const response = await this.request<T>(url, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
+      headers,
+    });
+    return response.data;
+  }
+
+  /**
+   * Sends a JSON PATCH request and returns the decoded response.
+   * @typeParam T - The expected response body type.
+   * @param path - The API endpoint path (relative to baseURL).
+   * @param data - JSON request body. Explicit `null` values are preserved.
+   * @param params - Optional query parameters to include in the request.
+   * @param headers - Optional headers merged over the default headers.
+   * @returns The decoded response body.
+   */
+  async patch<T>(
+    path: string,
+    data: RequestData,
+    params?: QueryParams,
+    headers?: RequestHeaders,
+  ): Promise<T> {
+    const url = `${this.baseURL}${path}${this.buildQueryString(params)}`;
+    const response = await this.request<T>(url, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
       headers,
     });
     return response.data;

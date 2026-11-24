@@ -16,3 +16,12 @@ export const object =
     fields: T,
     params?: string | z.core.$ZodObjectParams,
   ) => z.ZodMiniObject<T, z.core.$strip>;
+
+/** Like {@link object}, but rejects fields outside the schema. */
+export const strictObject =
+  // SAFETY: as with `object`, this preserves the supplied shape instead of applying
+  // `Writeable<T>`. The runtime parser and strict config are unchanged.
+  z.strictObject as <T extends Record<string, z.core.$ZodType>>(
+    fields: T,
+    params?: string | z.core.$ZodObjectParams,
+  ) => z.ZodMiniObject<T, z.core.$strict>;

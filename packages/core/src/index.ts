@@ -1,4 +1,4 @@
-export { ApiClient, getHttpStatus } from './client';
+export { ApiClient, getHttpStatus, type ApiResponse } from './client';
 export { BibleClient } from './bible';
 export { getChapter, getVersion } from './bible-chapter';
 export {
@@ -60,6 +60,7 @@ export {
   type GetHighlightsOptions,
   type DeleteHighlightOptions,
 } from './highlights';
+export { NotesClient, type GetNotesOptions } from './notes';
 export {
   DataExchangeClient,
   buildDataExchangeUrl,

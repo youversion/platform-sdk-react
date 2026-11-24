@@ -64,6 +64,45 @@ const unified = await searchClient.searchUnified('psalm 23', versions.data[0].id
 console.log(trending.queries[0]?.text, verses.verses[0]?.id, unified.topics[0]?.text);
 ```
 
+### Notes
+
+`NotesClient` lists, fetches, creates, updates, and deletes the signed-in user's
+notes through `/v1/notes`. Reads require `read_notes` and writes require
+`write_notes`. With `YouVersionAPIUsers.signIn`, pass these as OAuth scopes in the
+second argument, not as data-exchange permissions. Pass a long access token
+explicitly outside a signed-in browser session.
+
+```ts
+import { ApiClient, NotesClient } from '@youversion/platform-core';
+
+const notes = new NotesClient(new ApiClient({ appKey: 'YOUR_APP_KEY' }));
+const filters = { version_id: 3034, passage_id: 'JHN.3' };
+const page = await notes.getNotes(filters, accessToken);
+if (page.next_page_token !== null) {
+  await notes.getNotes({ ...filters, page_token: page.next_page_token }, accessToken);
+}
+
+const note = await notes.createNote(
+  { request_id: crypto.randomUUID(), content: 'Trust in God.', status: 'private' },
+  accessToken,
+);
+await notes.updateNote(note.id, { title: 'Morning reflection' }, accessToken);
+```
+
+Keep the filters unchanged when paging. A page can be empty and still have a
+next token. Generate a UUID for each new note and reuse it if you retry that
+create. For updates, omit fields to keep their values or pass `null` to clear
+`title`, `color`, `passage`, `language_tag`, or `tags`.
+
+`NotesClient` checks the app's Bible version filter when you supply `version_id`
+to a list query or a passage to create or update. A malformed passage in an API
+response is omitted without losing the note's text or the rest of the page.
+List responses skip notes with other malformed fields while preserving valid notes
+and the continuation token, even if no notes remain on that page. Invalid list
+envelopes and invalid single-note responses still reject.
+If your app caches highlights, refetch the affected chapter's highlights after
+creating, updating, or deleting a colored note attached to a passage.
+
 ### Verse-art images
 
 `ImagesClient` reads image metadata from `GET /v1/images`. Image bytes stay on
