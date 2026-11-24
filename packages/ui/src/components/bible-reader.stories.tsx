@@ -256,10 +256,8 @@ export const SettingsCloseShowsFocusThroughToolbar: Story = {
     });
     if (!nativeKeyAvailable) return;
     await verifyNativeBrowserKey('{Enter}', async () => {
-      await waitFor(async () => {
-        const overlay = await getReaderOverlay(root);
-        await expect(overlay.getByRole('dialog')).toBeVisible();
-      });
+      const overlay = await getReaderOverlay(root);
+      await expect(overlay.getByRole('dialog')).toHaveAttribute('data-state', 'open');
     });
     const settings = await getReaderOverlay(root);
     const closeButton = await settings.findByRole('button', { name: i18n.t('close') });
@@ -271,6 +269,7 @@ export const SettingsCloseShowsFocusThroughToolbar: Story = {
     });
     const focusedIndicator = await waitFor(async () => {
       await expect(root.activeElement).toBe(closeButton);
+      await expect(closeButton).toBeVisible();
       await expect(closeButton.matches(':focus-visible')).toBe(true);
       const style = getComputedStyle(closeButton);
       await expect(style.boxShadow).toContain('inset');
