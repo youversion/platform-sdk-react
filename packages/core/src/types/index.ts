@@ -27,6 +27,8 @@ export type { Language } from '../schemas/language';
 export type { User } from '../schemas/user';
 export type { Highlight, CreateHighlight } from '../schemas/highlight';
 export type {
+  ContentLibrarySearchField,
+  ContentLibrarySearchOptions,
   KnownSearchUserIntent,
   SearchImagesOptions,
   SearchImagesResponse,
@@ -41,11 +43,24 @@ export type {
   SearchVerseHit,
   SearchVersesOptions,
   SearchVersesResponse,
+  SearchVideoHit,
 } from '../schemas/search';
+export type { SearchVideosOptions, SearchVideosResponse } from '../schemas/search-videos';
 export type { Collection } from '../schemas/collection';
 export type { Organization, OrganizationAddress } from '../schemas/organization';
 export type { VerseImage, GetImagesOptions } from '../schemas/image';
-export type { Video, VideoPlaybackSource, VideoThumbnail } from '../schemas/video';
+export type {
+  GetVideoOptions,
+  GetPlaylistOptions,
+  GetPlaylistsOptions,
+  ContentLibraryVideo,
+  Video,
+  VideoPlaylist,
+  VideoPlaylistField,
+  VideoPlaybackSource,
+  VideoThumbnail,
+  VideoThumbnailSize,
+} from '../schemas/video';
 export type { Font, FontVariant, FontSource } from '../schemas/font';
 export type { License } from '../schemas/license';
 export type { AppSummary } from '../schemas/app';
