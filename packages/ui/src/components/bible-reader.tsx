@@ -6,53 +6,30 @@ import { useDelayedLoading } from '@/lib/use-delayed-loading';
 import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
 import { useResolvedScriptureDirection } from '@/lib/scripture-direction';
 import { cn } from '@/lib/utils';
-import {
-  INTER_FONT,
-  SOURCE_SERIF_FONT,
-  UNTITLED_SERIF_FONT,
-  type FontFamily,
-} from '@/lib/verse-html-utils';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
-import type { BibleBook, Highlight, TextDirection } from '@youversion/platform-core';
 import {
   DEFAULT_LICENSE_FREE_BIBLE_VERSION,
-  getAdjacentChapter,
-  getLocalStorage,
-  setStorageItem,
+  YouVersionPlatformConfiguration,
+  getPassageAttribution,
+  type Highlight,
+  type TextDirection,
 } from '@youversion/platform-core';
+import { useBooks, usePassage, useTheme, useVersion } from '@youversion/platform-react-hooks';
 import {
-  useBooks,
-  usePassage,
-  useTheme,
-  useVersion,
-  useYVAuth,
-  YouVersionContext,
-} from '@youversion/platform-react-hooks';
-import React, {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
-  type ReactElement,
   type ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BibleChapterPicker, type BibleChapterPickerPressData } from './bible-chapter-picker';
-import { BibleVersionPicker, type BibleVersionPickerPressData } from './bible-version-picker';
-import { ChevronBackwardIcon } from './icons/chevron-backward';
-import { ChevronForwardIcon } from './icons/chevron-forward';
-import { GearIcon } from './icons/gear';
+import type { BibleChapterPickerPressData } from './bible-chapter-picker';
+import type { BibleVersionPickerPressData } from './bible-version-picker';
 import { InfoIcon } from './icons/info';
 import { LoaderIcon } from './icons/loader';
-import { PersonIcon } from './icons/person';
-import { ProfileAvatar } from './profile-avatar';
 import { ReuseShadowBoundary, ShadowIsolationBoundary } from '@/lib/shadow-isolation';
-import { Button } from './ui/button';
-import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './ui/popover';
 import { VerseActionPopover } from './verse-action-popover';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 import { HighlightPermissionDialog } from './highlight-permission-dialog';
@@ -61,144 +38,53 @@ import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 import { isHighlightsLive } from '@/lib/feature-flags';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
-import { YouVersionPlatformConfiguration, getPassageAttribution } from '@youversion/platform-core';
-import { BibleReaderSearch, type BibleReaderSearchPressData } from './bible-reader-search';
+import type { BibleReaderSearchPressData } from './bible-reader-search';
 import { useTransientVerseFocus, type VerseFocusRequest } from '@/lib/use-transient-verse-focus';
-import { BibleReaderNavigation } from './bible-reader-navigation';
+import {
+  BibleReaderNavigation,
+  type BibleReaderNavigationRequest,
+} from './bible-reader-navigation';
 import { VerseActionPopoverFocusRestoreProvider } from '@/lib/verse-action-popover-focus';
 import { isElementFromOwnerDocument } from '@/lib/shadow-root-host';
+import {
+  BibleReaderContext,
+  useBibleReaderContext,
+  type BibleReaderContextType,
+} from './bible-reader-context';
 
-type BibleReaderContextType = {
-  book: string;
-  chapter: string;
-  versionId: number;
-  setBook: React.Dispatch<React.SetStateAction<string>>;
-  setChapter: React.Dispatch<React.SetStateAction<string>>;
-  setVersionId: React.Dispatch<React.SetStateAction<number>>;
-  booksData: BibleBook[];
-  booksLoading: boolean;
-  currentFontFamily: FontFamily;
-  setCurrentFontFamily: React.Dispatch<React.SetStateAction<FontFamily>>;
-  currentFontSize: number;
-  setCurrentFontSize: React.Dispatch<React.SetStateAction<number>>;
-  currentLineSpacing: number;
-  setCurrentLineSpacing: React.Dispatch<React.SetStateAction<number>>;
-  showVerseNumbers: boolean;
-  background: 'light' | 'dark';
-  onFootnotePress?: (data: FootnoteData) => void;
-  onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
-  onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
-  onSearchPress?: (data: BibleReaderSearchPressData) => void | Promise<void>;
-  languageId?: string;
-  defaultLanguageId?: string;
-  onLanguageChange?: (languageId: string) => void;
-  onSignInPress?: () => void;
-  onSignOutPress?: () => void;
-  onCopy?: (data: BibleReaderShareData) => void | Promise<void>;
-  onShare?: (data: BibleReaderShareData) => void | Promise<void>;
-  highlights?: Highlight[];
-  isHighlightsControlled: boolean;
-  onVerseSelect?: (selection: BibleReaderVerseSelection) => void;
-  onHighlightApply?: (intent: BibleReaderHighlightIntent) => void;
-  onHighlightRemove?: (intent: BibleReaderHighlightIntent) => void;
-  verseActions: 'popover' | 'none';
-  clearSelectionSignal?: number;
-  navigation: BibleReaderNavigation;
-  verseFocus: VerseFocusRequest | null;
-  scriptureDirection?: TextDirection;
-};
-
-/**
- * Serializable payload describing the reader's current verse selection.
- * Bridge-safe primitives only, so React Native / Expo DOM hosts can forward it
- * across the native bridge. `passageIds` is deliberately redundant with
- * `book`/`chapter`/`verses` (always per-verse, never ranges): native hosts feed
- * the API without USFM string-building; analytics reads `verses` without USFM
- * parsing.
- */
-export type BibleReaderVerseSelection = {
-  /** Matches `Highlight.version_id`. */
-  versionId: number;
-  /** USFM book code, e.g. `'JHN'`. */
-  book: string;
-  /** Chapter id, e.g. `'3'`. */
-  chapter: string;
-  /** Selected verse numbers, ascending and de-duplicated. `[]` on clear. */
-  verses: number[];
-  /** Per-verse USFM ids, e.g. `['JHN.3.16', 'JHN.3.17']`. Never ranges. */
-  passageIds: string[];
-  /**
-   * Localized display reference **without** the version abbreviation, e.g.
-   * `Hebrews 11:4`. For a host that renders its own verse-action UI (see
-   * {@link RootProps.verseActions}) this is the label to show; the USFM `book`
-   * code above is not human-readable.
-   *
-   * Falls back to the USFM book code (`HEB 11:4`) until `useBooks` resolves the
-   * book title; when it resolves while the selection is still live, the reader
-   * re-emits that selection with the localized reference. `''` on clear.
-   *
-   * Deliberately different from `shareData.reference`, which keeps the version
-   * abbreviation (`Hebrews 11:4 BSB`) because copied text needs it. Do not
-   * "fix" one to match the other.
-   */
-  reference: string;
-  /**
-   * The same payload the popover's Copy / Share buttons produce, so a host
-   * owning the verse-action UI can run copy/share without a popover press.
-   * `null` on clear (and if the reader's DOM is not mounted).
-   */
-  shareData: BibleReaderShareData | null;
-};
-
-/**
- * Serializable payload handed to `onHighlightApply` / `onHighlightRemove` in
- * controlled mode. An intent is a request, not a fact: the reader paints
- * nothing until the host round-trips an updated `highlights` prop.
- *
- * `reference` / `shareData` are deliberately omitted: an intent is addressed to
- * the data layer, which needs identity and colour only.
- */
-export type BibleReaderHighlightIntent = Omit<
+import type {
+  BibleReaderHighlightIntent,
+  BibleReaderSettingsProps,
+  BibleReaderShareData,
   BibleReaderVerseSelection,
-  'reference' | 'shareData'
-> & {
-  /**
-   * 6-character lowercase hex, no `#`. For `onHighlightRemove`, the color
-   * being cleared.
-   */
-  color: string;
-};
+} from './bible-reader.types';
 
-/**
- * Serializable payload handed to the `onCopy` / `onShare` overrides. Mirrors
- * `VerseOfTheDayShareData` so React Native / Expo DOM hosts can forward verse
- * selections across the native bridge.
- */
-export type BibleReaderShareData = {
-  /** Full body: curly-quoted verse text, a blank line, then the reference. */
-  text: string;
-  /** Reference line only, e.g. `John 1:1-3 NIV`. */
-  reference: string;
-  /** Verse text only (no reference line), gaps joined with ` ... `. */
-  verseText: string;
-  /** Selected verse numbers, ascending and de-duplicated. */
-  verses: number[];
-  book: string;
-  chapter: string;
-  versionId: number;
-};
+import { Toolbar } from './bible-reader-toolbar';
+import { useBibleReaderSettings } from './use-bible-reader-settings';
 
-const BibleReaderContext = createContext<BibleReaderContextType | null>(null);
+export type { BibleReaderToolbarProps } from './bible-reader-toolbar';
+export { useBibleReaderContext } from './bible-reader-context';
+export { BibleThemeSettingsContent } from './bible-theme-settings';
+export {
+  BIBLE_READER_FONT,
+  BIBLE_READER_SPACING,
+  clampBibleReaderFontSize,
+  nextBibleReaderFontSizeUp,
+  nextBibleReaderFontSizeDown,
+  changeBibleReaderLineSpacing,
+  createBibleThemeSettingsContentHandlers,
+  type BibleThemeSettingsValues,
+  type BibleThemeSettingsSnapshot,
+  type BibleThemeSettingsContentProps,
+} from './bible-reader-settings';
 
-export function useBibleReaderContext(): BibleReaderContextType {
-  const context = useContext(BibleReaderContext);
-  if (!context) {
-    throw new Error('BibleReader components must be used within BibleReader.Root');
-  }
-  return context;
-}
+export type {
+  BibleReaderHighlightIntent,
+  BibleReaderShareData,
+  BibleReaderVerseSelection,
+} from './bible-reader.types';
 
-export type RootProps = {
+export type RootProps = BibleReaderSettingsProps & {
   /** Retain this connection outside the reader to request navigation before mount. */
   navigation?: BibleReaderNavigation;
   book?: string;
@@ -210,21 +96,6 @@ export type RootProps = {
   versionId?: number;
   defaultVersionId?: number;
   onVersionChange?: (versionId: number) => void;
-  fontSize?: number;
-  defaultFontSize?: number;
-  onFontSizeChange?: (fontSize: number) => void;
-  fontFamily?: FontFamily;
-  defaultFontFamily?: FontFamily;
-  onFontFamilyChange?: (fontFamily: FontFamily) => void;
-  lineSpacing?: number;
-  defaultLineSpacing?: number;
-  onChangeLineSpacing?: (size: number) => void;
-  /**
-   * @deprecated Use `defaultLineSpacing` (uncontrolled) or `lineSpacing` +
-   * `onChangeLineSpacing` (controlled) instead. When provided, this is used as
-   * the initial line spacing. Will be removed in the next major version.
-   */
-  lineHeight?: number;
   showVerseNumbers?: boolean;
   background?: 'light' | 'dark';
   onFootnotePress?: (data: FootnoteData) => void;
@@ -350,118 +221,17 @@ export type RootProps = {
   children?: ReactNode;
 };
 
-export const BIBLE_READER_FONT = {
-  MIN: 12,
-  MAX: 20,
-  DEFAULT: 16,
-  STEP: 2,
-} as const;
-
-export const BIBLE_READER_SPACING = {
-  SM: 1.45,
-  DEFAULT: 1.7,
-  LG: 2.0,
-} as const;
-
-const MIN_FONT_SIZE = BIBLE_READER_FONT.MIN;
-const MAX_FONT_SIZE = BIBLE_READER_FONT.MAX;
-const DEFAULT_FONT_SIZE = BIBLE_READER_FONT.DEFAULT;
-const FONT_SIZE_STEP = BIBLE_READER_FONT.STEP;
-
-export type BibleThemeSettingsValues = {
-  fontSize: number;
-  fontFamily: FontFamily;
-  lineSpacing: number;
-};
-
-export type BibleThemeSettingsSnapshot = BibleThemeSettingsValues & {
-  minFontSize: number;
-  maxFontSize: number;
-};
-
-export type BibleThemeSettingsContentProps = {
-  theme: 'light' | 'dark';
-  fontSize: number;
-  fontFamily: FontFamily;
-  lineSpacing: number;
-  onFontSelected: (fontFamily: FontFamily) => void;
-  onFontIncreased: () => void;
-  onFontDecreased: () => void;
-  onChangeLineSpacing: () => void;
-};
-
-export function clampBibleReaderFontSize(fontSize: number): number {
-  return Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, fontSize));
-}
-
-function normalizeReaderFontSizeForInitialization(size: number): number {
-  if (size > MAX_FONT_SIZE || size < MIN_FONT_SIZE) {
-    return DEFAULT_FONT_SIZE;
-  }
-  return size;
-}
-
-export function nextBibleReaderFontSizeUp(current: number): number {
-  return clampBibleReaderFontSize(current + FONT_SIZE_STEP);
-}
-
-export function nextBibleReaderFontSizeDown(current: number): number {
-  return clampBibleReaderFontSize(current - FONT_SIZE_STEP);
-}
-
-export function changeBibleReaderLineSpacing(current: number): number {
-  switch (current) {
-    case BIBLE_READER_SPACING.DEFAULT:
-      return BIBLE_READER_SPACING.LG;
-    case BIBLE_READER_SPACING.LG:
-      return BIBLE_READER_SPACING.SM;
-    default:
-      return BIBLE_READER_SPACING.DEFAULT;
-  }
-}
-
-function lineSpacingButtonGapClass(lineSpacing: number): string {
-  switch (lineSpacing) {
-    case BIBLE_READER_SPACING.SM:
-      return 'yv:gap-1';
-    case BIBLE_READER_SPACING.LG:
-      return 'yv:gap-2';
-    default:
-      return 'yv:gap-1.5';
-  }
-}
-
-/**
- * Builds the three handler props for {@link BibleThemeSettingsContent} from host-owned font state.
- * Use this on the same side as `setFontSize` / `setFontFamily` (e.g. React Native before passing
- * **top-level** props into a `BibleThemeSettingsContent` Expo DOM wrapper). Expo allows functions as
- * top-level DOM props; do not nest these inside a {@link BibleThemeSettingsSnapshot}.
- */
-export function createBibleThemeSettingsContentHandlers(options: {
-  getFontSize: () => number;
-  getFontFamily: () => FontFamily;
-  setFontSize: (size: number) => void;
-  setFontFamily: (fontFamily: FontFamily) => void;
-  getLineSpacing: () => number;
-  setLineSpacing: (size: number) => void;
-}): Pick<
-  BibleThemeSettingsContentProps,
-  'onFontIncreased' | 'onFontDecreased' | 'onFontSelected' | 'onChangeLineSpacing'
-> {
-  return {
-    onFontIncreased: () => {
-      options.setFontSize(nextBibleReaderFontSizeUp(options.getFontSize()));
-    },
-    onFontDecreased: () => {
-      options.setFontSize(nextBibleReaderFontSizeDown(options.getFontSize()));
-    },
-    onFontSelected: (fontFamily) => {
-      options.setFontFamily(fontFamily);
-    },
-    onChangeLineSpacing: () => {
-      options.setLineSpacing(changeBibleReaderLineSpacing(options.getLineSpacing()));
-    },
-  };
+// Non-scrolling focus requests apply only to the chapter/version already displayed.
+function canApplyNavigationRequest(
+  target: BibleReaderNavigationRequest,
+  versionId: number,
+  book: string,
+  chapter: string,
+): boolean {
+  return (
+    target.scrollsToVerse ||
+    (target.versionId === versionId && target.book === book && target.chapter === chapter)
+  );
 }
 
 function Root({
@@ -476,10 +246,10 @@ function Root({
   defaultVersionId = DEFAULT_LICENSE_FREE_BIBLE_VERSION,
   onVersionChange,
   fontSize: fontSizeProp,
-  defaultFontSize = DEFAULT_FONT_SIZE,
+  defaultFontSize,
   onFontSizeChange,
   fontFamily: fontFamilyProp,
-  defaultFontFamily = UNTITLED_SERIF_FONT,
+  defaultFontFamily,
   onFontFamilyChange,
   lineSpacing: lineSpacingProp,
   defaultLineSpacing,
@@ -518,10 +288,12 @@ function Root({
     const target = navigation.peek();
     if (
       target &&
-      !target.scrollsToVerse &&
-      (target.versionId !== (controlledVersionId ?? defaultVersionId) ||
-        target.book !== (controlledBook ?? defaultBook) ||
-        target.chapter !== (controlledChapter ?? defaultChapter))
+      !canApplyNavigationRequest(
+        target,
+        controlledVersionId ?? defaultVersionId,
+        controlledBook ?? defaultBook,
+        controlledChapter ?? defaultChapter,
+      )
     )
       return null;
     return target;
@@ -551,120 +323,25 @@ function Root({
   const chapter = controlledChapter ?? initialNavigation?.chapter ?? currentChapter;
   const versionId = controlledVersionId ?? initialNavigation?.versionId ?? currentVersionId;
 
-  const validatedDefaultFontSize =
-    defaultFontSize > MAX_FONT_SIZE || defaultFontSize < MIN_FONT_SIZE
-      ? DEFAULT_FONT_SIZE
-      : defaultFontSize;
-
-  const isFontSizeControlled = onFontSizeChange !== undefined;
-  const isFontFamilyControlled = onFontFamilyChange !== undefined;
-  const isLineSpacingControlled = onChangeLineSpacing !== undefined;
-
-  const defaultPropFontSize = normalizeReaderFontSizeForInitialization(
-    fontSizeProp ?? validatedDefaultFontSize,
-  );
-
-  const [currentFontSize, setCurrentFontSize] = useControllableState({
-    prop: isFontSizeControlled ? fontSizeProp : undefined,
-    defaultProp: defaultPropFontSize,
-    onChange: onFontSizeChange,
-  });
-
-  const defaultPropFontFamily = fontFamilyProp ?? defaultFontFamily;
-
-  const [currentFontFamily, setCurrentFontFamily] = useControllableState({
-    prop: isFontFamilyControlled ? fontFamilyProp : undefined,
-    defaultProp: defaultPropFontFamily,
-    onChange: onFontFamilyChange,
-  });
-
-  const resolvedDefaultLineSpacing =
-    defaultLineSpacing ?? lineHeight ?? BIBLE_READER_SPACING.DEFAULT;
-
-  const [currentLineSpacing, setCurrentLineSpacing] = useControllableState({
-    prop: isLineSpacingControlled ? lineSpacingProp : undefined,
-    defaultProp: resolvedDefaultLineSpacing,
-    onChange: onChangeLineSpacing,
-  });
-
-  const didHydrateThemeSettingsRef = useRef(false);
-
-  useLayoutEffect(() => {
-    if (didHydrateThemeSettingsRef.current) return;
-    didHydrateThemeSettingsRef.current = true;
-
-    if (!isFontSizeControlled) {
-      const savedFontSize = getLocalStorage()?.getItem('youversion-platform:reader:font-size');
-      if (savedFontSize) {
-        const parsed = parseInt(savedFontSize);
-        if (parsed >= MIN_FONT_SIZE && parsed <= MAX_FONT_SIZE) {
-          setCurrentFontSize(parsed);
-        }
-      }
-    }
-
-    if (!isFontFamilyControlled) {
-      const savedFontFamily = getLocalStorage()?.getItem('youversion-platform:reader:font-family');
-      if (savedFontFamily) {
-        // Readers who picked serif before Untitled Serif shipped stored the old
-        // stack; map it forward so the picker still shows serif as active.
-        // Deliberately not full validation — `FontFamily` is open on purpose, so
-        // a host-supplied `defaultFontFamily="Georgia"` must still round-trip.
-        setCurrentFontFamily(
-          savedFontFamily === SOURCE_SERIF_FONT ? UNTITLED_SERIF_FONT : savedFontFamily,
-        );
-      }
-    }
-
-    if (!isLineSpacingControlled) {
-      const savedLineSpacing = getLocalStorage()?.getItem(
-        'youversion-platform:reader:line-spacing',
-      );
-      if (savedLineSpacing) {
-        const parsed = parseFloat(savedLineSpacing);
-        if (Object.values(BIBLE_READER_SPACING).some((spacing) => spacing === parsed)) {
-          setCurrentLineSpacing(parsed);
-        }
-      }
-    }
-  }, [
-    isFontFamilyControlled,
-    isFontSizeControlled,
-    setCurrentFontFamily,
+  const {
+    currentFontSize,
     setCurrentFontSize,
-    isLineSpacingControlled,
+    currentFontFamily,
+    setCurrentFontFamily,
+    currentLineSpacing,
     setCurrentLineSpacing,
-  ]);
-
-  useEffect(() => {
-    if (!isFontSizeControlled) {
-      setStorageItem(
-        getLocalStorage(),
-        'youversion-platform:reader:font-size',
-        currentFontSize.toString(),
-      );
-    }
-  }, [currentFontSize, isFontSizeControlled]);
-
-  useEffect(() => {
-    if (!isFontFamilyControlled) {
-      setStorageItem(
-        getLocalStorage(),
-        'youversion-platform:reader:font-family',
-        currentFontFamily,
-      );
-    }
-  }, [currentFontFamily, isFontFamilyControlled]);
-
-  useEffect(() => {
-    if (!isLineSpacingControlled) {
-      setStorageItem(
-        getLocalStorage(),
-        'youversion-platform:reader:line-spacing',
-        currentLineSpacing.toString(),
-      );
-    }
-  }, [currentLineSpacing, isLineSpacingControlled]);
+  } = useBibleReaderSettings({
+    fontSize: fontSizeProp,
+    defaultFontSize,
+    onFontSizeChange,
+    fontFamily: fontFamilyProp,
+    defaultFontFamily,
+    onFontFamilyChange,
+    lineSpacing: lineSpacingProp,
+    defaultLineSpacing,
+    onChangeLineSpacing,
+    lineHeight,
+  });
 
   const providerTheme = useTheme();
   const theme = background || providerTheme;
@@ -694,11 +371,7 @@ function Root({
       const target = navigation.consume();
       if (target === null) return;
       setInitialNavigation(null);
-      if (
-        !target.scrollsToVerse &&
-        (target.versionId !== versionId || target.book !== book || target.chapter !== chapter)
-      )
-        return;
+      if (!canApplyNavigationRequest(target, versionId, book, chapter)) return;
       verseFocusSeqRef.current += 1;
       setVersionId(target.versionId);
       setBook(target.book);
@@ -1394,498 +1067,6 @@ function Content() {
         </footer>
       )}
     </main>
-  );
-}
-
-function UserMenu() {
-  const { t } = useTranslation(undefined, { i18n });
-  const { auth, signIn, signOut, userInfo } = useYVAuth();
-  const yvContext = useContext(YouVersionContext);
-  const { onSignInPress, onSignOutPress } = useBibleReaderContext();
-
-  // Prefer host-supplied native actions (e.g. the Expo DOM wrapper bridges these to
-  // native PKCE sign-in). Fall back to the Web SDK's own auth for pure-web usage.
-  const handleSignIn = () => {
-    if (onSignInPress) {
-      onSignInPress();
-    } else {
-      void signIn({ scopes: ['profile'] });
-    }
-  };
-  const handleSignOut = () => {
-    if (onSignOutPress) {
-      onSignOutPress();
-    } else {
-      signOut();
-    }
-  };
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild data-testid="user-menu-trigger">
-        {auth.isAuthenticated ? (
-          <Button size="icon" variant="outline">
-            <ReuseShadowBoundary>
-              <ProfileAvatar
-                name={userInfo?.name}
-                src={userInfo?.getAvatarUrl(32, 32)?.toString()}
-                aria-label={userInfo?.name || t('userAvatarAlt')}
-                className="yv:size-full"
-              />
-            </ReuseShadowBoundary>
-          </Button>
-        ) : (
-          <Button size="sm" variant="secondary" aria-label={t('signIn')}>
-            <PersonIcon className="yv:text-foreground" />
-          </Button>
-        )}
-      </PopoverTrigger>
-
-      <PopoverContent
-        aria-label={auth.isAuthenticated ? t('signOut') : t('signIn')}
-        theme={yvContext?.theme}
-        className="yv:w-fit! yv:rounded-full"
-        sideOffset={16}
-        showHeader={false}
-      >
-        <PopoverClose asChild>
-          {auth.isAuthenticated ? (
-            <Button
-              variant="secondary"
-              className="yv:card yv:text-foreground"
-              onClick={handleSignOut}
-            >
-              {t('signOut')}
-            </Button>
-          ) : (
-            <Button
-              variant="secondary"
-              className="yv:card yv:text-foreground"
-              onClick={handleSignIn}
-            >
-              {t('signIn')}
-            </Button>
-          )}
-        </PopoverClose>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-const INTER_FONT_NAME = 'Inter';
-const UNTITLED_SERIF_FONT_NAME = 'Untitled Serif';
-
-export function BibleThemeSettingsContent(props: BibleThemeSettingsContentProps): ReactElement {
-  return (
-    <ShadowIsolationBoundary theme={props.theme} shrinkableBlockHost>
-      <BibleThemeSettingsBody {...props} />
-    </ShadowIsolationBoundary>
-  );
-}
-
-function BibleThemeSettingsBody({
-  theme,
-  fontSize,
-  fontFamily,
-  lineSpacing,
-  onFontSelected,
-  onFontIncreased,
-  onFontDecreased,
-  onChangeLineSpacing,
-}: BibleThemeSettingsContentProps): ReactElement {
-  const { t } = useTranslation(undefined, { i18n });
-  const interfaceDirection = useInterfaceDirection();
-  return (
-    <>
-      <YvComponentStyles />
-      <div
-        data-yv-sdk
-        data-yv-theme={theme}
-        dir={interfaceDirection}
-        className="yv:flex yv:[block-size:100%] yv:min-h-0 yv:flex-col yv:gap-4 yv:overflow-y-auto yv:p-4"
-      >
-        <div className="yv:flex yv:justify-between yv:items-stretch yv:gap-4">
-          <div className="yv:flex yv:flex-1">
-            <Button
-              className="yv:flex-1 yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-s-[8px] yv:rounded-e-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
-              onClick={onFontDecreased}
-              size="lg"
-              variant="secondary"
-              data-testid="decrease-font-size"
-              disabled={fontSize <= MIN_FONT_SIZE}
-              aria-disabled={fontSize <= MIN_FONT_SIZE}
-              aria-label={t('decreaseFontSizeAriaLabel')}
-            >
-              A
-            </Button>
-            <Button
-              className="yv:flex-1 yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-e-[8px] yv:rounded-s-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
-              onClick={onFontIncreased}
-              size="lg"
-              variant="secondary"
-              data-testid="increase-font-size"
-              disabled={fontSize >= MAX_FONT_SIZE}
-              aria-disabled={fontSize >= MAX_FONT_SIZE}
-              aria-label={t('increaseFontSizeAriaLabel')}
-            >
-              A
-            </Button>
-          </div>
-          <Button
-            className="yv:h-auto yv:border yv:border-white yv:dark:border-border yv:rounded-[8px]"
-            variant="secondary"
-            data-testid="line-spacing"
-            onClick={onChangeLineSpacing}
-            aria-label={t('changeLineSpacingAriaLabel')}
-          >
-            <div className={cn('yv:flex yv:flex-col', lineSpacingButtonGapClass(lineSpacing))}>
-              <span className="yv:h-0.5 yv:w-8 yv:bg-black yv:dark:bg-current"></span>
-              <span className="yv:h-0.5 yv:w-8 yv:bg-black yv:dark:bg-current"></span>
-              <span className="yv:h-0.5 yv:w-8 yv:bg-black yv:dark:bg-current"></span>
-            </div>
-          </Button>
-        </div>
-
-        <div className="yv:grid yv:grid-cols-2">
-          <Button
-            className={cn(
-              'yv:group yv:dark:bg-muted yv:rounded-e-none yv:border-e-0.5 yv:dark:border-border yv:rounded-s-[8px] yv:h-auto',
-              fontFamily === INTER_FONT
-                ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
-                : '',
-            )}
-            onClick={() => onFontSelected(INTER_FONT)}
-            variant="outline"
-          >
-            <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
-              <span
-                className={cn(
-                  'yv:text-xs yv:text-muted-foreground',
-                  fontFamily === INTER_FONT
-                    ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
-                    : '',
-                )}
-              >
-                {t('font')}
-              </span>
-              <span className="yv:sm:text-xl yv:text-base">{INTER_FONT_NAME}</span>
-            </div>
-          </Button>
-          <Button
-            className={cn(
-              'yv:group yv:dark:bg-muted yv:border-s-0.5 yv:rounded-s-none yv:rounded-e-[8px] yv:h-auto',
-              fontFamily === UNTITLED_SERIF_FONT
-                ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
-                : '',
-            )}
-            onClick={() => onFontSelected(UNTITLED_SERIF_FONT)}
-            variant="outline"
-          >
-            <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
-              <span
-                className={cn(
-                  'yv:text-xs yv:text-muted-foreground',
-                  fontFamily === UNTITLED_SERIF_FONT
-                    ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
-                    : '',
-                )}
-              >
-                {t('font')}
-              </span>
-              <span className="yv:sm:text-xl yv:text-base yv:font-serif">
-                {UNTITLED_SERIF_FONT_NAME}
-              </span>
-            </div>
-          </Button>
-        </div>
-      </div>
-    </>
-  );
-}
-
-export type BibleReaderToolbarProps = {
-  border?: 'top' | 'bottom';
-  onOpenBibleThemeSettings?: (snapshot: BibleThemeSettingsSnapshot) => void;
-  /**
-   * Whether the toolbar renders the built-in search control.
-   * `'control'` (default) | `'none'`. Mirrors `RootProps.verseActions`.
-   */
-  search?: 'control' | 'none';
-};
-
-function Toolbar({
-  border = 'top',
-  onOpenBibleThemeSettings,
-  search = 'control',
-}: BibleReaderToolbarProps) {
-  const { t } = useTranslation(undefined, { i18n });
-  const interfaceDirection = useInterfaceDirection();
-  const {
-    book,
-    chapter,
-    versionId,
-    setBook,
-    setChapter,
-    setVersionId,
-    booksData,
-    booksLoading,
-    currentFontFamily,
-    setCurrentFontFamily,
-    currentFontSize,
-    setCurrentFontSize,
-    currentLineSpacing,
-    setCurrentLineSpacing,
-    background,
-    onChapterPickerPress,
-    onVersionPickerPress,
-    languageId,
-    defaultLanguageId,
-    onLanguageChange,
-  } = useBibleReaderContext();
-  const yvContext = useContext(YouVersionContext);
-  const themesSettingsValuesRef = useRef<BibleThemeSettingsValues>({
-    fontSize: currentFontSize,
-    fontFamily: currentFontFamily,
-    lineSpacing: currentLineSpacing,
-  });
-
-  themesSettingsValuesRef.current = {
-    fontSize: currentFontSize,
-    fontFamily: currentFontFamily,
-    lineSpacing: currentLineSpacing,
-  };
-
-  const applyThemeSettings = (
-    themeSettings: BibleThemeSettingsValues,
-  ): BibleThemeSettingsValues => {
-    const nextThemeSettings = {
-      fontSize: clampBibleReaderFontSize(themeSettings.fontSize),
-      fontFamily: themeSettings.fontFamily,
-      lineSpacing: themeSettings.lineSpacing,
-    };
-
-    themesSettingsValuesRef.current = nextThemeSettings;
-    setCurrentFontSize(nextThemeSettings.fontSize);
-    setCurrentFontFamily(nextThemeSettings.fontFamily);
-    setCurrentLineSpacing(nextThemeSettings.lineSpacing);
-
-    return nextThemeSettings;
-  };
-
-  const handleFontIncreased = (): BibleThemeSettingsValues => {
-    const settings = themesSettingsValuesRef.current;
-    return applyThemeSettings({
-      ...settings,
-      fontSize: nextBibleReaderFontSizeUp(settings.fontSize),
-    });
-  };
-
-  const handleFontDecreased = (): BibleThemeSettingsValues => {
-    const settings = themesSettingsValuesRef.current;
-    return applyThemeSettings({
-      ...settings,
-      fontSize: nextBibleReaderFontSizeDown(settings.fontSize),
-    });
-  };
-
-  const handleFontSelected = (fontFamily: FontFamily): BibleThemeSettingsValues => {
-    return applyThemeSettings({
-      ...themesSettingsValuesRef.current,
-      fontFamily,
-    });
-  };
-
-  const handleLineSpacingChange = (): BibleThemeSettingsValues => {
-    const settings = themesSettingsValuesRef.current;
-    return applyThemeSettings({
-      ...settings,
-      lineSpacing: changeBibleReaderLineSpacing(settings.lineSpacing),
-    });
-  };
-
-  const buildBibleThemeSettingsSnapshot = (): BibleThemeSettingsSnapshot => ({
-    ...themesSettingsValuesRef.current,
-    minFontSize: MIN_FONT_SIZE,
-    maxFontSize: MAX_FONT_SIZE,
-  });
-
-  const prevResult = getAdjacentChapter(booksData, book, chapter, 'previous');
-  const nextResult = getAdjacentChapter(booksData, book, chapter, 'next');
-  const canNavigatePrevious = !booksLoading && prevResult !== null;
-  const canNavigateNext = !booksLoading && nextResult !== null;
-  const showSearch = search !== 'none';
-
-  return (
-    <section
-      dir={interfaceDirection}
-      className={cn(
-        'yv:flex yv:justify-center yv:gap-2 yv:p-4 yv:bg-background yv:border-border yv:max-w-screen yv:overflow-x-hidden',
-        border === 'top' && 'yv:border-t',
-        border === 'bottom' && 'yv:border-b',
-      )}
-    >
-      <div
-        className={cn(
-          'yv:grid yv:w-full yv:items-center yv:sm:max-w-lg yv:max-w-[calc(100vw-2rem)] yv:gap-3',
-          yvContext?.authEnabled
-            ? showSearch
-              ? 'yv:grid-cols-[auto_1fr_auto_auto_auto]'
-              : 'yv:grid-cols-[auto_1fr_auto_auto]'
-            : showSearch
-              ? 'yv:grid-cols-[1fr_auto_auto_auto]'
-              : 'yv:grid-cols-[1fr_auto_auto]',
-        )}
-      >
-        {yvContext?.authEnabled && <UserMenu />}
-
-        <ReuseShadowBoundary>
-          <BibleChapterPicker.Root
-            book={book}
-            chapter={chapter}
-            onBookChange={setBook}
-            onChapterChange={setChapter}
-            versionId={versionId}
-            background={background}
-            onChapterPickerPress={onChapterPickerPress}
-          >
-            <BibleChapterPicker.Trigger>
-              {({ chapterLabel, currentBook, loading }) => (
-                <div className="yv:grid yv:grid-cols-[auto_1fr_auto] yv:justify-start yv:grid-rows-1 yv:overflow-hidden yv:rounded-full yv:min-w-30 yv:bg-muted yv:text-muted-foreground yv:hover:bg-muted/80">
-                  <Button
-                    className="yv:min-w-0 yv:group yv:place-self-center yv:max-size-9 yv:touch-hitbox"
-                    size="icon"
-                    variant="ghost"
-                    disabled={!canNavigatePrevious}
-                    aria-label={t('previousChapterAriaLabel')}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (prevResult) {
-                        setBook(prevResult.bookId);
-                        setChapter(prevResult.chapterId);
-                      }
-                    }}
-                  >
-                    <ChevronBackwardIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
-                  </Button>
-
-                  <Button
-                    size="lg"
-                    variant="secondary"
-                    className="yv:px-0 yv:font-bold yv:text-foreground yv:min-w-[5ch]"
-                    disabled={loading}
-                    aria-label={t('changeBibleBookAndChapterAriaLabel')}
-                  >
-                    {loading ? (
-                      <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
-                    ) : (
-                      <>
-                        <bdi dir="auto" className="yv:min-w-[3ch] yv:truncate">
-                          {currentBook?.title || t('select')}
-                        </bdi>
-                        <bdi dir="auto" className="yv:tabular-nums yv:min-w-[1ch] yv:truncate">
-                          {chapterLabel || ''}
-                        </bdi>
-                      </>
-                    )}
-                  </Button>
-
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (nextResult) {
-                        setBook(nextResult.bookId);
-                        setChapter(nextResult.chapterId);
-                      }
-                    }}
-                    className="yv:min-w-0 yv:group yv:place-self-center yv:size-9 yv:touch-hitbox"
-                    size="icon"
-                    variant="ghost"
-                    disabled={!canNavigateNext}
-                    aria-label={t('nextChapterAriaLabel')}
-                  >
-                    <ChevronForwardIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
-                  </Button>
-                </div>
-              )}
-            </BibleChapterPicker.Trigger>
-          </BibleChapterPicker.Root>
-        </ReuseShadowBoundary>
-
-        <ReuseShadowBoundary>
-          <BibleVersionPicker.Root
-            versionId={versionId}
-            onVersionChange={setVersionId}
-            languageId={languageId}
-            defaultLanguageId={defaultLanguageId}
-            onLanguageChange={onLanguageChange}
-            background={background}
-            onVersionPickerPress={onVersionPickerPress}
-          >
-            <BibleVersionPicker.Trigger aria-label={t('changeBibleVersionAriaLabel')}>
-              {({ version, loading }) => (
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  className="yv:min-w-[calc(0.25rem*4*2+3ch)] yv:px-4 yv:font-bold yv:text-foreground"
-                  disabled={loading}
-                  aria-label={
-                    loading ? t('loadingBibleVersionAriaLabel') : t('changeBibleVersionAriaLabel')
-                  }
-                >
-                  {/* This div exists merely as a wrapper to minimize width layout shifting */}
-                  <div className="yv:min-w-[3ch] yv:flex yv:justify-center">
-                    {loading ? (
-                      <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
-                    ) : (
-                      <bdi dir="auto" className="yv:truncate">
-                        {version?.localized_abbreviation || t('selectVersion')}
-                      </bdi>
-                    )}
-                  </div>
-                </Button>
-              )}
-            </BibleVersionPicker.Trigger>
-            <BibleVersionPicker.Content />
-          </BibleVersionPicker.Root>
-        </ReuseShadowBoundary>
-
-        {showSearch ? <BibleReaderSearch /> : null}
-
-        {onOpenBibleThemeSettings ? (
-          <Button
-            size="sm"
-            variant="secondary"
-            aria-label={t('settingsAriaLabel')}
-            onClick={() => onOpenBibleThemeSettings(buildBibleThemeSettingsSnapshot())}
-          >
-            <GearIcon className="yv:text-foreground" />
-          </Button>
-        ) : (
-          <Popover>
-            <PopoverTrigger asChild aria-label={t('settingsAriaLabel')}>
-              <Button size="sm" variant="secondary">
-                <GearIcon className="yv:text-foreground" />
-              </Button>
-            </PopoverTrigger>
-
-            <PopoverContent sideOffset={16} heading={t('readerSettingsHeading')} theme={background}>
-              <ReuseShadowBoundary>
-                <BibleThemeSettingsContent
-                  theme={background}
-                  fontSize={currentFontSize}
-                  fontFamily={currentFontFamily}
-                  lineSpacing={currentLineSpacing}
-                  onFontDecreased={handleFontDecreased}
-                  onFontIncreased={handleFontIncreased}
-                  onFontSelected={handleFontSelected}
-                  onChangeLineSpacing={handleLineSpacingChange}
-                />
-              </ReuseShadowBoundary>
-            </PopoverContent>
-          </Popover>
-        )}
-      </div>
-    </section>
   );
 }
 

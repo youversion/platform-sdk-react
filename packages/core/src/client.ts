@@ -6,10 +6,19 @@ import { SDK_VERSION_HEADER_NAME, buildSdkVersionHeaderValue } from './version';
 type PrimitiveQueryParam = string | number | boolean;
 type QueryParamValue = PrimitiveQueryParam | PrimitiveQueryParam[];
 type QueryParams = Record<string, QueryParamValue>;
-type JsonPrimitive = string | number | boolean;
+type JsonPrimitive = string | number | boolean | null;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 type RequestData = Record<string, JsonValue>;
 type RequestHeaders = Record<string, string>;
+/** The HTTP status and decoded body of a successful API request. */
+export type ApiResponse<T> = Readonly<{
+  /** Successful HTTP response status. */
+  status: number;
+  /** Decoded response body. Choose `T` to match the endpoint's body, including empty responses. */
+  data: T;
+  /** Whether the HTTP body is empty, distinct from a JSON empty string or null. */
+  emptyBody: boolean;
+}>;
 
 const HttpStatusCarrierSchema = object({
   status: z.number(),
@@ -88,7 +97,7 @@ export class ApiClient {
   /**
    * Makes an HTTP request with timeout support
    */
-  private async request<T>(url: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(url: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
@@ -152,16 +161,16 @@ export class ApiClient {
         if (!text) {
           // SAFETY: empty 2xx JSON bodies (DELETE 200 with no payload) are
           // treated as undefined for the caller-owned generic T.
-          return undefined as T;
+          return { data: undefined as T, emptyBody: true, status: response.status };
         }
         // SAFETY: this client only decodes JSON text. Callers own T and parse
         // untrusted payloads with Zod at their boundary.
-        return JSON.parse(text) as T;
+        return { data: JSON.parse(text) as T, emptyBody: false, status: response.status };
       } else {
         const text = await response.text();
         // SAFETY: non-JSON 2xx bodies are returned as raw text. Callers that
         // asked for T=string receive it; other T values are caller-owned.
-        return text as T;
+        return { data: text as T, emptyBody: text.length === 0, status: response.status };
       }
     } catch (error) {
       clearTimeout(timeoutId);
@@ -181,6 +190,23 @@ export class ApiClient {
    * @returns A promise resolving to the response data of type T.
    */
   async get<T>(path: string, params?: QueryParams, headers?: RequestHeaders): Promise<T> {
+    const { data } = await this.getWithStatus<T>(path, params, headers);
+    return data;
+  }
+
+  /**
+   * Sends a GET request and returns its status alongside the decoded body.
+   * @typeParam T - The expected response body type.
+   * @param path - The API endpoint path (relative to baseURL).
+   * @param params - Optional query parameters to include in the request.
+   * @param headers - Optional headers merged over the default headers.
+   * @returns The HTTP status and decoded response body.
+   */
+  async getWithStatus<T>(
+    path: string,
+    params?: QueryParams,
+    headers?: RequestHeaders,
+  ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${path}${this.buildQueryString(params)}`;
     return this.request<T>(url, {
       method: 'GET',
@@ -205,11 +231,36 @@ export class ApiClient {
     headers?: RequestHeaders,
   ): Promise<T> {
     const url = `${this.baseURL}${path}${this.buildQueryString(params)}`;
-    return this.request<T>(url, {
+    const response = await this.request<T>(url, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
       headers,
     });
+    return response.data;
+  }
+
+  /**
+   * Sends a JSON PATCH request and returns the decoded response.
+   * @typeParam T - The expected response body type.
+   * @param path - The API endpoint path (relative to baseURL).
+   * @param data - JSON request body. Explicit `null` values are preserved.
+   * @param params - Optional query parameters to include in the request.
+   * @param headers - Optional headers merged over the default headers.
+   * @returns The decoded response body.
+   */
+  async patch<T>(
+    path: string,
+    data: RequestData,
+    params?: QueryParams,
+    headers?: RequestHeaders,
+  ): Promise<T> {
+    const url = `${this.baseURL}${path}${this.buildQueryString(params)}`;
+    const response = await this.request<T>(url, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+      headers,
+    });
+    return response.data;
   }
 
   /**
@@ -223,9 +274,10 @@ export class ApiClient {
    */
   async delete<T>(path: string, params?: QueryParams, headers?: RequestHeaders): Promise<T> {
     const url = `${this.baseURL}${path}${this.buildQueryString(params)}`;
-    return this.request<T>(url, {
+    const response = await this.request<T>(url, {
       method: 'DELETE',
       headers,
     });
+    return response.data;
   }
 }
