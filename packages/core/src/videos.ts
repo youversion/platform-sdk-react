@@ -22,7 +22,7 @@ import { resolveVideoThumbnail } from './video-thumbnail';
 
 export type { GetPlaylistOptions, GetPlaylistsOptions, GetVideoOptions };
 
-const VIDEOS_PATH = '/v1-beta/videos';
+const VIDEOS_PATH = '/v1/videos';
 
 type PlaylistsQuery = {
   'fields[]'?: VideoPlaylistField[];
@@ -31,7 +31,7 @@ type PlaylistsQuery = {
 };
 
 /**
- * Client for beta video detail and playlist resources. Requires a beta-enabled app key.
+ * Client for video detail and playlist resources. Requires an app key with catalog access.
  *
  * Playlist requests explicitly default to English for YPE-6461, which can return
  * a cached empty catalog when the language header is absent. Explicit caller
@@ -110,7 +110,7 @@ export class VideosClient {
     if (parsedOptions.pageToken != null) query.page_token = parsedOptions.pageToken;
 
     const response = await this.client.getWithStatus<unknown>(
-      `/v1-beta/organizations/${encodeURIComponent(id)}/playlists`,
+      `/v1/organizations/${encodeURIComponent(id)}/playlists`,
       query,
       { 'Accept-Language': parsedOptions.acceptLanguage ?? 'en' },
     );
@@ -147,7 +147,7 @@ export class VideosClient {
     const playlist = VideoPlaylistIdSchema.parse(playlistId);
     const parsedOptions = GetPlaylistOptionsSchema.parse(options);
     const body = await this.client.get<unknown>(
-      `/v1-beta/organizations/${encodeURIComponent(organization)}/playlists/${playlist}`,
+      `/v1/organizations/${encodeURIComponent(organization)}/playlists/${playlist}`,
       undefined,
       { 'Accept-Language': parsedOptions.acceptLanguage ?? 'en' },
     );

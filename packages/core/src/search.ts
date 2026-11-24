@@ -18,7 +18,7 @@ import type { SearchVideosResponse } from './schemas/search-videos';
 export type { SearchImagesOptions, SearchUnifiedOptions, SearchVersesOptions, SearchVideosOptions };
 
 /**
- * Client for YouVersion Platform Search API endpoints (`/v1/*` and `/v1-beta/*`).
+ * Client for YouVersion Platform Search API endpoints (`/v1/*`).
  */
 export class SearchClient {
   private client: ApiClient;
@@ -83,7 +83,7 @@ export class SearchClient {
   }
 
   /**
-   * Searches video metadata through `/v1-beta/search-videos`.
+   * Searches video metadata through `/v1/search-videos`.
    * Send the same query, organization filters, and language with a continuation
    * token; `pageSize` may change. Language defaults to English.
    * Empty pages can have continuation tokens. Continue until `nextPageToken` is
@@ -108,7 +108,7 @@ export class SearchClient {
   /**
    * Searches verses, topics, images, and lightweight video ids in one unpaginated request.
    * Image hits are `id` and `passageId` only.
-   * Selecting `videos` sends the request to beta and requires a beta-enabled app key.
+   * Video search requires an app key with access to the video catalog.
    * @param query Search text (1 to 100 graphemes).
    * @param versionId Bible version identifier (sent to the API as `bible_id`).
    * @param languageRanges Ordered language ranges (`en_US` is normalized to `en-us` on the wire).

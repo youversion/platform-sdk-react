@@ -21,7 +21,7 @@ function createSearchClient(): SearchClient {
 
 describe('SearchClient.searchUnified', () => {
   it.skipIf(Boolean(process.env.INTEGRATION_TESTS))(
-    'routes mixed video and verse search to beta and resolves the returned video id',
+    'routes video-only and mixed searches to v1 and resolves the returned video id',
     async () => {
       const apiClient = createApiClient();
       const searchClient = new SearchClient(apiClient);
@@ -29,7 +29,7 @@ describe('SearchClient.searchUnified', () => {
       let expectedFields: readonly string[];
 
       server.use(
-        http.get(`https://${apiHost}/v1-beta/search-unified`, ({ request }) => {
+        http.get(`https://${apiHost}/v1/search-unified`, ({ request }) => {
           const url = new URL(request.url);
           expect(url.searchParams.getAll('fields[]')).toEqual(expectedFields);
           return HttpResponse.json({
@@ -43,7 +43,7 @@ describe('SearchClient.searchUnified', () => {
             search_instead_for: null,
           });
         }),
-        http.get(`https://${apiHost}/v1-beta/videos/search-issued-id`, () =>
+        http.get(`https://${apiHost}/v1/videos/search-issued-id`, () =>
           HttpResponse.json({
             id: 'detail-issued-id',
             playback_sources: [],

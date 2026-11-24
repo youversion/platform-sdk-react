@@ -138,7 +138,7 @@ verse range, such as `JHN.3.16` or `JHN.3.16-18`.
 
 Unified search returns one snapshot of top results, not the entire verse result
 set. Omit `fields` for the stable endpoint's default selection, or pass a nonempty
-selection. Explicitly include `videos` to use the beta unified-search route.
+selection. Explicitly include `videos` to request video hits.
 `userIntent` accepts `unknown`, `topical`, `text`, or `reference`; response intent
 strings remain open-ended.
 
@@ -174,10 +174,10 @@ There are two ways to find videos:
   collection; `getPlaylist` returns one full playlist, including its ordered
   video IDs. Pass those IDs unchanged to `getVideo` for metadata and playback URLs.
 
-These calls require an App Key with access to the beta video catalog.
+These calls require an App Key with access to the video catalog.
 Video details, playlist collection/detail, and dedicated video search use
-`/v1-beta`. Unified search uses `/v1-beta/search-unified` only when `fields`
-explicitly includes `videos`; other selections use `/v1/search-unified`.
+`/v1`. Unified search always uses `/v1/search-unified`, including when `fields`
+explicitly includes `videos`.
 Unified search returns one unpaginated set of top results.
 
 Dedicated video search supports `pageSize` from 1 to 99. Repeat the query,
@@ -202,7 +202,7 @@ retain their wire names, such as `page_size` and `next_page_token`. A null input
 cursor requests the first page; an empty string cursor is sent unchanged.
 
 Video detail and dedicated search preserve optional nullable `passage_ids`,
-`organization_id`, and `references`, plus singular `passage_id` from earlier beta
+`organization_id`, and `references`, plus singular `passage_id` from earlier
 responses. Thumbnail URL strings are preserved whether absolute, relative, or
 protocol-relative. `getVideo` accepts `thumbnailSize: 'thumb'`, `'card'`, or
 `'full'`. Omitting it removes any existing `size` parameter for the full-size

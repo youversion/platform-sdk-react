@@ -24,7 +24,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
     const search = createSearchClient();
 
     server.use(
-      http.get(`https://${apiHost}/v1-beta/search-videos`, ({ request }) => {
+      http.get(`https://${apiHost}/v1/search-videos`, ({ request }) => {
         const url = new URL(request.url);
         expect(request.headers.get('Accept-Language')).toBe('en');
         expect(url.searchParams.get('query')).toBe('teaching clips');
@@ -90,7 +90,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
     const search = createSearchClient();
     const requests: string[] = [];
     server.use(
-      http.get(`https://${apiHost}/v1-beta/search-videos`, ({ request }) => {
+      http.get(`https://${apiHost}/v1/search-videos`, ({ request }) => {
         const url = new URL(request.url);
         requests.push(request.url);
         expect(url.searchParams.get('query')).toBe('love');
@@ -116,7 +116,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
 
     try {
       server.use(
-        http.get(`https://${apiHost}/v1-beta/search-videos`, ({ request }) => {
+        http.get(`https://${apiHost}/v1/search-videos`, ({ request }) => {
           requests += 1;
           const url = new URL(request.url);
           expect(request.headers.get('Accept-Language')).toBe('es-MX');
@@ -185,7 +185,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
     const search = createSearchClient();
 
     server.use(
-      http.get(`https://${apiHost}/v1-beta/search-videos`, ({ request }) => {
+      http.get(`https://${apiHost}/v1/search-videos`, ({ request }) => {
         const query = new URL(request.url).searchParams.get('query');
         if (query === 'malformed') {
           return HttpResponse.json({
@@ -224,9 +224,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
       did_you_mean: [],
       search_instead_for: null,
     };
-    server.use(
-      http.get(`https://${apiHost}/v1-beta/search-videos`, () => HttpResponse.json(valid)),
-    );
+    server.use(http.get(`https://${apiHost}/v1/search-videos`, () => HttpResponse.json(valid)));
     await expect(search.searchVideos('love')).resolves.toEqual({
       videos: [],
       didYouMean: [],
@@ -235,9 +233,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
     });
     for (const field of ['user_intent', 'search_instead_for']) {
       const missing = Object.fromEntries(Object.entries(valid).filter(([name]) => name !== field));
-      server.use(
-        http.get(`https://${apiHost}/v1-beta/search-videos`, () => HttpResponse.json(missing)),
-      );
+      server.use(http.get(`https://${apiHost}/v1/search-videos`, () => HttpResponse.json(missing)));
       await expect(search.searchVideos('love')).resolves.toEqual({
         videos: [],
         didYouMean: [],
@@ -245,7 +241,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
         nextPageToken: null,
       });
       server.use(
-        http.get(`https://${apiHost}/v1-beta/search-videos`, () =>
+        http.get(`https://${apiHost}/v1/search-videos`, () =>
           HttpResponse.json({ ...valid, [field]: 42 }),
         ),
       );
@@ -255,9 +251,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
     }
     for (const field of ['videos', 'did_you_mean']) {
       const payload = Object.fromEntries(Object.entries(valid).filter(([name]) => name !== field));
-      server.use(
-        http.get(`https://${apiHost}/v1-beta/search-videos`, () => HttpResponse.json(payload)),
-      );
+      server.use(http.get(`https://${apiHost}/v1/search-videos`, () => HttpResponse.json(payload)));
       await expect(search.searchVideos('love')).rejects.toThrow(
         'Unexpected search-videos API response',
       );
@@ -268,7 +262,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
     const search = createSearchClient();
     const queries = ['👨‍👩‍👧‍👦'.repeat(15), 'é'.repeat(100)];
     server.use(
-      http.get(`https://${apiHost}/v1-beta/search-videos`, ({ request }) => {
+      http.get(`https://${apiHost}/v1/search-videos`, ({ request }) => {
         const url = new URL(request.url);
         expect(queries).toContain(url.searchParams.get('query'));
         expect(url.searchParams.has('page_token')).toBe(false);
@@ -304,10 +298,10 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
       },
     ];
     server.use(
-      http.get(`https://${apiHost}/v1-beta/search-videos`, () =>
+      http.get(`https://${apiHost}/v1/search-videos`, () =>
         HttpResponse.json({ videos: records, did_you_mean: [] }),
       ),
-      http.get(`https://${apiHost}/v1-beta/videos/relative`, () => HttpResponse.json(records[0])),
+      http.get(`https://${apiHost}/v1/videos/relative`, () => HttpResponse.json(records[0])),
     );
     const page = await search.searchVideos('love');
     expect(page.videos.map((video) => video.thumbnail?.url)).toEqual([
@@ -325,7 +319,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('SearchClient.searchVide
     );
 
     server.use(
-      http.get(`https://${apiHost}/v1-beta/search-videos`, ({ request }) => {
+      http.get(`https://${apiHost}/v1/search-videos`, ({ request }) => {
         expect(request.headers.get('X-YVP-App-Key')).toBe('');
         return HttpResponse.json({ message: 'missing app key' }, { status: 401 });
       }),
