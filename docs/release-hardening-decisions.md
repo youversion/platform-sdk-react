@@ -5,7 +5,7 @@
 Review feedback (jhampton, `CHANGES_REQUESTED`, 2026-06-29) raised three items that are **decisions, not bugs**. Each gets pinned two ways once decided:
 
 - **Deterministic** — code/config (`commitlint.config.js`, workflows, `package.json`, hooks).
-- **Semi-deterministic** — [`greptile.json`](https://www.greptile.com/docs/code-review/custom-standards) (`customContext.rules`), `AGENTS.md`.
+- **Semi-deterministic** — the named rules in [`.greptile/config.json`](../.greptile/config.json) and the guidance in `AGENTS.md`.
 
 ---
 
@@ -22,7 +22,7 @@ So commit titles **don't** feed the changelog or version here — Changesets doe
 
 **Implementation.**
 - Deterministic: plain `@commitlint/config-conventional`; **remove** the `YPE-####` prefix parser from [`commitlint.config.js`](../commitlint.config.js); lint the **PR title** (becomes the squash commit, e.g. `amannn/action-semantic-pull-request`); keep the per-commit husky hook as an optional dev aid.
-- Semi-deterministic: `greptile.json` + `AGENTS.md` — PR titles must be conventional; tickets belong in the branch name / PR body.
+- Semi-deterministic: `squash-title` reminds reviewers that PR titles must be conventional; tickets belong in the branch name / PR body.
 
 ---
 
@@ -34,7 +34,7 @@ So commit titles **don't** feed the changelog or version here — Changesets doe
 
 **Implementation.**
 - Deterministic: `corepack pnpm exec` in [`.husky/`](../.husky) hooks; optional CI "verify package manager" step; keep `packageManager`/`engines` pins.
-- Semi-deterministic: `README.md` "Package Manager" section (the rationale); `greptile.json` flag for bare `pnpm exec` in hooks.
+- Semi-deterministic: `README.md` "Package Manager" section (the rationale); `git-hook-pnpm` checks that hooks use Corepack when available and fall back to pnpm otherwise.
 
 ---
 
@@ -50,7 +50,7 @@ So commit titles **don't** feed the changelog or version here — Changesets doe
 
 **Implementation.**
 - Deterministic: align the release-hardening branch to main — `engines.node >=22.13`, pnpm 11, Node 24 in CI; correct the earlier Node-20 workflow comments.
-- Semi-deterministic: `AGENTS.md` + `greptile.json` — "new dev-deps must support `engines.node` (>=22.13); don't lower the floor to escape a dep constraint without a decision."
+- Semi-deterministic: `node-engine-floor` checks that new dev-deps support `engines.node` (>=22.13); don't lower the floor to escape a dep constraint without a decision.
 
 ---
 
@@ -66,7 +66,7 @@ So commit titles **don't** feed the changelog or version here — Changesets doe
 3. **Both** — bot for contributor UX, CI check as the enforced gate.
 
 **Recommend:** Option 1 (deterministic hard gate); add the bot later for UX if wanted. **Decides:** team.
-**Pin:** a "changeset required" job in the PR workflow; `greptile.json` + `AGENTS.md` note "every PR needs a changeset — use `pnpm changeset --empty` for genuine no-release changes (CI/docs/tooling)."
+**Pin:** The [Require Changeset CI job](../.github/workflows/changeset.yml) checks for a changeset, except on the version-packages PR. Use `pnpm changeset --empty` for genuine no-release changes. Greptile's `changeset-consumer-impact` rule reviews whether the PR's changesets together describe what changed for consumers.
 
 ---
 
@@ -83,6 +83,6 @@ So commit titles **don't** feed the changelog or version here — Changesets doe
 
 1. Implement deterministic guardrails for all three decisions (all decided — ready now).
 2. Add the "changeset required" CI gate (Decision 4).
-3. Add `greptile.json` + `AGENTS.md` rules.
+3. Add review rules in `.greptile/config.json` and guidance in `AGENTS.md`.
 4. File the Corepack-successor follow-up ticket (Decision 2).
 5. Update [`release-hardening-plan.md`](./release-hardening-plan.md); PR #268 is unblocked — push the guardrail commits and take it out of draft.
