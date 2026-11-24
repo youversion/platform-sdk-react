@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type Ref, type RefObject } from 'react';
 import { BibleReaderNavigation } from '@youversion/platform-react-ui';
 import { DestinationNav } from '@/components/destination-nav';
 import { BibleCardPage } from '@/pages/BibleCardPage';
@@ -38,6 +38,7 @@ function App() {
   const activeScreen = screenIdFor(route);
   const [visited, setVisited] = useState<ReadonlySet<ScreenId>>(() => new Set([activeScreen]));
   const [contentImageId, setContentImageId] = useState<string | null>(null);
+  const contentScrollRef = useRef<HTMLDivElement>(null);
   const pendingRead = useRef<ReaderCommand | null>(null);
   const previousScreen = useRef(activeScreen);
 
@@ -105,7 +106,12 @@ function App() {
       <main className="relative min-h-0 flex-1">
         {screens.map((screen) =>
           visited.has(screen) ? (
-            <KeptScreen key={screen} active={screen === activeScreen} scroll={screen !== 'bible'}>
+            <KeptScreen
+              key={screen}
+              ref={screen === 'content' ? contentScrollRef : undefined}
+              active={screen === activeScreen}
+              scroll={screen !== 'bible'}
+            >
               {screenBody(
                 screen,
                 navigation,
@@ -113,6 +119,7 @@ function App() {
                 openBible,
                 readImageInBible,
                 screen === activeScreen,
+                contentScrollRef,
               )}
             </KeptScreen>
           ) : null,
@@ -129,6 +136,7 @@ function screenBody(
   openBible: (command: ReaderCommand) => void,
   readImageInBible: (passageId: string, versionId: number) => void,
   active: boolean,
+  contentScrollRef: RefObject<HTMLDivElement | null>,
 ): ReactNode {
   switch (screen) {
     case 'bible':
@@ -136,6 +144,7 @@ function screenBody(
     case 'content':
       return (
         <ImagesPage
+          scrollContainerRef={contentScrollRef}
           imageId={contentImageId}
           active={active}
           onSelectImage={(imageId) => {
@@ -180,6 +189,7 @@ function screenBody(
 }
 
 function KeptScreen({
+  ref,
   active,
   scroll,
   children,
@@ -187,10 +197,11 @@ function KeptScreen({
   active: boolean;
   scroll: boolean;
   children: ReactNode;
+  ref?: Ref<HTMLDivElement>;
 }) {
   return (
     <div
-      data-demo-scroll={scroll ? true : undefined}
+      ref={ref}
       data-active-screen={active ? 'true' : undefined}
       hidden={active ? undefined : true}
       inert={active ? undefined : true}

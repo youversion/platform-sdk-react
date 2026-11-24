@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { clampSearchText, type VerseImage } from '@youversion/platform-react-ui';
 import {
   createImageLibraryClients,
@@ -15,11 +15,13 @@ import { formatHash } from '../routes';
 import './image-library.css';
 
 export function ImagesPage({
+  scrollContainerRef,
   imageId,
   onSelectImage,
   active = true,
   onReadInBible,
 }: {
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
   imageId: string | null;
   onSelectImage: (id: string | null) => void;
   active?: boolean;
@@ -101,6 +103,7 @@ export function ImagesPage({
         </p>
       ) : null}
       <ImageResults
+        scrollContainerRef={scrollContainerRef}
         key={`${language}:${query}`}
         imageId={imageId}
         onSelectImage={onSelectImage}
@@ -115,6 +118,7 @@ export function ImagesPage({
 }
 
 function ImageResults({
+  scrollContainerRef,
   clients,
   language,
   query,
@@ -123,6 +127,7 @@ function ImageResults({
   active,
   onReadInBible,
 }: {
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
   clients: ImageLibraryClients;
   language: string;
   query: string;
@@ -144,14 +149,13 @@ function ImageResults({
   const previousImageId = useRef(imageId);
   useEffect(() => {
     if (!active || imageId !== null) return;
-    const owner = container.current?.closest('[data-demo-scroll]') ?? document.scrollingElement;
-    const target = owner === document.scrollingElement ? document : owner;
+    const owner = scrollContainerRef.current;
     const remember = () => {
       listScroll.current = owner?.scrollTop ?? 0;
     };
-    target?.addEventListener('scroll', remember);
-    return () => target?.removeEventListener('scroll', remember);
-  }, [imageId, active]);
+    owner?.addEventListener('scroll', remember);
+    return () => owner?.removeEventListener('scroll', remember);
+  }, [imageId, active, scrollContainerRef]);
   useEffect(() => {
     const entering = previousImageId.current !== imageId && imageId !== null;
     const returning = previousImageId.current !== null && imageId === null;
@@ -167,11 +171,11 @@ function ImageResults({
           openedCard.current = null;
         detail.current?.focus({ preventScroll: true });
       }
-      const owner = container.current?.closest('[data-demo-scroll]') ?? document.scrollingElement;
+      const owner = scrollContainerRef.current;
       owner?.scrollTo({ top: returning ? listScroll.current : 0 });
     });
     return () => cancelAnimationFrame(frame);
-  }, [imageId, active]);
+  }, [imageId, active, scrollContainerRef]);
   return (
     <div ref={container} tabIndex={-1}>
       {imageId !== null ? (
@@ -228,8 +232,7 @@ function ImageResults({
                     return;
                   event.preventDefault();
                   openedCard.current = event.currentTarget;
-                  const owner =
-                    container.current?.closest('[data-demo-scroll]') ?? document.scrollingElement;
+                  const owner = scrollContainerRef.current;
                   listScroll.current = owner?.scrollTop ?? 0;
                   onSelectImage(image.id);
                 }}
