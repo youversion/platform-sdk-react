@@ -1,5 +1,13 @@
 # @youversion/platform-react-hooks
 
+## 3.0.1
+
+### Patch Changes
+
+- Updated dependencies [4dfb963]
+- Updated dependencies [f4a3ddb]
+  - @youversion/platform-core@3.0.1
+
 ## 3.0.0
 
 ### Major Changes
