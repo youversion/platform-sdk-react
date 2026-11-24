@@ -26,6 +26,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './
 import { InputGroup, InputGroupInput, InputGroupAddon } from './ui/input-group';
 import { useInterfaceDirection } from '@/lib/direction';
 import { prefersReducedMotion } from '@/lib/reduced-motion';
+import { revealElementWithinScrollContainer } from '@/lib/scroll-reveal';
 import { cn } from '@/lib/utils';
 import { ShadowIsolationBoundary } from '@/lib/shadow-isolation';
 
@@ -57,7 +58,7 @@ type BibleChapterPickerContextType = {
   setExpandedBook: (bookId: string) => void;
   filteredBooks: BibleBook[] | null;
   registerBookElement: (bookId: string, node: HTMLDivElement | null) => void;
-  markBookFocused: () => void;
+  markBookFocused: (button: HTMLButtonElement) => void;
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
 };
 
@@ -261,8 +262,12 @@ function RootImplementation({
     setExpandedBook,
     filteredBooks,
     registerBookElement,
-    markBookFocused: () => {
+    markBookFocused: (button) => {
       bookFocusSequenceRef.current += 1;
+      if (usesConsumerScroll) return;
+      const list = button.closest<HTMLElement>('[data-slot="accordion"]');
+      // Linux Firefox can focus a book while leaving part of its row clipped.
+      if (list) revealElementWithinScrollContainer(button, list);
     },
     onChapterPickerPress,
   };
@@ -485,7 +490,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
             >
               <AccordionTrigger
                 className="yv:rounded-none yv:text-base yv:font-normal yv:leading-normal yv:text-foreground yv:focus-visible:ring-inset yv:focus-visible:ring-ring yv:-mx-1 yv:px-1 yv:data-[state=open]:font-bold"
-                onFocus={markBookFocused}
+                onFocus={(event) => markBookFocused(event.currentTarget)}
               >
                 <bdi dir="auto">{bookItem.title}</bdi>
               </AccordionTrigger>
