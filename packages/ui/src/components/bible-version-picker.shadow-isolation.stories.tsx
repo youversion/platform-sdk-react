@@ -11,7 +11,12 @@ import { ShadowRootHost } from '../lib/shadow-root-host';
 import mockBibles from '../test/mock-data/bibles.json';
 import mockLanguages from '../test/mock-data/languages.json';
 import mockOrganizations from '../test/mock-data/organizations.json';
-import { waitFor, waitForElement, waitForShadowRoot } from '../test/storybook-dom';
+import {
+  verifyNativeBrowserKey,
+  waitFor,
+  waitForElement,
+  waitForShadowRoot,
+} from '../test/storybook-dom';
 import { BibleVersionPicker } from './bible-version-picker';
 
 const VERSIONS = mockBibles.collections.default.data satisfies BibleVersion[];
@@ -96,6 +101,25 @@ function CustomTriggerBibleVersionPicker(): React.ReactNode {
         </button>
       </BibleVersionPicker.Trigger>
       <BibleVersionPicker.Content />
+    </BibleVersionPicker.Root>
+  );
+}
+
+function StandaloneBibleVersionPicker(): React.ReactNode {
+  const [versionId, setVersionId] = useState(111);
+
+  return (
+    <BibleVersionPicker.Root
+      versionId={versionId}
+      onVersionChange={setVersionId}
+      onVersionPickerPress={() => undefined}
+    >
+      <div
+        data-testid="standalone-version-panel"
+        style={{ blockSize: '12rem', inlineSize: '20rem', overflow: 'hidden' }}
+      >
+        <BibleVersionPicker.Content open onRequestClose={() => undefined} />
+      </div>
     </BibleVersionPicker.Root>
   );
 }
@@ -354,6 +378,54 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
     if (!reflectedControls) throw new Error('browser did not expose ariaControlsElements');
     await expect(trigger.getAttribute('aria-controls')).toBe(panel.id);
     await expect(reflectedControls).toEqual([panel]);
+    if (!__YV_STORYBOOK_VITEST__) return;
+
+    await expect(getComputedStyle(panel).overflowY).toBe('auto');
+    panel.style.blockSize = '8rem';
+    panel.style.inlineSize = '18rem';
+    const closeButton = within(panel).getByRole('button', { name: /close/i });
+    const versionSearch = within(panel).getByRole('textbox', { name: i18n.t('searchVersions') });
+    const languageEntry = within(panel).getByRole('button', { name: /^language /i });
+    const list = await waitForElement(
+      panel,
+      '[data-testid="version-list"]',
+      'version list not rendered',
+    );
+    await waitFor(async () => await expect(list.querySelector('button')).not.toBeNull());
+    const buttons = Array.from(list.querySelectorAll('button'));
+    const versionButton = buttons.find((button) =>
+      button.textContent?.includes('New International Version (Anglicized) 2011'),
+    );
+    if (!versionButton) throw new Error('two-line version row not rendered');
+    panel.focus({ preventScroll: true });
+    const forwardTraversalKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      ? '{Alt>}{Tab}{/Alt}'
+      : '{Tab}';
+    for (const expected of [
+      closeButton,
+      versionSearch,
+      languageEntry,
+      ...buttons.slice(0, buttons.indexOf(versionButton) + 1),
+    ]) {
+      const nativeKeyAvailable = await verifyNativeBrowserKey(forwardTraversalKey, async () => {
+        await expect(root.activeElement).toBe(expected);
+      });
+      if (!nativeKeyAvailable) return;
+    }
+    await expect(panel.scrollTop).toBeGreaterThan(0);
+    const focusedVersionRect = versionButton.getBoundingClientRect();
+    await expect(focusedVersionRect.height).toBeGreaterThan(74);
+    const constrainedPanelRect = panel.getBoundingClientRect();
+    const constrainedScrollRegion = versionButton.closest(
+      '[data-testid="version-list"]',
+    )?.parentElement;
+    if (!constrainedScrollRegion) throw new Error('constrained version scroll region not found');
+    const constrainedScrollRect = constrainedScrollRegion.getBoundingClientRect();
+    await expect(focusedVersionRect.top).toBeGreaterThanOrEqual(constrainedPanelRect.top - 1);
+    await expect(focusedVersionRect.bottom).toBeLessThanOrEqual(constrainedPanelRect.bottom + 1);
+    await expect(focusedVersionRect.top).toBeGreaterThanOrEqual(constrainedScrollRect.top - 1);
+    await expect(focusedVersionRect.bottom).toBeLessThanOrEqual(constrainedScrollRect.bottom + 1);
+    await expect(getComputedStyle(versionButton).boxShadow).toContain('inset');
   },
 };
 
@@ -369,9 +441,38 @@ export const ForwardTabSkipsScrollableVersionList: Story = {
       '[data-testid="version-list"] button',
       'version row not rendered',
     );
+    const versionButtons = Array.from(
+      panel.querySelectorAll<HTMLButtonElement>('[data-testid="version-list"] button'),
+    );
+    const lastVersion = versionButtons.at(-1);
+    if (!lastVersion) throw new Error('last version row not rendered');
     const scrollRegion = firstVersion.closest('[data-testid="version-list"]')?.parentElement;
     if (!scrollRegion) throw new Error('version list scroll region not found');
     await expect(scrollRegion.scrollHeight).toBeGreaterThan(scrollRegion.clientHeight);
+    scrollRegion.scrollTop = 0;
+    const clippedVersionRect = lastVersion.getBoundingClientRect();
+    const initialPanelRect = panel.getBoundingClientRect();
+    await expect(clippedVersionRect.top).toBeGreaterThanOrEqual(initialPanelRect.bottom);
+    const forwardKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      ? '{Alt>}{Tab}{/Alt}'
+      : '{Tab}';
+    await userEvent.click(versionSearch);
+    for (const control of [languageEntry, ...versionButtons]) {
+      await browserUserEvent.keyboard(forwardKey);
+      await expect(root.activeElement).toBe(control);
+    }
+    await waitFor(async () => {
+      await expect(root.activeElement).toBe(lastVersion);
+      const versionRect = lastVersion.getBoundingClientRect();
+      const panelRect = panel.getBoundingClientRect();
+      const scrollRect = scrollRegion.getBoundingClientRect();
+      await expect(versionRect.top).toBeGreaterThanOrEqual(panelRect.top - 1);
+      await expect(versionRect.bottom).toBeLessThanOrEqual(panelRect.bottom + 1);
+      await expect(versionRect.top).toBeGreaterThanOrEqual(scrollRect.top - 1);
+      await expect(versionRect.bottom).toBeLessThanOrEqual(scrollRect.bottom + 1);
+      await expect(getComputedStyle(lastVersion).boxShadow).toContain('inset');
+    });
+    panel.focus({ preventScroll: true });
     await waitFor(async () => await expect(root.activeElement).toBe(panel));
     const forwardTraversalKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
       ? '{Alt>}{Tab}{/Alt}'
@@ -918,6 +1019,59 @@ export const PanelTracksAncestorScrollAndVersionListScrollsInternally: Story = {
   },
 };
 
+export const StandaloneContentKeepsInternalScroll: Story = {
+  render: () => <StandaloneBibleVersionPicker />,
+  play: async ({ canvasElement }) => {
+    const root = await waitForShadowRoot(canvasElement);
+    const shell = await waitForElement<HTMLElement>(
+      root,
+      '[data-testid="standalone-version-panel"]',
+      'standalone version panel not rendered',
+    );
+    const versionList = await waitForElement<HTMLElement>(
+      shell,
+      '[data-testid="version-list"]',
+      'standalone version list not rendered',
+    );
+    const scrollRegion = versionList.parentElement;
+    if (!scrollRegion) throw new Error('standalone version scroll region not rendered');
+    await expect(scrollRegion.scrollHeight).toBeGreaterThan(scrollRegion.clientHeight);
+
+    const versionButtons = Array.from(versionList.querySelectorAll<HTMLButtonElement>('button'));
+    const lastVersion = versionButtons.at(-1);
+    if (!lastVersion) throw new Error('standalone version row not rendered');
+    const shellRectBeforeFocus = shell.getBoundingClientRect();
+    await expect(lastVersion.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      shellRectBeforeFocus.bottom,
+    );
+    const initialScrollTop = scrollRegion.scrollTop;
+    const forwardKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      ? '{Alt>}{Tab}{/Alt}'
+      : '{Tab}';
+    const search = within(shell).getByRole('textbox', { name: i18n.t('searchVersions') });
+    await userEvent.click(search);
+    for (const control of versionButtons) {
+      const nativeKeyAvailable = await verifyNativeBrowserKey(forwardKey, async () => {
+        await expect(root.activeElement).toBe(control);
+      });
+      if (!nativeKeyAvailable) return;
+    }
+    await waitFor(async () => {
+      await expect(root.activeElement).toBe(lastVersion);
+      await expect(scrollRegion.scrollTop).toBeGreaterThan(initialScrollTop);
+      const rowRect = lastVersion.getBoundingClientRect();
+      const scrollRect = scrollRegion.getBoundingClientRect();
+      const shellRect = shell.getBoundingClientRect();
+      await expect(rowRect.top).toBeGreaterThanOrEqual(scrollRect.top - 1);
+      await expect(rowRect.bottom).toBeLessThanOrEqual(scrollRect.bottom + 1);
+      await expect(rowRect.top).toBeGreaterThanOrEqual(shellRect.top - 1);
+      await expect(rowRect.bottom).toBeLessThanOrEqual(shellRect.bottom + 1);
+      await expect(getComputedStyle(lastVersion).boxShadow).toContain('inset');
+    });
+    await expect(shell.scrollTop).toBe(0);
+  },
+};
+
 export const SameOriginIframeTopLayerRemainsInteractive: Story = {
   render: () => <SameOriginIframeHarness />,
   play: async ({ canvasElement }) => {
@@ -982,10 +1136,29 @@ export const SameOriginIframeTopLayerRemainsInteractive: Story = {
     await expect(portalWindow.getComputedStyle(panel).boxShadow).not.toBe('none');
     const closeButton = within(panel).getByRole('button', { name: /close/i });
     const closeButtonStyles = portalWindow.getComputedStyle(closeButton);
-    await expect(closeButton).toHaveClass('yv:border');
-    await expect(closeButtonStyles.getPropertyValue('--tw-border-style')).toBe('solid');
     await expect(Number.parseFloat(closeButtonStyles.borderTopWidth)).toBeGreaterThan(0);
     await expect(closeButtonStyles.borderTopStyle).toBe('solid');
+    const versionSearch = within(panel).getByRole('textbox', { name: i18n.t('searchVersions') });
+    const languageEntry = within(panel).getByRole('button', { name: /^language /i });
+    const versionList = await waitForElement<HTMLElement>(
+      panel,
+      '[data-testid="version-list"]',
+      'iframe version list not rendered',
+    );
+    const scrollRegion = versionList.parentElement;
+    if (!scrollRegion) throw new Error('iframe version scroll region not rendered');
+    const chromeBefore = [closeButton, versionSearch, languageEntry].map(
+      (element) => element.getBoundingClientRect().top,
+    );
+    scrollRegion.scrollTop = scrollRegion.scrollHeight;
+    scrollRegion.dispatchEvent(new Event('scroll', { bubbles: true }));
+    await waitFor(async () => await expect(scrollRegion.scrollTop).toBeGreaterThan(0));
+    const chromeAfter = [closeButton, versionSearch, languageEntry].map(
+      (element) => element.getBoundingClientRect().top,
+    );
+    for (const [index, top] of chromeAfter.entries()) {
+      await expect(Math.abs(top - chromeBefore[index]!)).toBeLessThanOrEqual(1);
+    }
     const panelRect = panel.getBoundingClientRect();
     const frameWindow = iframe.contentWindow;
     if (!frameWindow) throw new Error('iframe window not available');

@@ -37,6 +37,7 @@ import { useScriptureHighlightPaint } from '@/lib/use-scripture-highlight-paint'
 import { useInterfaceDirection } from '@/lib/direction';
 import { useHydrationSafeScriptureDirection } from '@/lib/scripture-direction';
 import { ReuseShadowBoundary, ShadowIsolationBoundary } from '@/lib/shadow-isolation';
+import { isElementFromOwnerDocument } from '@/lib/shadow-root-host';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 type ResolvedScriptureDirection = TextDirection | 'auto';
@@ -60,6 +61,13 @@ export type FootnoteData = {
   reference?: string;
 };
 
+/**
+ * Props for {@link FootnoteContent}.
+ *
+ * Security: `notes` and `verseHtml` are injected as HTML without further
+ * sanitization. Pass only output from `transformBibleHtml` (or HTML that went
+ * through an equivalent allowlist sanitizer); never pass raw API or user HTML.
+ */
 export type FootnoteContentProps = FootnoteData & {
   scriptureDirection?: TextDirection;
   fontSize?: number;
@@ -95,7 +103,7 @@ function FootnoteContentImplementation({
               <div
                 className="yv:mb-3 yv:font-serif yv:*:font-serif"
                 style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe
+                // Caller must pass sanitized HTML; see FootnoteContentProps.
                 dangerouslySetInnerHTML={{ __html: verseHtml }}
               />
             </>
@@ -109,7 +117,7 @@ function FootnoteContentImplementation({
                   className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-solid yv:border-border yv:py-2"
                 >
                   <span>{marker}.</span>
-                  {/** biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe */}
+                  {/* Caller must pass sanitized HTML; see FootnoteContentProps. */}
                   <span data-slot="yv-bible-note" dangerouslySetInnerHTML={{ __html: note }} />
                 </li>
               );
@@ -163,7 +171,7 @@ function getVerseHtmlFromDom(container: HTMLElement, verseNum: string): string {
   wrappers.forEach((wrapper, i) => {
     if (i > 0) parts.push(' ');
     const clone = wrapper.cloneNode(true);
-    if (!(clone instanceof Element)) return;
+    if (!isElementFromOwnerDocument(clone, wrapper, 'Element')) return;
     clone.querySelectorAll('.yv-h, .yv-vlbl, .va').forEach((el) => el.remove());
     clone.querySelectorAll('[data-verse-footnote]').forEach((anchor) => {
       const sup = wrapper.ownerDocument.createElement('sup');
@@ -201,7 +209,7 @@ export function getCleanVerseText(container: HTMLElement, verseNum: number): str
   const parts: string[] = [];
   wrappers.forEach((wrapper) => {
     const clone = wrapper.cloneNode(true);
-    if (!(clone instanceof Element)) return;
+    if (!isElementFromOwnerDocument(clone, wrapper, 'Element')) return;
     clone
       .querySelectorAll('.yv-h, .yv-vlbl, .va, [data-verse-footnote]')
       .forEach((el) => el.remove());
@@ -417,7 +425,7 @@ function BibleTextHtml({
     if (!contentRef.current) return;
     const isDark = currentTheme === 'dark';
     contentRef.current.querySelectorAll('.yv-v[v]').forEach((el) => {
-      if (!(el instanceof HTMLElement)) return;
+      if (!isElementFromOwnerDocument(el, el, 'HTMLElement')) return;
       const verseNum = parseInt(el.getAttribute('v') || '0', 10);
       el.classList.toggle('yv-v-selected', selectedVerses.includes(verseNum));
       const color = highlightedVerses[verseNum];
@@ -439,7 +447,7 @@ function BibleTextHtml({
       // so they keep their CSS muted color. Deliberate divergence from the Swift
       // SDK, which only recolors the label in dark mode.
       el.querySelectorAll('.yv-vlbl, .va').forEach((label) => {
-        if (!(label instanceof HTMLElement)) return;
+        if (!isElementFromOwnerDocument(label, el, 'HTMLElement')) return;
         label.style.color = isHighlighted ? 'inherit' : '';
       });
     });
@@ -450,7 +458,7 @@ function BibleTextHtml({
   const handleClick = onVerseSelect
     ? (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target;
-        if (!(target instanceof Element)) return;
+        if (!isElementFromOwnerDocument(target, e.currentTarget, 'Element')) return;
         const verseEl = target.closest('.yv-v[v]');
         if (!verseEl) return;
         const verseNum = parseInt(verseEl.getAttribute('v') || '0', 10);

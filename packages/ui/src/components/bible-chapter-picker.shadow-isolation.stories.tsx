@@ -93,6 +93,18 @@ const FIXTURE_BOOKS: BibleBook[] = [
     chapters: [{ id: '1', passage_id: '1KI.1', title: '1' }],
   },
   {
+    id: 'PSA',
+    title: 'Psalms',
+    full_title: 'Psalms',
+    abbreviation: 'Ps',
+    canon: 'old_testament',
+    chapters: Array.from({ length: 150 }, (_, index) => ({
+      id: String(index + 1),
+      passage_id: `PSA.${index + 1}`,
+      title: String(index + 1),
+    })),
+  },
+  {
     id: 'MAT',
     title: 'Matthew',
     full_title: 'Matthew',
@@ -152,6 +164,27 @@ function AutomaticBibleChapterPicker(): React.ReactNode {
   );
 }
 
+function StandaloneBibleChapterPicker(): React.ReactNode {
+  return (
+    <BibleChapterPicker.Root
+      defaultBook="GEN"
+      defaultChapter="1"
+      versionId={111}
+      onChapterPickerPress={() => undefined}
+    >
+      <div data-testid="standalone-chapter-host" style={{ blockSize: '9rem', overflowY: 'auto' }}>
+        <div style={{ blockSize: '4rem' }} />
+        <div
+          data-testid="standalone-chapter-panel"
+          style={{ inlineSize: '20rem', maxBlockSize: '12rem', overflowY: 'auto' }}
+        >
+          <BibleChapterPicker.Content />
+        </div>
+      </div>
+    </BibleChapterPicker.Root>
+  );
+}
+
 const meta = {
   title: 'Components/BibleChapterPicker/Shadow isolation',
   component: AutomaticBibleChapterPicker,
@@ -196,8 +229,13 @@ export const PublicRootJourney: Story = {
     });
     const triggerStyle = getComputedStyle(trigger);
     const embeddedBorderRadius = triggerStyle.borderRadius;
-    await expect(triggerStyle.paddingBlockStart).toBe('8px');
-    await expect(triggerStyle.paddingInlineStart).toBe('16px');
+    const paddingUnit = trigger.ownerDocument.createElement('div');
+    paddingUnit.style.blockSize = '1rem';
+    root.append(paddingUnit);
+    const rem = Number.parseFloat(getComputedStyle(paddingUnit).blockSize);
+    paddingUnit.remove();
+    await expect(Number.parseFloat(triggerStyle.paddingBlockStart)).toBeCloseTo(rem / 2);
+    await expect(Number.parseFloat(triggerStyle.paddingInlineStart)).toBeCloseTo(rem);
     await expect(embeddedBorderRadius).not.toBe('0px');
 
     const hostileStyle = canvasElement.ownerDocument.createElement('style');
@@ -252,6 +290,9 @@ export const PublicRootJourney: Story = {
     const closeButton = panelQueries.getByRole('button', { name: 'Close' });
     const genesisBook = panelQueries.getByRole('button', { name: /genesis/i });
     const exodusBook = panelQueries.getByRole('button', { name: /exodus/i });
+    const leviticusBook = panelQueries.getByRole('button', { name: /leviticus/i });
+    const firstKingsBook = panelQueries.getByRole('button', { name: /1 kings/i });
+    const psalmsBook = panelQueries.getByRole('button', { name: /psalms/i });
     const bookList = await waitForElement<HTMLElement>(
       panel,
       '[data-slot="accordion"]',
@@ -288,6 +329,13 @@ export const PublicRootJourney: Story = {
     await waitFor(async () => {
       await expect(root.activeElement).toBe(panel);
     });
+    genesisBook.focus({ preventScroll: true });
+    const focusedBookListScrollTop = bookList.scrollTop;
+    const focusedPanelScrollTop = panel.scrollTop;
+    await expect(root.activeElement).toBe(genesisBook);
+    await expect(bookList.scrollTop).toBe(focusedBookListScrollTop);
+    await expect(panel.scrollTop).toBe(focusedPanelScrollTop);
+    panel.focus({ preventScroll: true });
     exitAnimationStyle.remove();
     await userEvent.tab({ shift: true });
     await expect(root.activeElement).toBe(initialSearch);
@@ -295,9 +343,63 @@ export const PublicRootJourney: Story = {
     await expect(tabOrder.at(-2)).toBe(lastChapterButton);
     await expect(tabOrder.at(-1)).toBe(initialSearch);
     await expect(bookList.scrollHeight).toBeGreaterThan(bookList.clientHeight);
+    await expect(getComputedStyle(panel).overflowY).toBe('auto');
+    panel.style.blockSize = '10rem';
+    bookList.scrollTop = 0;
+    const clippedBookRect = firstKingsBook.getBoundingClientRect();
+    const initialListRect = bookList.getBoundingClientRect();
+    await expect(clippedBookRect.bottom).toBeGreaterThan(initialListRect.bottom);
+    const { userEvent: browserUserEvent } = await import('vitest/browser');
+    const bookTriggers = Array.from(
+      panel.querySelectorAll<HTMLElement>('[data-slot="accordion-trigger"]'),
+    );
+    genesisBook.focus();
+    for (let index = 0; index < bookTriggers.indexOf(firstKingsBook); index += 1) {
+      await browserUserEvent.keyboard('{ArrowDown}');
+    }
+    await waitFor(async () => {
+      await expect(root.activeElement).toBe(firstKingsBook);
+      const bookRect = firstKingsBook.getBoundingClientRect();
+      const listRect = bookList.getBoundingClientRect();
+      await expect(bookRect.top).toBeGreaterThanOrEqual(listRect.top - 1);
+      await expect(bookRect.bottom).toBeLessThanOrEqual(listRect.bottom + 1);
+      const style = getComputedStyle(firstKingsBook);
+      await expect(style.boxShadow).toContain('inset');
+      await expect(style.boxShadow).toContain('0px 0px 0px 3px');
+      await expect(style.getPropertyValue('--tw-ring-color').trim()).toBe(
+        style.getPropertyValue('--yv-ring').trim(),
+      );
+      await expect(Number.parseFloat(style.paddingInlineStart)).toBeGreaterThanOrEqual(3);
+      await expect(Number.parseFloat(style.paddingInlineEnd)).toBeGreaterThanOrEqual(3);
+    });
+    await browserUserEvent.keyboard('{ArrowDown}');
+    await expect(root.activeElement).toBe(psalmsBook);
+    await browserUserEvent.keyboard('{Enter}');
+    await waitFor(async () => await expect(psalmsBook).toHaveAttribute('aria-expanded', 'true'));
+    const expandedPsalms = psalmsBook.closest<HTMLElement>('[data-slot="accordion-item"]');
+    if (!expandedPsalms) throw new Error('expanded Psalms item not rendered');
+    const firstPsalmsChapter = within(expandedPsalms).getByRole('button', { name: '1' });
+    await waitFor(async () => {
+      await expect(expandedPsalms.scrollHeight).toBeGreaterThan(bookList.clientHeight);
+    });
+    await waitFor(async () => {
+      await expect(root.activeElement).toBe(psalmsBook);
+      if (!panel) throw new Error('chapter picker panel not rendered');
+      const panelRect = panel.getBoundingClientRect();
+      const listRect = bookList.getBoundingClientRect();
+      await expect(psalmsBook.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+        Math.max(panelRect.top, listRect.top) - 1,
+      );
+      await expect(firstPsalmsChapter.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+        Math.min(panelRect.bottom, listRect.bottom) + 1,
+      );
+    });
+    panel.style.blockSize = '24rem';
+    await browserUserEvent.keyboard('{Enter}');
+    await waitFor(async () => await expect(psalmsBook).toHaveAttribute('aria-expanded', 'false'));
+    panel.focus({ preventScroll: true });
     await userEvent.tab();
     await expect(root.activeElement).toBe(closeButton);
-    const { userEvent: browserUserEvent } = await import('vitest/browser');
     const forwardTraversalKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
       ? '{Alt>}{Tab}{/Alt}'
       : '{Tab}';
@@ -305,6 +407,8 @@ export const PublicRootJourney: Story = {
     await expect(root.activeElement).toBe(genesisBook);
     await browserUserEvent.keyboard(forwardTraversalKey);
     await expect(root.activeElement).toBe(exodusBook);
+    await browserUserEvent.keyboard(forwardTraversalKey);
+    await expect(root.activeElement).toBe(leviticusBook);
     await userEvent.click(closeButton);
     await waitFor(async () => {
       await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
@@ -339,6 +443,49 @@ export const PublicRootJourney: Story = {
       await expect(trigger).toHaveTextContent(/genesis 11/i);
       await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
       await expect(root.activeElement).toBe(trigger);
+    });
+  },
+};
+
+export const StandaloneContentSupportsArrowNavigationInConsumerScroll: Story = {
+  render: () => (
+    <FixtureProviders>
+      <StandaloneBibleChapterPicker />
+    </FixtureProviders>
+  ),
+  play: async ({ canvasElement }) => {
+    const root = await waitForShadowRoot(canvasElement);
+    const shell = await waitForElement<HTMLElement>(
+      root,
+      '[data-testid="standalone-chapter-panel"]',
+      'standalone chapter panel not rendered',
+    );
+    const host = shell.parentElement;
+    if (!host) throw new Error('standalone chapter host not rendered');
+    const matthewBook = within(shell).getByRole('button', { name: /matthew/i });
+    host.scrollTop = 0;
+    shell.scrollTop = 0;
+    const initialShellRect = shell.getBoundingClientRect();
+    await expect(matthewBook.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      initialShellRect.bottom,
+    );
+
+    const { userEvent: browserUserEvent } = await import('vitest/browser');
+    const bookTriggers = Array.from(
+      shell.querySelectorAll<HTMLElement>('[data-slot="accordion-trigger"]'),
+    );
+    bookTriggers[0]!.focus();
+    for (let index = 0; index < bookTriggers.indexOf(matthewBook); index += 1) {
+      await browserUserEvent.keyboard('{ArrowDown}');
+    }
+    await waitFor(async () => {
+      await expect(root.activeElement).toBe(matthewBook);
+      await expect(shell.scrollTop).toBeGreaterThan(0);
+      const bookRect = matthewBook.getBoundingClientRect();
+      const shellRect = shell.getBoundingClientRect();
+      await expect(bookRect.top).toBeGreaterThanOrEqual(shellRect.top - 1);
+      await expect(bookRect.bottom).toBeLessThanOrEqual(shellRect.bottom + 1);
+      await expect(getComputedStyle(matthewBook).boxShadow).toContain('inset');
     });
   },
 };

@@ -228,6 +228,69 @@ export const Default: Story = {
   },
 };
 
+export const SettingsCloseShowsFocusThroughToolbar: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-fresh-process'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  render: (args) => (
+    <BibleReader.Root {...args}>
+      <BibleReader.Toolbar search="none" />
+    </BibleReader.Root>
+  ),
+  play: async ({ canvasElement }) => {
+    const { root, reader } = await getReaderStory(canvasElement);
+    const versionButton = await reader.findByRole('button', {
+      name: i18n.t('changeBibleVersionAriaLabel'),
+    });
+    const settingsButton = reader.getByRole('button', { name: i18n.t('settingsAriaLabel') });
+    versionButton.focus({ preventScroll: true });
+    const forwardKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      ? '{Alt>}{Tab}{/Alt}'
+      : '{Tab}';
+    const nativeKeyAvailable = await verifyNativeBrowserKey(forwardKey, async () => {
+      await expect(root.activeElement).toBe(settingsButton);
+      await expect(settingsButton.matches(':focus-visible')).toBe(true);
+    });
+    if (!nativeKeyAvailable) return;
+    await verifyNativeBrowserKey('{Enter}', async () => {
+      const overlay = await getReaderOverlay(root);
+      await expect(overlay.getByRole('dialog')).toHaveAttribute('data-state', 'open');
+    });
+    const settings = await getReaderOverlay(root);
+    const closeButton = await settings.findByRole('button', { name: i18n.t('close') });
+    const dialog = closeButton.closest<HTMLElement>('[role="dialog"]');
+    if (!dialog) throw new Error('reader settings dialog not rendered');
+    dialog.focus({ preventScroll: true });
+    await verifyNativeBrowserKey(forwardKey, async () => {
+      await expect(root.activeElement).toBe(closeButton);
+    });
+    const focusedIndicator = await waitFor(async () => {
+      await expect(root.activeElement).toBe(closeButton);
+      await expect(closeButton).toBeVisible();
+      await expect(closeButton.matches(':focus-visible')).toBe(true);
+      const style = getComputedStyle(closeButton);
+      await expect(style.boxShadow).toContain('inset');
+      await expect(style.boxShadow).toContain('0px 0px 0px 3px');
+      await expect(style.getPropertyValue('--tw-ring-color').trim()).toBe(
+        style.getPropertyValue('--yv-ring').trim(),
+      );
+      return { boxShadow: style.boxShadow, outline: style.outline };
+    });
+
+    await userEvent.click(settings.getByTestId('decrease-font-size'));
+    await waitFor(async () => {
+      const unfocusedStyle = getComputedStyle(closeButton);
+      await expect({
+        boxShadow: unfocusedStyle.boxShadow,
+        outline: unfocusedStyle.outline,
+      }).not.toEqual(focusedIndicator);
+    });
+  },
+};
+
 export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
   tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-fresh-process'],
   args: {
@@ -1861,5 +1924,78 @@ export const ChapterChangeLoadingOverlay: Story = {
 
     const scroller = root.querySelector('main');
     await expect(scroller?.scrollTop).toBe(0);
+  },
+};
+
+export const ClipboardFailureAfterScrolling: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  render: (args) => (
+    <div style={{ blockSize: 520, inlineSize: 390 }}>
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    const shareDescriptor = Object.getOwnPropertyDescriptor(navigator, 'share');
+    const writes: string[] = [];
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: (text: string): Promise<void> => {
+          writes.push(text);
+          return Promise.reject(new DOMException('Clipboard permission denied', 'NotAllowedError'));
+        },
+      },
+    });
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    try {
+      const { root, reader } = await getReaderStory(canvasElement);
+      const { scroller, verse } = await waitFor(() => {
+        const scroller = root.querySelector<HTMLElement>('main');
+        const verse = root.querySelector<HTMLElement>('.yv-v[v="40"]');
+        if (!scroller || !verse) throw new Error('long chapter not rendered');
+        return { scroller, verse };
+      });
+      await reader.findByRole('heading', { name: /John/i });
+      const status = reader.getByRole('status', { name: '' });
+      for (const action of ['Copy', 'Share']) {
+        verse.scrollIntoView({ block: 'center' });
+        await waitFor(() => expect(scroller.scrollTop).toBeGreaterThan(scroller.clientHeight));
+        await userEvent.click(verse);
+        const overlay = await getReaderOverlay(root);
+        await userEvent.click(await overlay.findByRole('button', { name: action }));
+        await waitFor(() => expect(status).not.toBeEmptyDOMElement());
+        await expect(status).toHaveAttribute('aria-live', 'polite');
+        await expect(verse).not.toHaveClass('yv-v-selected');
+        await waitFor(() => expect(overlay.queryByRole('dialog')).toBeNull());
+
+        const expectWarningInView = () => {
+          const warningBounds = status.getBoundingClientRect();
+          const readerBounds = scroller.getBoundingClientRect();
+          void expect(warningBounds.height).toBeGreaterThan(0);
+          void expect(warningBounds.top).toBeGreaterThanOrEqual(Math.max(readerBounds.top, 0));
+          void expect(warningBounds.bottom).toBeLessThanOrEqual(
+            Math.min(readerBounds.bottom, window.innerHeight),
+          );
+        };
+        await waitFor(expectWarningInView);
+        scroller.scrollTop += 80;
+        await waitFor(expectWarningInView);
+      }
+      await expect(writes).toHaveLength(2);
+    } finally {
+      if (clipboardDescriptor) Object.defineProperty(navigator, 'clipboard', clipboardDescriptor);
+      else Reflect.deleteProperty(navigator, 'clipboard');
+      if (shareDescriptor) Object.defineProperty(navigator, 'share', shareDescriptor);
+      else Reflect.deleteProperty(navigator, 'share');
+    }
   },
 };

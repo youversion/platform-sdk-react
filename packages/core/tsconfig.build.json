@@ -6,7 +6,8 @@
     "outDir": "dist",
     "rootDir": "src",
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "stripInternal": true
   },
   "include": ["src", "global.d.ts"]
 }

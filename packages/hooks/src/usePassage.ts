@@ -26,6 +26,11 @@ export type UsePassageProps = {
 
 export type UsePassageResult = UseNamedQueryResult<'passage', BiblePassage>;
 
+/**
+ * Reads a Scripture passage by passage ID in the given Bible version, in HTML or plain text.
+ * @param props - Bible version, passage ID, content format, and query options.
+ * @returns The passage, loading state, error, and refetch function.
+ */
 export function usePassage({
   versionId,
   usfm,

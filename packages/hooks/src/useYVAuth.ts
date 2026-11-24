@@ -17,7 +17,9 @@ export interface UseYVAuthReturn {
   // Actions
   signIn: (params?: {
     redirectUrl?: string;
+    /** OAuth scopes to request, including `read_notes` and `write_notes` for Notes access. */
     scopes?: AuthenticationScopes[];
+    /** YouVersion data-exchange permissions (e.g. `highlights`), separate from OAuth scopes. */
     permissions?: SignInWithYouVersionPermissionValues[];
   }) => Promise<void>;
   signOut: () => void;
@@ -132,11 +134,7 @@ export function useYVAuth(): UseYVAuthReturn {
 
   // Sign in function
   const signIn = useCallback(
-    async (params?: {
-      redirectUrl?: string;
-      scopes?: AuthenticationScopes[];
-      permissions?: SignInWithYouVersionPermissionValues[];
-    }) => {
+    async (params?: Parameters<UseYVAuthReturn['signIn']>[0]) => {
       const url = params?.redirectUrl ?? redirectUri;
       if (!url) {
         throw new Error(
