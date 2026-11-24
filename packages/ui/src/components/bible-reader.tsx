@@ -857,9 +857,14 @@ function Content() {
     }
     const text = data?.text ?? '';
     if (text && globalThis.navigator?.share instanceof Function) {
+      // Each selection update replaces this array, even when the same verses are reselected.
+      const sharedSelection = lastSelectionRef.current;
       globalThis.navigator
         .share({ text })
-        .then(() => closeAndClearSelection())
+        .then(() => {
+          if (lastSelectionRef.current !== sharedSelection) return;
+          closeAndClearSelectionRef.current();
+        })
         .catch(() => {
           // Cancelled or failed — keep the popover open (AC 4).
         });
