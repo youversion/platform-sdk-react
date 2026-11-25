@@ -1,5 +1,5 @@
-import { Button } from '@/components/ui/button';
-import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
+import { ImageLibraryButton as Button } from './image-library-button';
+import { useCallback, useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { clampSearchText, type VerseImage } from '@youversion/platform-react-ui';
 import {
   createImageLibraryClients,
@@ -45,9 +45,9 @@ export function ImagesPage({
   }
   return (
     <div className="image-library mx-auto max-w-[68rem] p-[clamp(1.25rem,4vw,3rem)] motion-reduce:[&_*]:scroll-auto">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <header className="mbe-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="mb-1 text-[0.8rem] text-muted-foreground">Content library</p>
+          <p className="mbe-1 text-[0.8rem] text-muted-foreground">Content library</p>
           <h1 className="text-[clamp(1.75rem,4vw,2.5rem)] font-bold tracking-[-0.035em]">
             Verse images
           </h1>
@@ -63,7 +63,7 @@ export function ImagesPage({
       </header>
       <form
         role="search"
-        className="mb-6 flex items-center gap-2 rounded-[2rem] bg-muted p-2"
+        className="mbe-6 flex items-center gap-2 rounded-[2rem] bg-muted p-2"
         onSubmit={submit}
       >
         <input
@@ -77,7 +77,6 @@ export function ImagesPage({
         {draft || query ? (
           <Button
             variant="outline"
-            className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
             type="button"
             aria-label="Clear search"
             onClick={() => {
@@ -90,12 +89,7 @@ export function ImagesPage({
             Clear
           </Button>
         ) : null}
-        <Button
-          className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
-          type="submit"
-        >
-          Search
-        </Button>
+        <Button type="submit">Search</Button>
       </form>
       {validation ? (
         <p role="alert" className="py-4 text-muted-foreground">
@@ -143,6 +137,13 @@ function ImageResults({
     active,
   );
   const container = useRef<HTMLDivElement>(null);
+  // React runs this ref cleanup before removing a focused pagination control.
+  const loadMoreRef = useCallback((button: HTMLButtonElement | null) => {
+    if (!button) return;
+    return () => {
+      if (document.activeElement === button) container.current?.focus({ preventScroll: true });
+    };
+  }, []);
   const listScroll = useRef(0);
   const openedCard = useRef<HTMLAnchorElement | null>(null);
   const detail = useRef<HTMLDivElement>(null);
@@ -177,12 +178,13 @@ function ImageResults({
     return () => cancelAnimationFrame(frame);
   }, [imageId, active, scrollContainerRef]);
   return (
-    <div ref={container} tabIndex={-1}>
+    <div ref={container} role="region" aria-label="Image results" tabIndex={-1}>
       {imageId !== null ? (
         <div ref={detail} role="region" aria-label="Image detail" tabIndex={-1}>
           <RoutedImageDetail
             key={imageId}
             imageId={imageId}
+            focusTargetRef={detail}
             cached={images.find((image) => image.id === imageId)}
             clients={clients}
             language={language}
@@ -199,9 +201,11 @@ function ImageResults({
             <Button
               type="button"
               variant="outline"
-              className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
-              disabled={loading}
-              onClick={() => void load()}
+              aria-disabled={loading}
+              onClick={() => {
+                container.current?.focus({ preventScroll: true });
+                void load();
+              }}
             >
               Retry
             </Button>
@@ -214,13 +218,13 @@ function ImageResults({
           {images.map((image) => (
             <li className="relative min-w-0" key={image.id}>
               <ImageArt image={image} size="thumb" />
-              <span className="mt-[0.65rem] block text-[0.85rem] font-semibold" dir="auto">
+              <span className="mbs-[0.65rem] block text-[0.85rem] font-semibold" dir="auto">
                 {image.passage_id}
               </span>
               <a
                 className="image-open absolute inset-0 cursor-pointer rounded-[1.125rem] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground"
                 href={formatHash({ destination: 'content', imageId: image.id })}
-                aria-label={`Open ${image.passage_id}`}
+                aria-label={`Open ${image.passage_id}${image.attribution ? `, ${image.attribution}` : ''}`}
                 onClick={(event) => {
                   if (
                     event.button !== 0 ||
@@ -254,8 +258,8 @@ function ImageResults({
           <div className="my-4 flex flex-wrap items-center gap-3">
             <Button
               variant="outline"
-              className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
-              disabled={loading}
+              ref={loadMoreRef}
+              aria-disabled={loading}
               type="button"
               onClick={() => void load()}
             >
@@ -270,6 +274,7 @@ function ImageResults({
 
 function RoutedImageDetail({
   imageId,
+  focusTargetRef,
   cached,
   clients,
   language,
@@ -278,6 +283,7 @@ function RoutedImageDetail({
   onReadInBible,
 }: {
   imageId: string;
+  focusTargetRef: RefObject<HTMLDivElement | null>;
   cached?: VerseImage;
   clients: ImageLibraryClients;
   language: string;
@@ -322,12 +328,7 @@ function RoutedImageDetail({
     );
   return (
     <section>
-      <Button
-        type="button"
-        variant="outline"
-        className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
-        onClick={onBack}
-      >
+      <Button type="button" variant="outline" onClick={onBack}>
         Back to images
       </Button>
       {error ? (
@@ -336,8 +337,10 @@ function RoutedImageDetail({
           <Button
             type="button"
             variant="outline"
-            className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
-            onClick={() => setRetry((value) => value + 1)}
+            onClick={() => {
+              focusTargetRef.current?.focus({ preventScroll: true });
+              setRetry((value) => value + 1);
+            }}
           >
             Retry image details
           </Button>

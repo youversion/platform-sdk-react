@@ -92,19 +92,32 @@ test('browse, recover a later page, search in server order and clear', async ({ 
   });
   const grid = page.getByRole('list', { name: 'Verse images' });
   await expect(grid.getByRole('link', { name: 'Open JHN.3.16' })).toHaveCount(2);
+  await expect(
+    grid.getByRole('link', { name: 'Open JHN.3.16, Artist a', exact: true }),
+  ).toHaveCount(1);
+  await expect(
+    grid.getByRole('link', { name: 'Open JHN.3.16, Artist b', exact: true }),
+  ).toHaveCount(1);
   const loadMore = page.getByRole('button', { name: 'Load more', exact: true });
   const pageStarted = page.waitForRequest((request) => request.url().includes('page_token=next'));
-  await loadMore.dblclick();
+  await loadMore.focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await pageStarted;
   await expect(loadMore).toBeDisabled();
+  await expect(loadMore).toBeFocused();
   expect(pageRequests).toBe(1);
   releasePage();
   await expect(page.getByRole('alert')).toBeVisible();
+  const results = page.getByRole('region', { name: 'Image results', exact: true });
+  await expect(results).toBeFocused();
   await expect(grid.getByRole('listitem')).toHaveCount(2);
   await expect(grid.locator('img').nth(0)).toHaveAttribute('src', /\/a\.svg/);
   await expect(grid.locator('img').nth(1)).toHaveAttribute('src', /\/b\.svg/);
-  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+  await page.getByRole('button', { name: 'Retry', exact: true }).focus();
+  await page.keyboard.press('Enter');
   await expect(grid.getByRole('listitem')).toHaveCount(3);
+  await expect(results).toBeFocused();
   for (const [index, id] of ['a', 'b', 'c'].entries())
     await expect(grid.locator('img').nth(index)).toHaveAttribute('src', new RegExp(`/${id}\\.svg`));
   await page.screenshot({ path: test.info().outputPath('grid.png'), fullPage: true });
@@ -207,6 +220,8 @@ test('language selection, partial search retries, empty cursors and obsolete sea
   await expect(grid.locator('img').first()).toHaveAttribute('src', /missing/);
   await page.getByRole('button', { name: 'Load more', exact: true }).click();
   await expect(grid.locator('img')).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Load more', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Image results', exact: true })).toBeFocused();
   for (const [index, id] of ['missing', 'retained', 'last'].entries())
     await expect(grid.locator('img').nth(index)).toHaveAttribute('src', new RegExp(`/${id}\\.svg`));
   await page.getByRole('searchbox', { name: 'Search images' }).fill('old');
@@ -398,11 +413,20 @@ test('recover artwork, later stack pages and a shorter retry; share without nati
   await expect(
     grid.getByRole('button', { name: 'Retry artwork: JHN.3.16, Artist a', exact: true }),
   ).toBeVisible();
+  const thumbRetry = grid.getByRole('button', {
+    name: 'Retry artwork: JHN.3.16, Artist a',
+    exact: true,
+  });
+  await thumbRetry.focus();
+  await page.keyboard.press('Enter');
+  await expect(thumbRetry).toBeVisible();
+  await expect(grid.getByRole('group', { name: 'Artwork: JHN.3.16' })).toBeFocused();
   thumbFails = false;
   await grid
     .getByRole('button', { name: 'Retry artwork: JHN.3.16, Artist a', exact: true })
     .click();
   await expect(grid.getByRole('img')).toBeVisible();
+  await expect(grid.getByRole('group', { name: 'Artwork: JHN.3.16' })).toBeFocused();
   await page.route('https://art.test/b.svg*', (route) => route.abort());
   await page.getByRole('link', { name: 'Open JHN.3.16' }).click();
   await expect(page.getByRole('button', { name: 'Retry artwork list' })).toBeVisible();
@@ -434,6 +458,7 @@ test('recover artwork, later stack pages and a shorter retry; share without nati
   fullFails = false;
   await retryArt.click();
   await expect(dialog.getByRole('img', { name: 'JHN.3.16', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('group', { name: 'Artwork: JHN.3.16' })).toBeFocused();
   await expect(dialog.getByRole('img', { name: 'JHN.3.16', exact: true })).toHaveAttribute(
     'src',
     /size=full/,
@@ -443,9 +468,11 @@ test('recover artwork, later stack pages and a shorter retry; share without nati
   await page.getByRole('button', { name: 'Retry artwork list' }).click();
   await expect(page.getByText('2 of 3', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Retry artwork list' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Passage artwork', exact: true })).toBeFocused();
   shorter = true;
   await page.getByRole('button', { name: 'Retry artwork list' }).click();
   await expect(page.getByText('1 of 1', { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Passage artwork', exact: true })).toBeFocused();
   await expect(page.getByRole('link', { name: 'Open image link' })).toHaveAttribute(
     'href',
     'https://art.test/a.svg',
@@ -804,7 +831,7 @@ test('artwork works without URL.canParse and malformed passage metadata cannot n
   ).toBeDisabled();
   malformed = '';
   await page.reload();
-  await page.getByRole('link', { name: 'Open', exact: true }).click();
+  await page.getByRole('link', { name: 'Open , Artist bad', exact: true }).click();
   await page.getByRole('button', { name: 'View full-screen image' }).click();
   await expect(
     page.getByRole('dialog').getByRole('button', { name: 'Read in Bible' }),
@@ -1090,9 +1117,15 @@ test('missing image links recover without a browse result and reject an obsolete
   );
   const detail = page.getByRole('region', { name: 'Image detail' });
   await expect(detail.getByRole('alert')).toContainText('404');
+  await detail.getByRole('button', { name: 'Retry image details' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(detail.getByRole('button', { name: 'Retry image details' })).toBeVisible();
+  await expect(detail).toBeFocused();
   missing = false;
-  await detail.getByRole('button', { name: 'Retry image details' }).click();
+  await detail.getByRole('button', { name: 'Retry image details' }).focus();
+  await page.keyboard.press('Enter');
   await expect(page.locator('.image-stack-selected img')).toHaveAttribute('src', /missing/);
+  await expect(detail).toBeFocused();
   const slowStarted = page.waitForRequest((request) => request.url().endsWith('/v1/images/slow'));
   await page.evaluate(() => {
     location.hash = '#/content/image/slow';

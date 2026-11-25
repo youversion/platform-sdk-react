@@ -161,17 +161,25 @@ jobs:
     name: Image Library Browser
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v6
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec turbo build --filter=@youversion/platform-react-ui
-      - run: pnpm --filter vite-react exec playwright install --with-deps chromium
-      - run: pnpm --filter vite-react test:e2e
-      - uses: actions/upload-artifact@v4
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build UI and dependencies
+        run: pnpm exec turbo build --filter=@youversion/platform-react-ui
+      - name: Install Chromium
+        run: pnpm --filter vite-react exec playwright install --with-deps chromium
+      - name: Run image library workflows
+        run: pnpm --filter vite-react test:e2e
+      - name: Upload browser traces
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: image-library-browser-traces

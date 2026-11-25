@@ -6,14 +6,8 @@ export default defineConfig({
   workers: process.env.CI ? 2 : 4,
   use: { baseURL: 'http://127.0.0.1:5178', trace: 'retain-on-failure' },
   webServer: {
-    command: 'pnpm dev --port 5178 --strictPort',
+    command: 'pnpm dev --mode e2e --port 5178 --strictPort',
     url: 'http://127.0.0.1:5178',
-    env: {
-      VITE_YVP_LOCALE: process.env.PLAYWRIGHT_IMAGE_LOCALE ?? 'en',
-      VITE_BASE_PATH: '/',
-      VITE_YVP_APP_KEY: 'browser-test',
-      VITE_YVP_API_HOST: 'api.youversion.test',
-    },
     reuseExistingServer: false,
   },
 });

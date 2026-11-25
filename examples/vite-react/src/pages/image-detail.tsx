@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { ImageLibraryButton as Button } from './image-library-button';
 import { useEffect, useRef, useState } from 'react';
 import { Dialog } from 'radix-ui';
 import { BibleCard, type BibleVersion, type VerseImage } from '@youversion/platform-react-ui';
@@ -34,6 +34,7 @@ export function ImageDetail({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const container = useRef<HTMLElement>(null);
   const complete = useRef(false);
   const viewerButton = useRef<HTMLButtonElement>(null);
   const selected = images.find((item) => item.id === selectedId) ?? images[0] ?? image;
@@ -86,19 +87,14 @@ export function ImageDetail({
   }, [clients, image, language, retry, active]);
 
   return (
-    <section>
+    <section ref={container} role="region" aria-label="Passage artwork" tabIndex={-1}>
       <div className="my-4 flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
-          onClick={onBack}
-        >
+        <Button type="button" variant="outline" onClick={onBack}>
           Back to images
         </Button>
         <ImageShare key={selected.id} image={selected} />
       </div>
-      <p className="mb-1 text-[0.8rem] text-muted-foreground">Verse images</p>
+      <p className="mbe-1 text-[0.8rem] text-muted-foreground">Verse images</p>
       <h2 className="text-2xl font-[650]" dir="auto">
         {image.passage_id}
       </h2>
@@ -120,8 +116,8 @@ export function ImageDetail({
           <Button
             type="button"
             variant="outline"
-            className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
             onClick={() => {
+              container.current?.focus({ preventScroll: true });
               complete.current = false;
               setRetry((value) => value + 1);
             }}
@@ -141,20 +137,16 @@ export function ImageDetail({
             }}
           >
             <div className="mx-auto max-w-[40rem]">
-              <div className="mb-6 flex items-center justify-between gap-2 max-[30rem]:grid max-[30rem]:grid-cols-[auto_1fr] max-[30rem]:[&_h2]:text-end">
+              <div className="mbe-6 flex items-center justify-between gap-2 max-[30rem]:grid max-[30rem]:grid-cols-[auto_1fr] max-[30rem]:[&_h2]:text-end">
                 <Dialog.Close asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
-                  >
+                  <Button type="button" variant="outline">
                     Close image
                   </Button>
                 </Dialog.Close>
                 <Dialog.Title>Verse image</Dialog.Title>
                 <ImageShare key={selected.id} image={selected} />
               </div>
-              <Dialog.Description className="mb-1 text-[0.8rem] text-muted-foreground">
+              <Dialog.Description className="mbe-1 text-[0.8rem] text-muted-foreground">
                 Artwork and its Bible passage
               </Dialog.Description>
               <ImageArt key={selected.id} image={selected} size="full" />
@@ -218,7 +210,7 @@ function ImagePassage({
   }, [clients, language, image.passage_id, retry]);
   return (
     <div>
-      <p className="mb-1 text-[0.8rem] text-muted-foreground">Verses in this image</p>
+      <p className="mbe-1 text-[0.8rem] text-muted-foreground">Verses in this image</p>
       {version ? (
         <BibleCard
           key={`${version.id}:${retry}`}
@@ -240,7 +232,6 @@ function ImagePassage({
       <div className="my-4 flex flex-wrap items-center gap-3">
         <Button
           type="button"
-          className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
           disabled={!version || !onReadInBible}
           onClick={() => {
             if (version) onReadInBible?.(image.passage_id, version.id);
@@ -248,12 +239,7 @@ function ImagePassage({
         >
           Read in Bible
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
-          onClick={() => setRetry((value) => value + 1)}
-        >
+        <Button type="button" variant="outline" onClick={() => setRetry((value) => value + 1)}>
           Retry passage
         </Button>
       </div>

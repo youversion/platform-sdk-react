@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { ImageLibraryButton as Button } from './image-library-button';
 import { useEffect, useState } from 'react';
 import { Dialog } from 'radix-ui';
 import { ChevronDown } from 'lucide-react';
@@ -69,7 +69,6 @@ export function ImageLanguagePicker({
         <Button
           type="button"
           variant="outline"
-          className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
           aria-label={`Content language: ${displayNames.of(language) ?? language}`}
         >
           {displayNames.of(language) ?? language}
@@ -85,22 +84,18 @@ export function ImageLanguagePicker({
           }}
         >
           <div className="mx-auto max-w-[40rem]">
-            <div className="mb-6 flex items-center justify-between gap-2 max-[30rem]:grid max-[30rem]:grid-cols-[auto_1fr] max-[30rem]:[&_h2]:text-end">
+            <div className="mbe-6 flex items-center justify-between gap-2 max-[30rem]:grid max-[30rem]:grid-cols-[auto_1fr] max-[30rem]:[&_h2]:text-end">
               <Dialog.Title>Content language</Dialog.Title>
               <Dialog.Close asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
-                >
+                <Button type="button" variant="outline">
                   Close languages
                 </Button>
               </Dialog.Close>
             </div>
-            <Dialog.Description className="mb-1 text-[0.8rem] text-muted-foreground">
+            <Dialog.Description className="mbe-1 text-[0.8rem] text-muted-foreground">
               Choose a language for images and their Bible passages.
             </Dialog.Description>
-            <div className="mb-6 flex items-center gap-2 rounded-[2rem] bg-muted p-2">
+            <div className="mbe-6 flex items-center gap-2 rounded-[2rem] bg-muted p-2">
               <input
                 className="min-w-0 flex-1 rounded-[2rem] bg-transparent px-3 py-2 outline-offset-3 focus-visible:outline-2 focus-visible:outline-foreground"
                 type="search"
@@ -109,12 +104,12 @@ export function ImageLanguagePicker({
                 onChange={(event) => setFilter(event.target.value)}
               />
             </div>
-            <div className="mt-4 flex flex-col gap-2">
+            <div className="mbs-4 flex flex-col gap-2">
               {languages.map(({ tag, name }) => (
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50 justify-between"
+                  className="justify-between"
                   key={tag}
                   aria-pressed={language === tag}
                   onClick={() => {

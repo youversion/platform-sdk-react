@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { ImageLibraryButton as Button } from './image-library-button';
 import { useState } from 'react';
 import type { VerseImage } from '@youversion/platform-react-ui';
 import { imageError } from './image-library-api';
@@ -38,7 +38,6 @@ export function ImageShare({ image }: { image: VerseImage }) {
         <Button
           type="button"
           variant="outline"
-          className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
           disabled={busy}
           onClick={() => void share()}
           aria-label="Share image"
@@ -48,22 +47,13 @@ export function ImageShare({ image }: { image: VerseImage }) {
       ) : null}
       {!supportsSharing || fallback ? (
         <div className="my-4 flex flex-wrap items-center gap-3 max-[30rem]:in-[[role=dialog]]:my-0">
-          <Button
-            asChild
-            variant="outline"
-            className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
-          >
+          <Button asChild variant="outline">
             <a href={image.image_url} target="_blank" rel="noreferrer">
               Open image link
             </a>
           </Button>
           {navigator.clipboard ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
-              onClick={() => void copy()}
-            >
+            <Button type="button" variant="outline" onClick={() => void copy()}>
               {copied ? 'Copied' : 'Copy image link'}
             </Button>
           ) : null}

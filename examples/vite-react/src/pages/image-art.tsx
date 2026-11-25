@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { ImageLibraryButton as Button } from './image-library-button';
+import { useRef, useState } from 'react';
 import type { VerseImage } from '@youversion/platform-react-ui';
 import { imageUrl, type ImageRendition } from './image-library-api';
 
@@ -13,10 +13,15 @@ export function ImageArt({
   size?: ImageRendition;
   decorative?: boolean;
 }) {
+  const container = useRef<HTMLDivElement>(null);
   const [attempt, setAttempt] = useState(0);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   return (
     <div
+      ref={container}
+      role={decorative ? undefined : 'group'}
+      aria-label={decorative ? undefined : `Artwork: ${image.passage_id}`}
+      tabIndex={decorative ? undefined : -1}
       className={cn(
         'image-art relative w-full overflow-hidden rounded-[1.125rem] bg-muted',
         size === 'card' && 'h-full',
@@ -56,7 +61,7 @@ export function ImageArt({
           <Button
             type="button"
             variant="outline"
-            className="relative z-2 h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
+            className="relative z-2"
             aria-label={
               size === 'thumb'
                 ? `Retry artwork: ${image.passage_id}, ${image.attribution || image.id}`
@@ -64,6 +69,7 @@ export function ImageArt({
             }
             onClick={(event) => {
               event.stopPropagation();
+              container.current?.focus({ preventScroll: true });
               setStatus('loading');
               setAttempt((value) => value + 1);
             }}

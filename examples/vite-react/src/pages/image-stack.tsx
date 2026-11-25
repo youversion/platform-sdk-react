@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { ImageLibraryButton as Button } from './image-library-button';
 import {
   useLayoutEffect,
   useRef,
@@ -167,7 +167,6 @@ export function ImageStack({
           <Button
             type="button"
             variant="outline"
-            className="h-auto min-h-11 rounded-full font-normal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground focus-visible:ring-0 aria-disabled:cursor-default aria-disabled:opacity-50"
             aria-disabled={flight !== null}
             onClick={() => shuffle()}
           >

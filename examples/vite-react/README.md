@@ -63,7 +63,11 @@ pnpm --filter vite-react test:e2e
 The Content library uses the shared hash routes and reader-command adapter. Its Read in Bible callback carries both passage ID and resolved Bible version ID.
 
 The workflows in `e2e/images.spec.js` exercise the running app with controlled API and image
-responses. They cover browsing/search, recovery and ordering, gestures, focus, and reader/history
+responses. The dedicated `e2e` Vite mode ignores local env files and inherited `VITE_*` settings,
+uses fixed test credentials, host and timeout, and accepts `PLAYWRIGHT_IMAGE_LOCALE` for locale checks.
+The TSX harness is included in the example app type-check.
+
+These workflows cover browsing/search, recovery and ordering, gestures, focus, and reader/history
 integration. Native OS share-sheet presentation, image-feature Firefox/WebKit behavior and
 continuous real-device animation smoothness need manual validation. Live API availability is
 outside the mocked suite.
