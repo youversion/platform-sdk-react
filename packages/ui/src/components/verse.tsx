@@ -410,10 +410,17 @@ function BibleTextHtml({
   const contentRef = useRef<HTMLDivElement>(null);
   const passageRootDirectionsRef = useRef(new Map<Element, string | null>());
   const [footnoteData, setFootnoteData] = useState<VerseFootnoteData[]>([]);
-  const [indicatorTargets, setIndicatorTargets] = useState<Map<number, Element> | null>(null);
+  const [indicatorTargets, setIndicatorTargets] = useState<{
+    html: string;
+    scope: string;
+    labels: Map<number, Element>;
+  } | null>(null);
   const providerTheme = useTheme();
   const currentTheme = theme || providerTheme;
-  const hasVerseIndicators = Boolean(indicatorChapter && getVerseIndicator);
+  const indicatorScope =
+    indicatorChapter && getVerseIndicator
+      ? `${indicatorChapter.versionId}:${indicatorChapter.passageId}`
+      : null;
 
   // Set innerHTML and extract footnote data from the DOM.
   // Portals need stable element references, so we set innerHTML manually.
@@ -427,19 +434,19 @@ function BibleTextHtml({
   }, [html]);
 
   useLayoutEffect(() => {
-    if (!hasVerseIndicators || !contentRef.current) {
+    if (indicatorScope === null || !contentRef.current) {
       setIndicatorTargets(null);
       return;
     }
-    const targets = new Map<number, Element>();
+    const labels = new Map<number, Element>();
     for (const verse of contentRef.current.querySelectorAll('.yv-v[v]')) {
       const verseNum = parseInt(verse.getAttribute('v') ?? '', 10);
-      if (!verseNum || targets.has(verseNum)) continue;
+      if (!verseNum || labels.has(verseNum)) continue;
       const label = verse.querySelector('.yv-vlbl') ?? verse.querySelector('.va');
-      if (label) targets.set(verseNum, label);
+      if (label) labels.set(verseNum, label);
     }
-    setIndicatorTargets(targets);
-  }, [html, hasVerseIndicators]);
+    setIndicatorTargets({ html, scope: indicatorScope, labels });
+  }, [html, indicatorScope]);
 
   // An explicit consumer override owns each passage root while preserving
   // intentional nested bidi islands. Restore API-provided root directions when
@@ -571,8 +578,9 @@ function BibleTextHtml({
       )}
       {indicatorChapter &&
         getVerseIndicator &&
-        indicatorTargets &&
-        Array.from(indicatorTargets, ([verse, label]) => {
+        indicatorTargets?.html === html &&
+        indicatorTargets.scope === indicatorScope &&
+        Array.from(indicatorTargets.labels, ([verse, label]) => {
           const reference = {
             versionId: indicatorChapter.versionId,
             passageId: `${indicatorChapter.passageId}.${verse}`,

@@ -570,6 +570,16 @@ function Content() {
   // popover and supplies clean verse text for Copy / Share.
   const readerRef = useRef<HTMLDivElement>(null);
   const renderedReference = !passageLoading && !passageError && passage ? usfmReference : '';
+  const renderedVerseScope = renderedReference ? `${versionId}:${renderedReference}` : null;
+  const selectionScopeRef = useRef<string | null>(null);
+  const hasCustomVerseActions =
+    verseActions === 'popover' &&
+    verseActionItems?.some((item) => item !== 'highlights' && item !== 'copy' && item !== 'share');
+  // Retained HTML can still be tapped by callers using the built-in actions.
+  // Its selection cannot become the input to a custom action for the next passage.
+  const selectionMatchesScope =
+    renderedVerseScope !== null && selectionScopeRef.current === renderedVerseScope;
+  const canShowSelection = !hasCustomVerseActions || selectionMatchesScope;
   useTransientVerseFocus({
     request: activeNavigation,
     renderedReference,
@@ -643,6 +653,7 @@ function Content() {
     setSelectedVerses([]);
     setPopoverOpen(false);
     setAnchorElement(null);
+    selectionScopeRef.current = null;
     if (lastSelectionRef.current.length > 0) {
       lastSelectionRef.current = [];
       onVerseSelectRef.current?.({
@@ -672,6 +683,7 @@ function Content() {
     setPopoverOpen(false);
     setSelectedVerses([]);
     setAnchorElement(null);
+    selectionScopeRef.current = null;
     // The deselect-tap path emits its own `[]` via handleVerseSelect. Read via
     // ref: async callers (navigator.share().then) capture this closure, and a
     // host-swapped callback must not go stale on that path.
@@ -772,7 +784,10 @@ function Content() {
   }, [bookTitle, versionAbbreviation]);
 
   function handleVerseSelect(verses: number[]) {
-    const added = verses.find((verse) => !lastSelectionRef.current.includes(verse));
+    if (hasCustomVerseActions && renderedVerseScope === null) return;
+    const previous = canShowSelection ? lastSelectionRef.current : [];
+    const added = verses.find((verse) => !previous.includes(verse));
+    selectionScopeRef.current = verses.length > 0 ? renderedVerseScope : null;
     lastSelectionRef.current = verses;
     setSelectedVerses(verses);
     onVerseSelect?.(buildVerseSelection(verses));
@@ -1036,7 +1051,7 @@ function Content() {
                 theme={background}
                 onFootnotePress={onFootnotePress}
                 scriptureDirection={scriptureDirection}
-                selectedVerses={selectedVerses}
+                selectedVerses={canShowSelection ? selectedVerses : undefined}
                 onVerseSelect={handleVerseSelect}
                 getVerseIndicator={isRefetching ? undefined : getVerseIndicator}
                 onVerseIndicatorPress={onVerseIndicatorPress}
@@ -1057,7 +1072,12 @@ function Content() {
           {verseActions !== 'none' && (
             <VerseActionPopoverFocusRestoreProvider takeTarget={takeVerseFocusRestoreTarget}>
               <VerseActionPopover
-                open={popoverOpen && selectedVerses.length > 0 && !highlightPromptOpen}
+                open={
+                  popoverOpen &&
+                  canShowSelection &&
+                  selectedVerses.length > 0 &&
+                  !highlightPromptOpen
+                }
                 onOpenChange={handlePopoverOpenChange}
                 activeHighlights={activeHighlights}
                 selectedVerses={selectedVerses}
@@ -1075,6 +1095,13 @@ function Content() {
                     : {
                         ...item,
                         onSelect: () => {
+                          if (
+                            renderedVerseScope === null ||
+                            selectionScopeRef.current !== renderedVerseScope ||
+                            lastSelectionRef.current !== selectedVerses
+                          ) {
+                            return;
+                          }
                           const selection = buildVerseSelection(selectedVerses);
                           void runHostVerseAction(item.onSelect, selection);
                           closeAndClearSelection();

@@ -147,9 +147,8 @@ type VerseActionPopoverProps = {
    */
   scrollRoot?: HTMLElement | null;
   /**
-   * Whether the highlights UI is available. When `false` (the `HIGHLIGHTS_LIVE`
-   * dark-launch flag is off) the color row and the remove (checkmark) circles are
-   * hidden entirely — only Copy / Share remain. Defaults to `true`.
+   * Whether the Highlights action is available. When `false`, the swatches are
+   * omitted and the other configured actions remain. Defaults to `true`.
    */
   highlightsEnabled?: boolean;
   /** Actions in display order. Each built-in and each custom ID should appear once. */

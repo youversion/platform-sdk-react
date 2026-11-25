@@ -2033,6 +2033,7 @@ export const ChapterChangeLoadingOverlay: Story = {
     defaultVersionId: 111,
     defaultBook: 'JHN',
     defaultChapter: '1',
+    verseActionItems: [{ id: 'mark', label: 'Mark verse', icon: '★', onSelect: fn() }],
   },
   render: (args) => (
     <>
@@ -2045,8 +2046,12 @@ export const ChapterChangeLoadingOverlay: Story = {
       <button type="button">After reader</button>
     </>
   ),
-  play: async ({ canvasElement }) => {
+  play: async ({ args, canvasElement }) => {
     const { root, reader } = await getReaderStory(canvasElement);
+    const [mark] = args.verseActionItems ?? [];
+    if (!mark || mark === 'highlights' || mark === 'copy' || mark === 'share') {
+      throw new Error('Custom action fixture missing');
+    }
     await waitFor(
       async () => {
         const renderer = root.querySelector('[data-slot="yv-bible-renderer"]');
@@ -2086,6 +2091,13 @@ export const ChapterChangeLoadingOverlay: Story = {
         await expect(nextButton).toBeVisible();
       });
 
+      const retainedVerse = root.querySelector<HTMLElement>('.yv-v[v="1"]');
+      if (!retainedVerse) throw new Error('Retained verse not rendered');
+      await clickStoryElement(retainedVerse);
+      await expect(retainedVerse).not.toHaveClass('yv-v-selected');
+      await expect(root.querySelector('[data-slot="verse-action-popover"]')).toBeNull();
+      await expect(mark.onSelect).not.toHaveBeenCalled();
+
       const lastReaderControl = reader.getAllByRole('button').at(-1);
       if (!lastReaderControl) throw new Error('reader control not rendered');
       lastReaderControl.focus();
@@ -2111,6 +2123,21 @@ export const ChapterChangeLoadingOverlay: Story = {
 
     const scroller = root.querySelector('main');
     await expect(scroller?.scrollTop).toBe(0);
+    const nextVerse = root.querySelector<HTMLElement>('.yv-v[v="1"]');
+    if (!nextVerse) throw new Error('Destination verse not rendered');
+    await expect(nextVerse).not.toHaveClass('yv-v-selected');
+    await expect(root.querySelector('[data-slot="verse-action-popover"]')).toBeNull();
+    await userEvent.click(nextVerse);
+    const overlay = await getReaderOverlay(root);
+    await userEvent.click(await overlay.findByRole('button', { name: 'Mark verse' }));
+    await expect(mark.onSelect).toHaveBeenCalledTimes(1);
+    await expect(mark.onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        versionId: 111,
+        passageIds: ['JHN.2.1'],
+        shareData: expect.objectContaining({ verseText: 'Passage text for JHN.2.' }),
+      }),
+    );
   },
 };
 

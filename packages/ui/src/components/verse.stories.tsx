@@ -13,6 +13,7 @@ import {
   getCleanVerseText,
 } from './verse';
 import { VerseActionPopover } from './verse-action-popover';
+import type { BibleReaderReference } from './bible-reader-navigation';
 import { buildVerseShareText } from '@/lib/verse-share';
 import { Button } from './ui/button';
 import { XIcon } from '@/components/icons/x';
@@ -298,6 +299,13 @@ export const RealAPI: Story = {
   },
 };
 
+const NEXT_INDICATOR_PASSAGE = {
+  id: 'JHN.2.1',
+  reference: 'John 2:1',
+  content:
+    '<div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>On the third day a wedding took place at Cana in Galilee.</div>',
+};
+
 export const FootnoteInteraction: Story = {
   args: {
     reference: 'JHN.1.51',
@@ -305,10 +313,17 @@ export const FootnoteInteraction: Story = {
     renderNotes: true,
     showVerseNumbers: true,
     highlightedVerses: { 51: 'ffec5b' },
-    getVerseIndicator: ({ passageId }) =>
-      passageId === 'JHN.1.51'
-        ? { label: 'Open marker for John 1:51', style: { backgroundColor: 'rgb(118, 45, 175)' } }
-        : undefined,
+    getVerseIndicator: fn(({ passageId, versionId }: BibleReaderReference) => {
+      if (versionId !== 111) return undefined;
+      if (passageId === 'JHN.1.51') {
+        return {
+          label: 'Open marker for John 1:51',
+          style: { backgroundColor: 'rgb(118, 45, 175)' },
+        };
+      }
+      if (passageId === 'JHN.2.1') return { label: 'Open marker for John 2:1' };
+      return undefined;
+    }),
     onVerseIndicatorPress: fn(),
     onVerseSelect: fn(),
     passageState: {
@@ -318,11 +333,21 @@ export const FootnoteInteraction: Story = {
     },
   },
   tags: ['integration', 'shadow-dom', 'cross-browser'],
-  render: (args) => (
-    <div style={{ inlineSize: 235 }}>
-      <BibleTextView {...args} />
-    </div>
-  ),
+  render: function IndicatorPassage(args) {
+    const [showNext, setShowNext] = React.useState(false);
+    return (
+      <div style={{ inlineSize: 235 }}>
+        <button type="button" onClick={() => setShowNext(true)}>
+          Show John 2:1
+        </button>
+        <BibleTextView
+          {...args}
+          reference={showNext ? NEXT_INDICATOR_PASSAGE.id : args.reference}
+          passageState={showNext ? { passage: NEXT_INDICATOR_PASSAGE } : args.passageState}
+        />
+      </div>
+    );
+  },
   play: async ({ args, canvasElement }) => {
     const root = await waitForShadowRoot(canvasElement);
     const content = await waitForShadowContent(root);
@@ -422,6 +447,25 @@ export const FootnoteInteraction: Story = {
     await expect(root.querySelector('[data-yv-shadow-host]')).toBeNull();
     await expect(args.onVerseIndicatorPress).toHaveBeenCalledTimes(indicatorPresses);
     await expect(args.onVerseSelect).not.toHaveBeenCalled();
+
+    await clickStoryElement(within(canvasElement).getByRole('button', { name: 'Show John 2:1' }));
+    const nextIndicator = await within(content).findByRole('button', {
+      name: 'Open marker for John 2:1',
+    });
+    await expect(args.getVerseIndicator).not.toHaveBeenCalledWith({
+      versionId: 111,
+      passageId: 'JHN.2.51',
+    });
+    await expect(args.getVerseIndicator).toHaveBeenCalledWith({
+      versionId: 111,
+      passageId: 'JHN.2.1',
+    });
+    await clickStoryElement(nextIndicator);
+    await expect(args.onVerseIndicatorPress).toHaveBeenCalledTimes(indicatorPresses + 1);
+    await expect(args.onVerseIndicatorPress).toHaveBeenLastCalledWith({
+      versionId: 111,
+      passageId: 'JHN.2.1',
+    });
   },
 };
 
