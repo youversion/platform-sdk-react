@@ -84,15 +84,12 @@ describe('version filters', () => {
   });
 
   it('throws a 403-shaped refuse and adds filter fields to projections', () => {
-    try {
-      throwUnusableBibleVersion();
-      expect.unreachable();
-    } catch (error) {
-      expect(error).toMatchObject({
+    expect(throwUnusableBibleVersion).toThrow(
+      expect.objectContaining({
         status: 403,
         message: 'This app is not allowed to access this Bible version.',
-      });
-    }
+      }),
+    );
 
     clearFilters();
     expect(fieldsNeededForVersionFilter(['title'])).toEqual(['title']);
