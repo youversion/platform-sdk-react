@@ -1314,3 +1314,56 @@ test('shorter replacements clear obsolete shuffle and pointer interactions', asy
   await viewer.click();
   await expect(page.getByRole('dialog')).toBeVisible();
 });
+
+test('thumbnail loading follows responsive rows and recovers after fast scrolling', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const requested = new Set();
+  page.on('request', (request) => {
+    if (request.url().startsWith('https://art.test/'))
+      requested.add(new URL(request.url()).pathname);
+  });
+  await setup(page, async (url) => {
+    if (url.pathname === '/v1/images')
+      return {
+        data: Array.from({ length: 60 }, (_, index) => art(`lazy-${index}`)),
+        next_page_token: null,
+      };
+    return detailResponses(url);
+  });
+  const grid = page.getByRole('list', { name: 'Verse images' });
+  const thumbs = grid.locator('img');
+  await expect(thumbs).toHaveCount(60);
+  for (const index of [0, 1, 2])
+    await expect(thumbs.nth(index)).toHaveAttribute('loading', 'eager');
+  await expect(thumbs.nth(3)).toHaveAttribute('loading', 'lazy');
+  await expect(thumbs.first()).toBeVisible();
+  expect(requested.has('/lazy-59.svg')).toBe(false);
+
+  const { promise: artworkGate, resolve: releaseArtwork } = Promise.withResolvers();
+  await page.route('https://art.test/lazy-*.svg*', async (route) => {
+    await artworkGate;
+    await route.fallback();
+  });
+  const lastCard = grid.getByRole('listitem').last();
+  await lastCard.scrollIntoViewIfNeeded();
+  const lastArt = lastCard.getByRole('group');
+  await expect(lastArt).toHaveAttribute('data-status', 'loading');
+  await expect(lastArt.getByText('Loading artwork…')).toBeVisible();
+  const pendingBounds = await lastArt.boundingBox();
+  releaseArtwork();
+  await expect(lastCard.getByRole('img')).toBeVisible();
+  expect(await lastArt.boundingBox()).toEqual(pendingBounds);
+  await thumbs.first().scrollIntoViewIfNeeded();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const index of [0, 1]) await expect(thumbs.nth(index)).toHaveAttribute('loading', 'eager');
+  await expect(thumbs.nth(2)).toHaveAttribute('loading', 'lazy');
+  await grid.getByRole('link').first().click();
+  await expect(page.locator('.image-stack-selected img')).toHaveAttribute('loading', 'eager');
+  await page.getByRole('button', { name: 'View full-screen image' }).click();
+  await expect(
+    page.getByRole('dialog').getByRole('img', { name: 'JHN.3.16', exact: true }),
+  ).toHaveAttribute('loading', 'eager');
+});

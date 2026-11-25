@@ -8,10 +8,12 @@ export function ImageArt({
   image,
   size = 'card',
   decorative = false,
+  loading = 'eager',
 }: {
   image: VerseImage;
   size?: ImageRendition;
   decorative?: boolean;
+  loading?: 'eager' | 'lazy';
 }) {
   const container = useRef<HTMLDivElement>(null);
   const [attempt, setAttempt] = useState(0);
@@ -42,6 +44,7 @@ export function ImageArt({
         key={attempt}
         src={imageUrl(image.image_url, size)}
         alt={decorative ? '' : image.passage_id}
+        loading={loading}
         draggable={false}
         onLoad={() => setStatus('ready')}
         onError={() => setStatus('error')}

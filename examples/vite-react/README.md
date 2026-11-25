@@ -45,6 +45,8 @@ The entry point is `src/pages/ImagesPage.tsx`, with `image-*` helpers and
   only `null` ends search pagination.
 - Requests reject stale results after query, language, route or active-screen changes.
   The existing client methods do not accept a per-call AbortSignal.
+- The first grid row loads eagerly (two thumbnails on narrow screens, three from `md`).
+  Remaining thumbnails use native lazy loading; stack and full-screen artwork stay eager.
 - Artwork taps open the viewer; horizontal drags and Next image shuffle the stack.
   Background cards are decorative, and reduced motion skips flight animations.
 - Sharing sends the selected image URL rather than downloading image bytes. Native share

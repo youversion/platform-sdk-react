@@ -1,5 +1,13 @@
 import { ImageLibraryButton as Button } from './image-library-button';
-import { useCallback, useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+  type RefObject,
+} from 'react';
 import { clampSearchText, type VerseImage } from '@youversion/platform-react-ui';
 import {
   createImageLibraryClients,
@@ -13,6 +21,19 @@ import { ImageArt } from './image-art';
 import { useImageResults } from './use-image-results';
 import { formatHash } from '../routes';
 import './image-library.css';
+
+// Matches the grid's md:grid-cols-3 breakpoint.
+const WIDE_IMAGE_GRID = '(min-width: 48rem)';
+
+function subscribeToGridWidth(onChange: () => void) {
+  const media = window.matchMedia(WIDE_IMAGE_GRID);
+  media.addEventListener('change', onChange);
+  return () => media.removeEventListener('change', onChange);
+}
+
+function isWideImageGrid() {
+  return window.matchMedia(WIDE_IMAGE_GRID).matches;
+}
 
 export function ImagesPage({
   scrollContainerRef,
@@ -136,6 +157,7 @@ function ImageResults({
     query,
     active,
   );
+  const firstRowSize = useSyncExternalStore(subscribeToGridWidth, isWideImageGrid) ? 3 : 2;
   const container = useRef<HTMLDivElement>(null);
   // React runs this ref cleanup before removing a focused pagination control.
   const loadMoreRef = useCallback((button: HTMLButtonElement | null) => {
@@ -215,9 +237,13 @@ function ImageResults({
           className="image-grid grid list-none grid-cols-2 gap-x-4 gap-y-6 p-0 md:gap-7 md:grid-cols-3"
           aria-label="Verse images"
         >
-          {images.map((image) => (
+          {images.map((image, index) => (
             <li className="relative min-w-0" key={image.id}>
-              <ImageArt image={image} size="thumb" />
+              <ImageArt
+                image={image}
+                size="thumb"
+                loading={index < firstRowSize ? 'eager' : 'lazy'}
+              />
               <span className="mbs-[0.65rem] block text-[0.85rem] font-semibold" dir="auto">
                 {image.passage_id}
               </span>
