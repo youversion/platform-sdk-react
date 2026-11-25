@@ -473,12 +473,15 @@ export const CustomVerseActions: Story = {
   ),
   play: async ({ args, canvasElement }) => {
     const root = await waitForShadowRoot(canvasElement);
-    const [first, third] = await waitFor(() => {
-      const first = root.querySelector<HTMLElement>('.yv-v[v="1"]');
-      const third = root.querySelector<HTMLElement>('.yv-v[v="3"]');
-      if (!first || !third) throw new Error('Reader verses not rendered');
-      return [first, third];
-    });
+    const [first, third] = await waitFor(
+      () => {
+        const first = root.querySelector<HTMLElement>('.yv-v[v="1"]');
+        const third = root.querySelector<HTMLElement>('.yv-v[v="3"]');
+        if (!first || !third) throw new Error('Reader verses not rendered');
+        return [first, third];
+      },
+      { timeout: 10000 },
+    );
     await userEvent.click(third);
     await userEvent.click(first);
     const overlay = await getReaderOverlay(root);

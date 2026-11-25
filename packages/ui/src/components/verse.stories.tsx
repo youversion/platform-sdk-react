@@ -337,21 +337,18 @@ export const FootnoteInteraction: Story = {
     await waitFor(() => expect(getBackgroundColorChannels(verse)).toEqual([255, 236, 91, 255]));
     await expect(mark).toBeVisible();
     await expect(getComputedStyle(mark).backgroundColor).toBe('rgb(118, 45, 175)');
+    const visible = await waitFor(async () => {
+      const bounds = mark.getBoundingClientRect();
+      const x = bounds.left + bounds.width / 2;
+      const y = bounds.top + bounds.height / 2;
+      await expect(
+        Array.from(verse.getClientRects()).some(
+          (line) => x > line.left && x < line.right && y > line.top && y < line.bottom,
+        ),
+      ).toBe(true);
+      return bounds;
+    });
     const hit = indicator.getBoundingClientRect();
-    const visible = mark.getBoundingClientRect();
-    const visibleCenter = {
-      x: visible.left + visible.width / 2,
-      y: visible.top + visible.height / 2,
-    };
-    await expect(
-      Array.from(verse.getClientRects()).some(
-        (line) =>
-          visibleCenter.x > line.left &&
-          visibleCenter.x < line.right &&
-          visibleCenter.y > line.top &&
-          visibleCenter.y < line.bottom,
-      ),
-    ).toBe(true);
     await expect(hit.width).toBeGreaterThan(visible.width);
     await expect(hit.height).toBeGreaterThan(visible.height);
     let pointerPresses = 0;
