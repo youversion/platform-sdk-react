@@ -19,6 +19,7 @@ export {
   type BibleReaderRootProps,
   type BibleReaderShareData,
   type BibleReaderToolbarProps,
+  type BibleReaderVerseActionItem,
   type BibleReaderVerseSelection,
   type BibleThemeSettingsContentProps,
   type BibleThemeSettingsSnapshot,
@@ -45,6 +46,8 @@ export {
 export {
   BibleTextView,
   type BibleTextViewProps,
+  type VerseIndicator,
+  type VerseIndicatorProps,
   type FootnoteData,
   FootnoteContent,
   type FootnoteContentProps,
@@ -52,7 +55,12 @@ export {
 // NOTE: the popover's `HighlightColor` (a hex-string union) is intentionally not
 // re-exported here — core already exports a different `HighlightColor` (the API's
 // { id, color, label } shape). Import it from './verse-action-popover' if needed.
-export { VerseActionPopover, HIGHLIGHT_COLORS } from './verse-action-popover';
+export {
+  VerseActionPopover,
+  HIGHLIGHT_COLORS,
+  type BuiltInVerseAction,
+  type VerseActionPopoverItem,
+} from './verse-action-popover';
 export { BibleCard, type BibleCardProps } from './bible-card';
 export {
   BibleReaderSearch,

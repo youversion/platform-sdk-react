@@ -23,3 +23,15 @@ pnpm dev:web
 - **Bible Card** — Embeddable Bible passage card
 - **Images** — Smoke page for `ImagesClient` list and detail (metadata only)
 - **Sign in with YouVersion Button** - Authentication with YouVersion
+
+## Verse marker smoke test
+
+1. Open **Bible Reader** at John 1. Click the purple marker beside verse 3 and
+   check that the status reads “Opened marker for JHN.1.3.”
+2. Tap the text of verses 1 and 4, then choose **Mark verses** in the verse
+   action popover. Check that the popover closes and markers appear on verses
+   1 and 4 while verse 2 stays unmarked.
+3. Tab to a marker and press Enter. Check that the status shows its passage ID
+   and the verse action popover stays closed.
+
+The demo keeps markers in memory for the current page session.

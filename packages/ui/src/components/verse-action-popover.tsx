@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Fragment,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -8,6 +9,7 @@ import {
   useState,
   type CSSProperties,
   type FC,
+  type ReactNode,
 } from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { useTranslation } from 'react-i18next';
@@ -118,6 +120,19 @@ function isDurableFocusRestoreTarget(
   );
 }
 
+export type BuiltInVerseAction = 'highlights' | 'copy' | 'share';
+
+export type VerseActionPopoverItem =
+  | BuiltInVerseAction
+  | {
+      id: string;
+      label: string;
+      icon: ReactNode;
+      onSelect: () => void;
+    };
+
+const DEFAULT_ACTION_ITEMS: readonly BuiltInVerseAction[] = ['highlights', 'copy', 'share'];
+
 type VerseActionPopoverProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -137,6 +152,8 @@ type VerseActionPopoverProps = {
    * hidden entirely — only Copy / Share remain. Defaults to `true`.
    */
   highlightsEnabled?: boolean;
+  /** Actions in display order. Each built-in and each custom ID should appear once. */
+  actionItems?: readonly VerseActionPopoverItem[];
   onHighlight: (color: string) => void;
   onClearHighlight: (color: string) => void;
   onCopy: () => void;
@@ -190,7 +207,7 @@ function ColorCircle({ color, showRemove, label, onClick, theme }: ColorCirclePr
 }
 
 type ActionButtonProps = {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   onClick: () => void;
 };
@@ -201,20 +218,22 @@ function ActionButton({ icon, label, onClick }: ActionButtonProps) {
       type="button"
       onClick={onClick}
       className={cn(
-        'yv:flex yv:flex-col yv:items-center yv:gap-1 yv:px-2 yv:py-1',
+        'yv:flex yv:shrink-0 yv:flex-col yv:items-center yv:gap-1 yv:px-2 yv:py-1',
         'yv:text-xs yv:text-foreground',
         'yv:rounded-md yv:transition-colors yv:hover:bg-muted',
         'yv:focus-visible:outline-none yv:focus-visible:ring-2 yv:focus-visible:ring-ring',
       )}
     >
-      {icon}
+      <span aria-hidden="true" className="yv:inline-flex">
+        {icon}
+      </span>
       <span>{label}</span>
     </button>
   );
 }
 
 export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
-  open,
+  open: requestedOpen,
   onOpenChange,
   activeHighlights,
   selectedVerses,
@@ -222,6 +241,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   anchorElement,
   scrollRoot,
   highlightsEnabled = true,
+  actionItems = DEFAULT_ACTION_ITEMS,
   onHighlight,
   onClearHighlight,
   onCopy,
@@ -230,6 +250,10 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
 }) => {
   const { t } = useTranslation(undefined, { i18n });
   const direction = useInterfaceDirection();
+  const visibleActionItems = highlightsEnabled
+    ? actionItems
+    : actionItems.filter((item) => item !== 'highlights');
+  const open = requestedOpen && visibleActionItems.length > 0;
   const portal = useShadowPortalState({ open, onOpenChange });
   const getShadowFocusRestoreTarget = useShadowFocusRestoreTarget();
   const takeReaderFocusRestoreTarget = useTakeVerseActionPopoverFocusRestoreTarget();
@@ -346,6 +370,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
     sideOffset: docked ? 24 : 20,
     showCaret: !docked,
     colorCircles,
+    actionItems: visibleActionItems,
   };
   const frozenView = useRef(live);
   if (open) frozenView.current = live;
@@ -524,7 +549,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 'yv:bg-card yv:text-popover-foreground',
                 'yv:rounded-full yv:drop-shadow-[0px_4.8432px_20px_rgba(0,0,0,0.19)]',
                 'yv:px-4 yv:py-2',
-                'yv:flex yv:items-center yv:gap-3',
+                'yv:flex yv:items-center yv:gap-1',
                 // Never wider than the viewport (minus collision padding). When the
                 // swatch row can't fit, it scrolls inside instead of overflowing the
                 // screen. Radix sets `--radix-popover-content-available-width`, but
@@ -559,56 +584,76 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 </svg>
               )}
 
-              {/* Highlights UI is hidden entirely when the feature is off (flag off):
-              only Copy / Share remain. */}
-              {highlightsEnabled && (
-                <>
+              {view.actionItems.map((item, index) => {
+                if (item === 'copy' || item === 'share') {
+                  return (
+                    <ActionButton
+                      key={item}
+                      icon={
+                        item === 'copy' ? (
+                          <BoxStackIcon className="yv:size-5" />
+                        ) : (
+                          <Share className="yv:size-5" />
+                        )
+                      }
+                      label={item === 'copy' ? t('copy') : t('share')}
+                      onClick={item === 'copy' ? onCopy : onShare}
+                    />
+                  );
+                }
+                if (item !== 'highlights') {
+                  return (
+                    <ActionButton
+                      key={`custom:${item.id}`}
+                      icon={item.icon}
+                      label={item.label}
+                      onClick={item.onSelect}
+                    />
+                  );
+                }
+
+                const divider = (
                   <div
-                    ref={setSwatchRow}
-                    // `min-w-0` lets this flex child actually shrink below its
-                    // content size so `overflow-x-auto` engages instead of widening
-                    // the pill. `py-1 -my-1` gives the hover:scale-110 swatches
-                    // vertical breathing room inside the (now-clipping) scroll box
-                    // without shifting the row's resting position. Scrollbar hidden;
-                    // the edge fade signals there's more to scroll.
-                    className="yv:flex yv:items-center yv:gap-2 yv:min-w-0 yv:overflow-x-auto yv:scrollbar-hide yv:py-1 yv:-my-1"
-                    style={scrollFadeMask(scrollFade)}
-                    role="group"
-                    aria-label={t('highlightColorsAriaLabel')}
-                  >
-                    {view.colorCircles.map(({ color, showRemove, key }) => (
-                      <ColorCircle
-                        key={key}
-                        color={color}
-                        showRemove={showRemove}
-                        theme={theme}
-                        label={
-                          showRemove ? t('clearHighlightAriaLabel') : t('applyHighlightAriaLabel')
-                        }
-                        onClick={() => (showRemove ? onClearHighlight(color) : onHighlight(color))}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Separator — never shrinks, so only the swatch row scrolls. */}
-                  <div className="yv:w-px yv:h-8 yv:shrink-0 yv:bg-border" aria-hidden="true" />
-                </>
-              )}
-
-              {/* Copy / Share stay pinned and fully visible; only the swatch row
-              scrolls when space is tight. */}
-              <div className="yv:flex yv:items-center yv:gap-1 yv:shrink-0">
-                <ActionButton
-                  icon={<BoxStackIcon className="yv:size-5" />}
-                  label={t('copy')}
-                  onClick={onCopy}
-                />
-                <ActionButton
-                  icon={<Share className="yv:size-5" />}
-                  label={t('share')}
-                  onClick={onShare}
-                />
-              </div>
+                    className="yv:mx-2 yv:w-px yv:h-8 yv:shrink-0 yv:bg-border"
+                    aria-hidden="true"
+                  />
+                );
+                const isLast = index === view.actionItems.length - 1;
+                return (
+                  <Fragment key={item}>
+                    {isLast && index > 0 && divider}
+                    <div
+                      ref={setSwatchRow}
+                      // `min-w-0` lets this flex child actually shrink below its
+                      // content size so `overflow-x-auto` engages instead of widening
+                      // the pill. `py-1 -my-1` gives the hover:scale-110 swatches
+                      // vertical breathing room inside the (now-clipping) scroll box
+                      // without shifting the row's resting position. Scrollbar hidden;
+                      // the edge fade signals there's more to scroll.
+                      className="yv:flex yv:items-center yv:gap-2 yv:min-w-0 yv:overflow-x-auto yv:scrollbar-hide yv:py-1 yv:-my-1"
+                      style={scrollFadeMask(scrollFade)}
+                      role="group"
+                      aria-label={t('highlightColorsAriaLabel')}
+                    >
+                      {view.colorCircles.map(({ color, showRemove, key }) => (
+                        <ColorCircle
+                          key={key}
+                          color={color}
+                          showRemove={showRemove}
+                          theme={theme}
+                          label={
+                            showRemove ? t('clearHighlightAriaLabel') : t('applyHighlightAriaLabel')
+                          }
+                          onClick={() =>
+                            showRemove ? onClearHighlight(color) : onHighlight(color)
+                          }
+                        />
+                      ))}
+                    </div>
+                    {!isLast && divider}
+                  </Fragment>
+                );
+              })}
             </PopoverPrimitive.Content>
           </PopoverPrimitive.Portal>
         )}

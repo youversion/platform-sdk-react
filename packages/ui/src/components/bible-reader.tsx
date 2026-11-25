@@ -35,7 +35,12 @@ import { VerseActionPopover } from './verse-action-popover';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 import { HighlightPermissionDialog } from './highlight-permission-dialog';
 import { SignInDialog } from './sign-in-dialog';
-import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
+import {
+  BibleTextView,
+  getCleanVerseText,
+  type FootnoteData,
+  type VerseIndicatorProps,
+} from './verse';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 import { isHighlightsLive } from '@/lib/feature-flags';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
@@ -57,6 +62,7 @@ import type {
   BibleReaderHighlightIntent,
   BibleReaderSettingsProps,
   BibleReaderShareData,
+  BibleReaderVerseActionItem,
   BibleReaderVerseSelection,
 } from './bible-reader.types';
 
@@ -82,6 +88,7 @@ export {
 export type {
   BibleReaderHighlightIntent,
   BibleReaderShareData,
+  BibleReaderVerseActionItem,
   BibleReaderVerseSelection,
 } from './bible-reader.types';
 
@@ -207,6 +214,13 @@ export type RootProps = BibleReaderSettingsProps & {
    */
   verseActions?: 'popover' | 'none';
   /**
+   * Items in the existing popover, in display order. Defaults to highlights,
+   * copy and share. Omit an item to hide it, or pass an empty list to show no
+   * popover. Each built-in may appear once. Respects highlight availability
+   * and is ignored when `verseActions="none"`.
+   */
+  verseActionItems?: readonly BibleReaderVerseActionItem[];
+  /**
    * Clears the current verse selection from outside the reader. Any change to
    * this value runs the reader's own "close and clear" path, emitting
    * {@link onVerseSelect} with `verses: []`. The value at mount is the
@@ -220,7 +234,7 @@ export type RootProps = BibleReaderSettingsProps & {
   clearSelectionSignal?: number;
   scriptureDirection?: TextDirection;
   children?: ReactNode;
-};
+} & VerseIndicatorProps;
 
 // Non-scrolling focus requests apply only to the chapter/version already displayed.
 function canApplyNavigationRequest(
@@ -274,6 +288,9 @@ function Root({
   onHighlightApply,
   onHighlightRemove,
   verseActions = 'popover',
+  verseActionItems,
+  getVerseIndicator,
+  onVerseIndicatorPress,
   clearSelectionSignal,
   scriptureDirection,
   children,
@@ -432,6 +449,9 @@ function Root({
     onHighlightApply,
     onHighlightRemove,
     verseActions,
+    verseActionItems,
+    getVerseIndicator,
+    onVerseIndicatorPress,
     clearSelectionSignal,
     navigation,
     verseFocus,
@@ -476,6 +496,9 @@ function Content() {
     onHighlightApply,
     onHighlightRemove,
     verseActions,
+    verseActionItems,
+    getVerseIndicator,
+    onVerseIndicatorPress,
     clearSelectionSignal,
     verseFocus,
     scriptureDirection,
@@ -837,9 +860,9 @@ function Content() {
     };
   }
 
-  async function runHostVerseAction(
-    action: (data: BibleReaderShareData) => void | Promise<void>,
-    data: BibleReaderShareData,
+  async function runHostVerseAction<Data>(
+    action: (data: Data) => void | Promise<void>,
+    data: Data,
   ): Promise<void> {
     try {
       await action(data);
@@ -1015,6 +1038,8 @@ function Content() {
                 scriptureDirection={scriptureDirection}
                 selectedVerses={selectedVerses}
                 onVerseSelect={handleVerseSelect}
+                getVerseIndicator={isRefetching ? undefined : getVerseIndicator}
+                onVerseIndicatorPress={onVerseIndicatorPress}
                 highlightedVerses={highlightedVerses}
                 passageState={{
                   passage,
@@ -1044,6 +1069,18 @@ function Content() {
                 onClearHighlight={handleClearHighlight}
                 onCopy={handleCopy}
                 onShare={handleShare}
+                actionItems={verseActionItems?.map((item) =>
+                  item === 'highlights' || item === 'copy' || item === 'share'
+                    ? item
+                    : {
+                        ...item,
+                        onSelect: () => {
+                          const selection = buildVerseSelection(selectedVerses);
+                          void runHostVerseAction(item.onSelect, selection);
+                          closeAndClearSelection();
+                        },
+                      },
+                )}
                 theme={background}
               />
             </VerseActionPopoverFocusRestoreProvider>

@@ -22,6 +22,7 @@ import {
 import { VerseActionPopover } from './verse-action-popover';
 import {
   verifyNativeBrowserKey,
+  getBackgroundColorChannels,
   waitForShadowContent,
   waitForShadowRoot,
 } from '@/test/storybook-dom';
@@ -394,6 +395,11 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
       const movedBlock = Math.abs(reanchoredRect.top - firstDialogRect.top) > 8;
       void expect(movedInline || movedBlock).toBe(true);
     });
+    await expect(secondSelectedVerseLabel).toHaveTextContent('10');
+    await userEvent.click(secondSelectedVerseLabel);
+    await expect(firstVerse).toHaveClass('yv-v-selected');
+    await expect(secondSelectedVerse).not.toHaveClass('yv-v-selected');
+    await userEvent.click(secondSelectedVerseLabel);
 
     await userEvent.pointer({ keys: '[MouseLeft>]', target: outsideControl });
     await waitFor(() => expect(dialog).not.toBeInTheDocument(), { timeout: 10000 });
@@ -427,6 +433,96 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     await expect(firstVerse).not.toHaveClass('yv-v-selected');
     await expect(secondSelectedVerse).not.toHaveClass('yv-v-selected');
     await expect(ownerDocument.activeElement).toBe(outsideControl);
+  },
+};
+
+export const CustomVerseActions: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+    background: 'dark',
+    highlights: [{ version_id: 111, passage_id: 'JHN.1.1', color: 'ffec5b' }],
+    getVerseIndicator: ({ passageId }) =>
+      passageId === 'JHN.1.1'
+        ? { label: 'Open marker for John 1:1', style: { backgroundColor: 'rgb(222, 172, 255)' } }
+        : undefined,
+    onVerseIndicatorPress: fn(),
+    verseActionItems: [
+      'share',
+      {
+        id: 'mark',
+        label: 'Mark verses',
+        icon: (
+          <span aria-hidden="true" data-testid="mark-icon">
+            ★
+          </span>
+        ),
+        onSelect: fn(),
+      },
+      'copy',
+    ],
+  },
+  render: (args) => (
+    <div className="yv:h-screen">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ args, canvasElement }) => {
+    const root = await waitForShadowRoot(canvasElement);
+    const [first, third] = await waitFor(() => {
+      const first = root.querySelector<HTMLElement>('.yv-v[v="1"]');
+      const third = root.querySelector<HTMLElement>('.yv-v[v="3"]');
+      if (!first || !third) throw new Error('Reader verses not rendered');
+      return [first, third];
+    });
+    await userEvent.click(third);
+    await userEvent.click(first);
+    const overlay = await getReaderOverlay(root);
+    const dialog = await overlay.findByRole('dialog', { name: 'Verse actions' });
+    const indicator = within(first).getByRole('button', { name: 'Open marker for John 1:1' });
+    const visibleMark = indicator.querySelector('[data-slot="verse-indicator-mark"]');
+    if (!visibleMark) throw new Error('Verse number marker not rendered');
+    await expect(indicator.closest('[data-yv-theme="dark"]')).toBeInTheDocument();
+    await waitFor(() => expect(getBackgroundColorChannels(first)).toEqual([65, 62, 33, 255]));
+    await expect(visibleMark).toBeVisible();
+    await expect(getComputedStyle(visibleMark).backgroundColor).toBe('rgb(222, 172, 255)');
+    await userEvent.click(indicator);
+    await expect(args.onVerseIndicatorPress).toHaveBeenCalledTimes(1);
+    await expect(args.onVerseIndicatorPress).toHaveBeenCalledWith({
+      versionId: 111,
+      passageId: 'JHN.1.1',
+    });
+    await expect(first).toHaveClass('yv-v-selected');
+    await expect(third).toHaveClass('yv-v-selected');
+    await expect(dialog).toHaveAttribute('data-state', 'open');
+    const actions = within(dialog);
+    const mark = actions.getByRole('button', { name: 'Mark verses' });
+    await expect(actions.getAllByRole('button')).toEqual([
+      actions.getByRole('button', { name: 'Share' }),
+      mark,
+      actions.getByRole('button', { name: 'Copy' }),
+    ]);
+    await expect(within(mark).getByTestId('mark-icon')).toBeVisible();
+    await userEvent.click(mark);
+    const item = args.verseActionItems?.[1];
+    if (!item || item === 'highlights' || item === 'copy' || item === 'share') {
+      throw new Error('Custom action fixture missing');
+    }
+    await expect(item.onSelect).toHaveBeenCalledTimes(1);
+    await expect(item.onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        versionId: 111,
+        verses: [1, 3],
+        passageIds: ['JHN.1.1', 'JHN.1.3'],
+      }),
+    );
+    await expect(first).not.toHaveClass('yv-v-selected');
+    await expect(third).not.toHaveClass('yv-v-selected');
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
   },
 };
 
