@@ -55,7 +55,7 @@
     {
       "id": "ui-localized-copy",
       "scope": ["packages/ui/src/components/**"],
-      "rule": "Localize SDK-authored, nonempty UI copy in shipped components, including accessible labels and text alternatives, with t() or Trans/i18nKey. Preserve caller- or API-provided text and empty alt on decorative images. Leave literal-string violations to lint; test and story fixtures are excluded."
+      "rule": "Localize SDK-authored, nonempty UI copy in shipped components, including accessible labels and text alternatives, with t() or Trans/i18nKey. Preserve caller- or API-provided text and empty alt on decorative images. Skip violations lint already reports. Flag SDK-authored text that reaches the UI without localization, including labels supplied by helpers. Test and story fixtures are excluded."
     },
     {
       "id": "locale-ownership",
