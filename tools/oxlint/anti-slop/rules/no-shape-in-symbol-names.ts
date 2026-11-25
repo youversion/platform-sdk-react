@@ -7,13 +7,13 @@ function containsForbiddenSymbolName(name: string): boolean {
   return name.toLowerCase().includes(FORBIDDEN_SYMBOL_NAME);
 }
 
-/** Ban the case-insensitive substring "shape" in every JavaScript and TypeScript symbol name. */
+/** Reject vague shape names without asking callers to rename a static member access. */
 export const noForbiddenTermInSymbolNamesRule = defineRule({
   meta: {
     type: 'problem',
     docs: {
       description:
-        'Disallow the case-insensitive substring "shape" in JavaScript, TypeScript, private, and JSX symbol names.',
+        'Disallow the case-insensitive substring "shape" in symbol names except statically accessed members.',
     },
     messages: {
       forbiddenSymbolName:
@@ -23,6 +23,17 @@ export const noForbiddenTermInSymbolNamesRule = defineRule({
   createOnce(context) {
     const reportForbiddenSymbolName = (node: ESTree.Node & { name: string }) => {
       if (!containsForbiddenSymbolName(node.name)) return;
+      const parent = node.parent;
+      if (parent?.type === 'MemberExpression' && !parent.computed && parent.property === node)
+        return;
+      if (
+        parent?.type === 'Property' &&
+        parent.parent.type === 'ObjectPattern' &&
+        !parent.computed &&
+        !parent.shorthand &&
+        parent.key === node
+      )
+        return;
       context.report({
         node,
         messageId: 'forbiddenSymbolName',

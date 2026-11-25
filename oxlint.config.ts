@@ -1,4 +1,5 @@
 import { defineConfig } from 'oxlint';
+import type { OxlintConfig } from 'oxlint';
 
 const antiSlopRules = {
   'anti-slop/no-chained-type-assertions': 'error',
@@ -8,7 +9,7 @@ const antiSlopRules = {
   'anti-slop/no-object-parameters': 'error',
   'anti-slop/no-reflect-apply': 'error',
   'anti-slop/no-reflect-get': 'error',
-  'anti-slop/no-runtime-typeof': 'error',
+  'anti-slop/no-runtime-typeof': ['error', { allowInTypeGuards: true }],
   'anti-slop/no-shape-in-symbol-names': 'error',
   'anti-slop/no-unknown-parameters': 'error',
   'anti-slop/no-unknown-returns': 'error',
@@ -16,7 +17,7 @@ const antiSlopRules = {
   'anti-slop/no-unsafe-dictionary-type': 'error',
   'anti-slop/no-widen-then-assert': 'error',
   'anti-slop/require-safety-comment-for-type-assertion': 'error',
-} as const;
+} satisfies OxlintConfig['rules'];
 
 export default defineConfig({
   options: {
@@ -72,6 +73,44 @@ export default defineConfig({
     'react-hooks/exhaustive-deps': 'error',
   },
   overrides: [
+    {
+      files: ['packages/*/src/**'],
+      rules: { 'typescript/no-explicit-any': 'error' },
+    },
+    {
+      files: ['packages/core/src/**'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              {
+                regex: '^(react|react-dom|@youversion/platform-react-(hooks|ui))(/|$)',
+                allowTypeImports: true,
+                message: 'Core must run without React, hooks, or UI.',
+              },
+            ],
+          },
+        ],
+      },
+    },
+    {
+      files: ['packages/hooks/src/**'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              {
+                regex: '^@youversion/platform-react-ui(/|$)',
+                allowTypeImports: true,
+                message: 'Hooks must run without UI.',
+              },
+            ],
+          },
+        ],
+      },
+    },
     {
       files: ['examples/**'],
       rules: {

@@ -83,6 +83,9 @@ jobs:
       - name: Run lint
         run: pnpm lint
 
+      - name: Test anti-slop rules
+        run: node --test tools/oxlint/anti-slop/rules.test.mjs
+
       - name: Run repo script regression tests
         run: pnpm test:ci-scripts
 

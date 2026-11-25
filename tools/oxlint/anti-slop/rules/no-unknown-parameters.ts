@@ -39,13 +39,13 @@ function parameterName(parameter: Parameter, sourceText: string): string {
     : sourceText.replace(/\s*:\s*unknown\s*$/u, '');
 }
 
-/** Disallow unknown inputs except explicitly named error-cause enrichment. */
+/** Disallow unknown inputs except error causes and type predicate subjects. */
 export const noUnknownParametersRule = defineRule({
   meta: {
     type: 'problem',
     docs: {
       description:
-        'Disallow explicitly unknown function parameters except `cause`; decode unknown input at its I/O boundary instead.',
+        'Disallow explicitly unknown function parameters except `cause` and type predicate subjects; decode unknown input at its I/O boundary instead.',
     },
     messages: {
       unknownParameter:
@@ -59,6 +59,13 @@ export const noUnknownParametersRule = defineRule({
         if (annotation?.typeAnnotation.type !== 'TSUnknownKeyword') continue;
         const name = parameterName(parameter, context.sourceCode.getText(parameter));
         if (name === 'cause') continue;
+        const predicate = node.returnType?.typeAnnotation;
+        if (
+          predicate?.type === 'TSTypePredicate' &&
+          predicate.parameterName.type === 'Identifier' &&
+          predicate.parameterName.name === name
+        )
+          continue;
         context.report({
           node: annotation.typeAnnotation,
           messageId: 'unknownParameter',

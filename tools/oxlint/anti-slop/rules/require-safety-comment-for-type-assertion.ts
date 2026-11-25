@@ -24,13 +24,24 @@ function hasSafetyComment(sourceCode: SourceCode, node: TypeAssertion): boolean 
   let current: ESTree.Node = node;
   while (true) {
     if (
-      sourceCode
-        .getCommentsBefore(current)
-        .some((comment) => comment.end <= node.start && /\bSAFETY\s*:/u.test(comment.value))
+      sourceCode.getCommentsBefore(current).some((comment, index, comments) => {
+        if (comment.end > node.start) return false;
+        if (/\bSAFETY\s*:[\s*]*[^\s*]/u.test(comment.value)) return true;
+        const next = comments[index + 1];
+        return (
+          comment.type === 'Line' &&
+          /\bSAFETY\s*:\s*$/u.test(comment.value) &&
+          next?.type === 'Line' &&
+          next.loc.start.line === comment.loc.end.line + 1 &&
+          next.value.trim() !== ''
+        );
+      })
     ) {
       return true;
     }
-    if (commentOwnerKinds.has(current.type) || current.parent.type === 'Program') return false;
+    if (current.parent.type === 'Program') return false;
+    if (commentOwnerKinds.has(current.type) && current.parent.type !== 'ExportNamedDeclaration')
+      return false;
     current = current.parent;
   }
 }
