@@ -17,6 +17,7 @@ import { buildVerseShareText } from '@/lib/verse-share';
 import { Button } from './ui/button';
 import { XIcon } from '@/components/icons/x';
 import {
+  clickStoryElement,
   getBackgroundColorChannels,
   verifyNativeBrowserKey,
   waitForElement,
@@ -351,10 +352,20 @@ export const FootnoteInteraction: Story = {
     const hit = indicator.getBoundingClientRect();
     await expect(hit.width).toBeGreaterThan(visible.width);
     await expect(hit.height).toBeGreaterThan(visible.height);
-    let pointerPresses = 0;
+    let indicatorPresses = 0;
     if (__YV_STORYBOOK_VITEST__) {
       const { server, userEvent: browserUserEvent } = await import('vitest/browser');
       if (server.provider === 'playwright') {
+        const centerX = visible.left + visible.width / 2;
+        const centerY = visible.top + visible.height / 2;
+        await browserUserEvent.click(indicator, {
+          timeout: 5000,
+          position: {
+            x: centerX - hit.left,
+            y: centerY - hit.top,
+          },
+        });
+        await expect(args.onVerseIndicatorPress).toHaveBeenCalledTimes(1);
         const position = { x: hit.width - 2, y: hit.height / 2 };
         const x = hit.left + position.x;
         const y = hit.top + position.y;
@@ -365,7 +376,8 @@ export const FootnoteInteraction: Story = {
           ),
         ).toBe(true);
         await browserUserEvent.click(indicator, { position });
-        pointerPresses = 1;
+        indicatorPresses = 2;
+        await expect(args.onVerseIndicatorPress).toHaveBeenCalledTimes(indicatorPresses);
         await expect(args.onVerseIndicatorPress).toHaveBeenCalledWith({
           versionId: 111,
           passageId: 'JHN.1.51',
@@ -376,7 +388,8 @@ export const FootnoteInteraction: Story = {
     indicator.focus();
     await expect(root.activeElement).toBe(indicator);
     await verifyNativeBrowserKey('{Enter}', async () => {
-      await expect(args.onVerseIndicatorPress).toHaveBeenCalledTimes(pointerPresses + 1);
+      indicatorPresses += 1;
+      await expect(args.onVerseIndicatorPress).toHaveBeenCalledTimes(indicatorPresses);
       await expect(args.onVerseIndicatorPress).toHaveBeenLastCalledWith({
         versionId: 111,
         passageId: 'JHN.1.51',
@@ -390,7 +403,7 @@ export const FootnoteInteraction: Story = {
       'footnote button not rendered',
     );
 
-    await userEvent.click(footnoteButton);
+    await clickStoryElement(footnoteButton);
     const overlay = await waitForElement<HTMLElement>(
       root,
       '[data-yv-shadow-local-overlay]',
@@ -407,6 +420,7 @@ export const FootnoteInteraction: Story = {
     );
     await expect(overlay).toContainElement(noteItem);
     await expect(root.querySelector('[data-yv-shadow-host]')).toBeNull();
+    await expect(args.onVerseIndicatorPress).toHaveBeenCalledTimes(indicatorPresses);
     await expect(args.onVerseSelect).not.toHaveBeenCalled();
   },
 };

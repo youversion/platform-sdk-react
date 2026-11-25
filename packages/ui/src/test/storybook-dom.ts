@@ -1,4 +1,4 @@
-import { waitFor as storybookWaitFor } from 'storybook/test';
+import { userEvent as storybookUserEvent, waitFor as storybookWaitFor } from 'storybook/test';
 import { requireShadowRoot } from './dom-stubs';
 
 interface StorybookWaitOptions {
@@ -46,6 +46,15 @@ export function getBackgroundColorChannels(element: Element): number[] {
   context.fillStyle = getComputedStyle(element).backgroundColor;
   context.fillRect(0, 0, 1, 1);
   return Array.from(context.getImageData(0, 0, 1, 1).data);
+}
+
+export async function clickStoryElement(element: Element): Promise<void> {
+  if (__YV_STORYBOOK_VITEST__) {
+    const { userEvent } = await import('vitest/browser');
+    await userEvent.click(element);
+    return;
+  }
+  await storybookUserEvent.click(element);
 }
 
 async function pressNativeBrowserKey(keys: string): Promise<boolean> {

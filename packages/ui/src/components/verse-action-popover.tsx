@@ -218,7 +218,7 @@ function ActionButton({ icon, label, onClick }: ActionButtonProps) {
       type="button"
       onClick={onClick}
       className={cn(
-        'yv:flex yv:shrink-0 yv:flex-col yv:items-center yv:gap-1 yv:px-2 yv:py-1',
+        'yv:flex yv:max-w-full yv:shrink-0 yv:flex-col yv:items-center yv:gap-1 yv:px-2 yv:py-1',
         'yv:text-xs yv:text-foreground',
         'yv:rounded-md yv:transition-colors yv:hover:bg-muted',
         'yv:focus-visible:outline-none yv:focus-visible:ring-2 yv:focus-visible:ring-ring',
@@ -227,7 +227,7 @@ function ActionButton({ icon, label, onClick }: ActionButtonProps) {
       <span aria-hidden="true" className="yv:inline-flex">
         {icon}
       </span>
-      <span>{label}</span>
+      <span className="yv:max-w-full yv:[overflow-wrap:anywhere]">{label}</span>
     </button>
   );
 }
@@ -371,6 +371,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
     showCaret: !docked,
     colorCircles,
     actionItems: visibleActionItems,
+    scrollAllActions: actionItems !== DEFAULT_ACTION_ITEMS,
   };
   const frozenView = useRef(live);
   if (open) frozenView.current = live;
@@ -557,6 +558,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 // resize. `min()` with a live `100vw` term keeps the cap honest when
                 // the viewport shrinks under an open popover (24px = 2×collisionPadding).
                 'yv:max-w-[min(var(--radix-popover-content-available-width),calc(100vw-24px))]',
+                view.scrollAllActions && 'yv:box-border',
                 'yv:z-50 yv:outline-hidden',
                 'yv:overflow-visible yv:relative',
                 'yv:origin-(--radix-popover-content-transform-origin)',
@@ -584,76 +586,95 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 </svg>
               )}
 
-              {view.actionItems.map((item, index) => {
-                if (item === 'copy' || item === 'share') {
-                  return (
-                    <ActionButton
-                      key={item}
-                      icon={
-                        item === 'copy' ? (
-                          <BoxStackIcon className="yv:size-5" />
-                        ) : (
-                          <Share className="yv:size-5" />
-                        )
-                      }
-                      label={item === 'copy' ? t('copy') : t('share')}
-                      onClick={item === 'copy' ? onCopy : onShare}
-                    />
-                  );
+              {/* Configured actions share one scroll strip. The default keeps
+                  Copy and Share pinned while the swatches scroll. */}
+              <div
+                inert={!portal.open}
+                className={
+                  view.scrollAllActions
+                    ? 'yv:flex yv:min-w-0 yv:items-center yv:gap-1 yv:overflow-x-auto yv:p-1 yv:-m-1'
+                    : 'yv:contents'
                 }
-                if (item !== 'highlights') {
-                  return (
-                    <ActionButton
-                      key={`custom:${item.id}`}
-                      icon={item.icon}
-                      label={item.label}
-                      onClick={item.onSelect}
-                    />
-                  );
-                }
+              >
+                {view.actionItems.map((item, index) => {
+                  if (item === 'copy' || item === 'share') {
+                    return (
+                      <ActionButton
+                        key={item}
+                        icon={
+                          item === 'copy' ? (
+                            <BoxStackIcon className="yv:size-5" />
+                          ) : (
+                            <Share className="yv:size-5" />
+                          )
+                        }
+                        label={item === 'copy' ? t('copy') : t('share')}
+                        onClick={item === 'copy' ? onCopy : onShare}
+                      />
+                    );
+                  }
+                  if (item !== 'highlights') {
+                    return (
+                      <ActionButton
+                        key={`custom:${item.id}`}
+                        icon={item.icon}
+                        label={item.label}
+                        onClick={item.onSelect}
+                      />
+                    );
+                  }
+                  if (!highlightsEnabled) return null;
 
-                const divider = (
-                  <div
-                    className="yv:mx-2 yv:w-px yv:h-8 yv:shrink-0 yv:bg-border"
-                    aria-hidden="true"
-                  />
-                );
-                const isLast = index === view.actionItems.length - 1;
-                return (
-                  <Fragment key={item}>
-                    {isLast && index > 0 && divider}
+                  const divider = (
                     <div
-                      ref={setSwatchRow}
-                      // `min-w-0` lets this flex child actually shrink below its
-                      // content size so `overflow-x-auto` engages instead of widening
-                      // the pill. `py-1 -my-1` gives the hover:scale-110 swatches
-                      // vertical breathing room inside the (now-clipping) scroll box
-                      // without shifting the row's resting position. Scrollbar hidden;
-                      // the edge fade signals there's more to scroll.
-                      className="yv:flex yv:items-center yv:gap-2 yv:min-w-0 yv:overflow-x-auto yv:scrollbar-hide yv:py-1 yv:-my-1"
-                      style={scrollFadeMask(scrollFade)}
-                      role="group"
-                      aria-label={t('highlightColorsAriaLabel')}
-                    >
-                      {view.colorCircles.map(({ color, showRemove, key }) => (
-                        <ColorCircle
-                          key={key}
-                          color={color}
-                          showRemove={showRemove}
-                          theme={theme}
-                          label={
-                            showRemove ? t('clearHighlightAriaLabel') : t('applyHighlightAriaLabel')
-                          }
-                          onClick={() =>
-                            showRemove ? onClearHighlight(color) : onHighlight(color)
-                          }
-                        />
-                      ))}
-                    </div>
-                    {!isLast && divider}
-                  </Fragment>
-                );
-              })}
+                      className="yv:mx-2 yv:w-px yv:h-8 yv:shrink-0 yv:bg-border"
+                      aria-hidden="true"
+                    />
+                  );
+                  const isLast = index === view.actionItems.length - 1;
+                  return (
+                    <Fragment key={item}>
+                      {isLast && index > 0 && divider}
+                      <div
+                        ref={view.scrollAllActions ? undefined : setSwatchRow}
+                        // `min-w-0` lets this flex child actually shrink below its
+                        // content size so `overflow-x-auto` engages instead of widening
+                        // the pill. `py-1 -my-1` gives the hover:scale-110 swatches
+                        // vertical breathing room inside the (now-clipping) scroll box
+                        // without shifting the row's resting position. Scrollbar hidden;
+                        // the edge fade signals there's more to scroll.
+                        className={cn(
+                          'yv:flex yv:items-center yv:gap-2',
+                          view.scrollAllActions
+                            ? 'yv:shrink-0'
+                            : 'yv:min-w-0 yv:overflow-x-auto yv:scrollbar-hide yv:py-1 yv:-my-1',
+                        )}
+                        style={view.scrollAllActions ? undefined : scrollFadeMask(scrollFade)}
+                        role="group"
+                        aria-label={t('highlightColorsAriaLabel')}
+                      >
+                        {view.colorCircles.map(({ color, showRemove, key }) => (
+                          <ColorCircle
+                            key={key}
+                            color={color}
+                            showRemove={showRemove}
+                            theme={theme}
+                            label={
+                              showRemove
+                                ? t('clearHighlightAriaLabel')
+                                : t('applyHighlightAriaLabel')
+                            }
+                            onClick={() =>
+                              showRemove ? onClearHighlight(color) : onHighlight(color)
+                            }
+                          />
+                        ))}
+                      </div>
+                      {!isLast && divider}
+                    </Fragment>
+                  );
+                })}
+              </div>
             </PopoverPrimitive.Content>
           </PopoverPrimitive.Portal>
         )}

@@ -359,7 +359,7 @@ function VerseNumberIndicator({
     <span
       aria-hidden="true"
       data-slot="verse-indicator-mark"
-      className="yv:pointer-events-none yv:absolute yv:inset-x-0 yv:[inset-block-end:0] yv:mx-auto yv:size-1.5 yv:rounded-full yv:bg-primary"
+      className="yv:pointer-events-none yv:absolute yv:left-1/2 yv:-translate-x-1/2 yv:[inset-block-end:0] yv:size-1.5 yv:rounded-full yv:bg-primary"
       style={indicator.style}
     />
   );

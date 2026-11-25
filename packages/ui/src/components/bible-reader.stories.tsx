@@ -21,6 +21,7 @@ import {
 } from './bible-reader';
 import { VerseActionPopover } from './verse-action-popover';
 import {
+  clickStoryElement,
   verifyNativeBrowserKey,
   getBackgroundColorChannels,
   waitForShadowContent,
@@ -385,7 +386,9 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     await Promise.all(dialog.getAnimations().map((animation) => animation.finished));
     const firstDialogRect = dialog.getBoundingClientRect();
 
-    await userEvent.click(secondSelectedVerseLabel);
+    await expect(secondSelectedVerseLabel).toBeVisible();
+    await expect(secondSelectedVerseLabel).toHaveTextContent('10');
+    await clickStoryElement(secondSelectedVerseLabel);
     await expect(firstVerse).toHaveClass('yv-v-selected');
     await expect(secondSelectedVerse).toHaveClass('yv-v-selected');
     await expect(dialog).toBeInTheDocument();
@@ -395,7 +398,6 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
       const movedBlock = Math.abs(reanchoredRect.top - firstDialogRect.top) > 8;
       void expect(movedInline || movedBlock).toBe(true);
     });
-    await expect(secondSelectedVerseLabel).toHaveTextContent('10');
     await userEvent.click(secondSelectedVerseLabel);
     await expect(firstVerse).toHaveClass('yv-v-selected');
     await expect(secondSelectedVerse).not.toHaveClass('yv-v-selected');
@@ -436,6 +438,9 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
   },
 };
 
+const LONG_VERSE_ACTION_LABEL =
+  'Add these selected verses to the collection of passages for tomorrow’s reading discussion';
+
 export const CustomVerseActions: Story = {
   tags: ['integration', 'shadow-dom', 'cross-browser'],
   args: {
@@ -464,13 +469,35 @@ export const CustomVerseActions: Story = {
       'copy',
     ],
   },
-  render: (args) => (
-    <div className="yv:h-screen">
-      <BibleReader.Root {...args}>
-        <BibleReader.Content />
-      </BibleReader.Root>
-    </div>
-  ),
+  render: function ConfigurableActions(args) {
+    const [omittedAction, setOmittedAction] = useState<'copy' | 'share'>();
+    const configuredItems: BibleReaderRootProps['verseActionItems'] = omittedAction
+      ? [
+          omittedAction === 'copy' ? 'share' : 'copy',
+          'highlights',
+          ...(args.verseActionItems?.slice(1, 2) ?? []),
+          { id: 'compare', label: 'Compare selected translations', icon: '⇄', onSelect: fn() },
+          { id: 'collect', label: LONG_VERSE_ACTION_LABEL, icon: '+', onSelect: fn() },
+        ]
+      : args.verseActionItems;
+    return (
+      <div className="yv:flex yv:h-screen yv:flex-col">
+        <div>
+          <button type="button" onClick={() => setOmittedAction('copy')}>
+            Omit Copy
+          </button>
+          <button type="button" onClick={() => setOmittedAction('share')}>
+            Omit Share
+          </button>
+        </div>
+        <div className="yv:min-h-0 yv:flex-1">
+          <BibleReader.Root {...args} verseActionItems={configuredItems}>
+            <BibleReader.Content />
+          </BibleReader.Root>
+        </div>
+      </div>
+    );
+  },
   play: async ({ args, canvasElement }) => {
     const root = await waitForShadowRoot(canvasElement);
     const [first, third] = await waitFor(
@@ -482,7 +509,12 @@ export const CustomVerseActions: Story = {
       },
       { timeout: 10000 },
     );
-    await userEvent.click(third);
+    const thirdLabel = third.querySelector<HTMLElement>('.yv-vlbl');
+    if (!thirdLabel) throw new Error('Unmarked verse number not rendered');
+    await expect(thirdLabel).toBeVisible();
+    await expect(thirdLabel).toHaveTextContent('3');
+    await expect(within(thirdLabel).queryByRole('button')).toBeNull();
+    await clickStoryElement(thirdLabel);
     await userEvent.click(first);
     const overlay = await getReaderOverlay(root);
     const dialog = await overlay.findByRole('dialog', { name: 'Verse actions' });
@@ -510,7 +542,16 @@ export const CustomVerseActions: Story = {
       actions.getByRole('button', { name: 'Copy' }),
     ]);
     await expect(within(mark).getByTestId('mark-icon')).toBeVisible();
-    await userEvent.click(mark);
+    await Promise.all(dialog.getAnimations().map((animation) => animation.finished));
+    dialog.style.animationDuration = '1s';
+    if (__YV_STORYBOOK_VITEST__) {
+      const { userEvent: browserUserEvent } = await import('vitest/browser');
+      await browserUserEvent.dblClick(mark);
+    } else {
+      await userEvent.dblClick(mark);
+    }
+    await expect(dialog).toHaveAttribute('data-state', 'closed');
+    await expect(mark).toBeInTheDocument();
     const item = args.verseActionItems?.[1];
     if (!item || item === 'highlights' || item === 'copy' || item === 'share') {
       throw new Error('Custom action fixture missing');
@@ -525,7 +566,51 @@ export const CustomVerseActions: Story = {
     );
     await expect(first).not.toHaveClass('yv-v-selected');
     await expect(third).not.toHaveClass('yv-v-selected');
-    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    await waitFor(() => expect(dialog).not.toBeInTheDocument(), { timeout: 5000 });
+
+    const browser = __YV_STORYBOOK_VITEST__ ? await import('vitest/browser') : undefined;
+    const page = browser?.server.provider === 'playwright' ? browser.page : undefined;
+    const { innerWidth, innerHeight } = window;
+    await page?.viewport(320, 640);
+    try {
+      for (const [omitted, retained] of [
+        ['Copy', 'Share'],
+        ['Share', 'Copy'],
+      ] as const) {
+        await userEvent.click(
+          within(canvasElement).getByRole('button', { name: `Omit ${omitted}` }),
+        );
+        await userEvent.click(first);
+        const configured = await overlay.findByRole('dialog', { name: 'Verse actions' });
+        const queries = within(configured);
+        const firstAction = queries.getByRole('button', { name: retained });
+        const swatches = queries.getByRole('group', { name: 'Highlight colors' });
+        const lastAction = queries.getByRole('button', { name: LONG_VERSE_ACTION_LABEL });
+        await expect(queries.queryByRole('button', { name: omitted })).toBeNull();
+        await expect(queries.getAllByRole('button')).toEqual([
+          firstAction,
+          ...within(swatches).getAllByRole('button'),
+          queries.getByRole('button', { name: 'Mark verses' }),
+          queries.getByRole('button', { name: 'Compare selected translations' }),
+          lastAction,
+        ]);
+        if (page) {
+          await Promise.all(configured.getAnimations().map((animation) => animation.finished));
+          firstAction.focus();
+          await expect(lastAction.getBoundingClientRect().right).toBeGreaterThan(320);
+          await verifyNativeBrowserKey('{Shift>}{Tab}{/Shift}', async () => {
+            await waitFor(() => expect(root.activeElement).toBe(lastAction));
+            const bounds = lastAction.getBoundingClientRect();
+            await expect(bounds.left).toBeGreaterThanOrEqual(0);
+            await expect(bounds.right).toBeLessThanOrEqual(320);
+          });
+        }
+        await userEvent.keyboard('{Escape}');
+        await waitFor(() => expect(configured).not.toBeInTheDocument(), { timeout: 5000 });
+      }
+    } finally {
+      await page?.viewport(innerWidth, innerHeight);
+    }
   },
 };
 
@@ -1098,6 +1183,7 @@ function EnterExitProbe() {
         activeHighlights={new Set()}
         selectedVerses={[]}
         highlightedVerses={{}}
+        highlightsEnabled={open}
         onHighlight={fn()}
         onClearHighlight={fn()}
         onCopy={fn()}
@@ -1112,6 +1198,7 @@ export const EnterAndExitMotion: Story = {
   render: () => <EnterExitProbe />,
   play: async () => {
     const dialog = await screen.findByRole('dialog');
+    await expect(within(dialog).getByRole('group')).toBeInTheDocument();
     const openStyle = getComputedStyle(dialog);
     await expect(openStyle.animationDuration).toBe('0.18s');
     await expect(openStyle.animationTimingFunction).toBe('cubic-bezier(0.16, 1, 0.3, 1)');
@@ -1121,6 +1208,7 @@ export const EnterAndExitMotion: Story = {
       const closed = screen.getByRole('dialog');
       const closedStyle = getComputedStyle(closed);
       await expect(closed).toHaveAttribute('data-state', 'closed');
+      await expect(closed.querySelector('[role="group"]')).toBeNull();
       await expect(closedStyle.animationDuration).toBe('0.15s');
       await expect(closedStyle.animationTimingFunction).toBe('ease');
     });
