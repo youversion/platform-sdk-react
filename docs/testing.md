@@ -37,7 +37,9 @@ Core owns client HTTP and Zod tests with their MSW server; hooks own React state
 - **Core:** Vitest runs in Node. For HTTP contract failures E2E cannot reach, use mocked-client workflows
   using the shared MSW server from `packages/core/src/__tests__/setup.ts`, which
   loads `handlers.ts` and manages the server lifecycle. Override responses inside
-  tests with `server.use(...)`. Live API smokes stay tiny and opt-in with
+  tests with `server.use(...)`. An unhandled request in a mocked test is blocked
+  and fails the test, even if the client catches the error. To test an HTTP error,
+  register a handler that returns that status. Live API smokes stay tiny and opt-in with
   `INTEGRATION_TESTS=true`.
 - **Hooks:** Vitest uses jsdom and React Testing Library. Stub core clients with
   factories under `packages/hooks/src/__tests__/mocks`; wrap hooks in the real
