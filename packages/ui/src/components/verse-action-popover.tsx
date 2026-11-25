@@ -120,14 +120,20 @@ function isDurableFocusRestoreTarget(
   );
 }
 
+/** The SDK-provided actions for highlighting, copying, and sharing a verse selection. */
 export type BuiltInVerseAction = 'highlights' | 'copy' | 'share';
 
+/** A built-in or host-provided action for a standalone {@link VerseActionPopover}. */
 export type VerseActionPopoverItem =
   | BuiltInVerseAction
   | {
+      /** Stable ID unique among the custom actions. */
       id: string;
+      /** Visible and accessible label, localized by the host. */
       label: string;
+      /** Decorative icon for the action button. */
       icon: ReactNode;
+      /** Zero-argument activation callback. The caller owns selection and dismissal. */
       onSelect: () => void;
     };
 
@@ -508,6 +514,18 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
               }}
               onCloseAutoFocus={(event) => {
                 const root = portal.container ? getOwnShadowRoot(portal.container) : null;
+                const focusDocument = portal.container?.ownerDocument ?? anchor?.ownerDocument;
+                const activeElement = root?.activeElement ?? focusDocument?.activeElement;
+                const closingContent = event.currentTarget;
+                // A custom action can mount and focus host UI before Radix finishes closing.
+                const focusMovedOutside =
+                  activeElement?.isConnected &&
+                  activeElement !== focusDocument?.body &&
+                  activeElement !== focusDocument?.documentElement &&
+                  activeElement !== root?.host &&
+                  !activeElement.hasAttribute('data-radix-focus-guard') &&
+                  isElementFromOwnerDocument(closingContent, activeElement, 'Element') &&
+                  !closingContent.contains(activeElement);
                 const target = focusRestoreTargetRef.current;
                 const fallbackTarget = getShadowFocusRestoreTarget?.();
                 const restoreTarget = isDurableFocusRestoreTarget(target, root?.ownerDocument)
@@ -515,8 +533,10 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                   : isDurableFocusRestoreTarget(fallbackTarget, root?.ownerDocument)
                     ? fallbackTarget
                     : null;
-                if (root || restoreTarget) event.preventDefault();
-                if (!retainOutsideFocusRef.current) restoreTarget?.focus({ preventScroll: true });
+                if (focusMovedOutside || root || restoreTarget) event.preventDefault();
+                if (!focusMovedOutside && !retainOutsideFocusRef.current) {
+                  restoreTarget?.focus({ preventScroll: true });
+                }
                 retainOutsideFocusRef.current = false;
                 focusRestoreTargetRef.current = null;
               }}

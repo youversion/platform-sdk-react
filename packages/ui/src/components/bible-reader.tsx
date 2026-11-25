@@ -215,9 +215,11 @@ export type RootProps = BibleReaderSettingsProps & {
   verseActions?: 'popover' | 'none';
   /**
    * Items in the existing popover, in display order. Defaults to highlights,
-   * copy and share. Omit an item to hide it, or pass an empty list to show no
-   * popover. Each built-in may appear once. Respects highlight availability
-   * and is ignored when `verseActions="none"`.
+   * copy and share. Omit an item to hide it. Each built-in may appear once.
+   * Respects highlight availability and is ignored when `verseActions="none"`.
+   *
+   * An empty list hides the popover while keeping verse selection enabled.
+   * The host can clear the selection through {@link clearSelectionSignal}.
    */
   verseActionItems?: readonly BibleReaderVerseActionItem[];
   /**
@@ -1021,7 +1023,7 @@ function Content() {
       <div
         role="status"
         aria-live="polite"
-        className="yv:sticky yv:[inset-block-start:0] yv:z-10 yv:rounded-md yv:bg-background yv:px-4 yv:py-2 yv:empty:sr-only yv:text-center yv:text-destructive"
+        className="yv:sticky yv:[inset-block-start:0] yv:z-20 yv:rounded-md yv:bg-background yv:px-4 yv:py-2 yv:empty:sr-only yv:text-center yv:text-destructive"
       >
         {clipboardFailed ? t('unableToShare') : null}
       </div>

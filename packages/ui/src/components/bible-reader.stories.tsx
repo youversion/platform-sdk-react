@@ -471,6 +471,7 @@ export const CustomVerseActions: Story = {
   },
   render: function ConfigurableActions(args) {
     const [omittedAction, setOmittedAction] = useState<'copy' | 'share'>();
+    const [editingNote, setEditingNote] = useState(false);
     const configuredItems: BibleReaderRootProps['verseActionItems'] = omittedAction
       ? [
           omittedAction === 'copy' ? 'share' : 'copy',
@@ -479,7 +480,10 @@ export const CustomVerseActions: Story = {
           { id: 'compare', label: 'Compare selected translations', icon: '⇄', onSelect: fn() },
           { id: 'collect', label: LONG_VERSE_ACTION_LABEL, icon: '+', onSelect: fn() },
         ]
-      : args.verseActionItems;
+      : [
+          ...(args.verseActionItems ?? []),
+          { id: 'edit-note', label: 'Edit note', icon: '+', onSelect: () => setEditingNote(true) },
+        ];
     return (
       <div className="yv:flex yv:h-screen yv:flex-col">
         <div>
@@ -489,6 +493,12 @@ export const CustomVerseActions: Story = {
           <button type="button" onClick={() => setOmittedAction('share')}>
             Omit Share
           </button>
+          {editingNote && (
+            <label>
+              Note
+              <input autoFocus />
+            </label>
+          )}
         </div>
         <div className="yv:min-h-0 yv:flex-1">
           <BibleReader.Root {...args} verseActionItems={configuredItems}>
@@ -540,6 +550,7 @@ export const CustomVerseActions: Story = {
       actions.getByRole('button', { name: 'Share' }),
       mark,
       actions.getByRole('button', { name: 'Copy' }),
+      actions.getByRole('button', { name: 'Edit note' }),
     ]);
     await expect(within(mark).getByTestId('mark-icon')).toBeVisible();
     await Promise.all(dialog.getAnimations().map((animation) => animation.finished));
@@ -569,6 +580,22 @@ export const CustomVerseActions: Story = {
     await waitFor(() => expect(dialog).not.toBeInTheDocument(), { timeout: 5000 });
 
     const browser = __YV_STORYBOOK_VITEST__ ? await import('vitest/browser') : undefined;
+    const host = within(canvasElement);
+    const prior = host.getByRole('button', { name: 'Omit Copy' });
+    prior.focus();
+    await userEvent.click(third);
+    const noteActions = await overlay.findByRole('dialog', { name: 'Verse actions' });
+    const editNote = within(noteActions).getByRole('button', { name: 'Edit note' });
+    editNote.focus();
+    await (browser?.userEvent ?? userEvent).keyboard('{Enter}');
+    const note = await host.findByRole('textbox', { name: 'Note' });
+    await waitFor(() => expect(noteActions).not.toBeInTheDocument());
+    await expect(third).not.toHaveClass('yv-v-selected');
+    await verifyNativeBrowserKey('Remember this', async () => {
+      await expect(note).toHaveFocus();
+      await expect(note).toHaveValue('Remember this');
+    });
+
     const page = browser?.server.provider === 'playwright' ? browser.page : undefined;
     const { innerWidth, innerHeight } = window;
     await page?.viewport(320, 640);
@@ -2147,6 +2174,9 @@ export const ClipboardFailureAfterScrolling: Story = {
     defaultVersionId: 111,
     defaultBook: 'JHN',
     defaultChapter: '1',
+    getVerseIndicator: ({ passageId }) =>
+      passageId === 'JHN.1.3' ? { label: 'Open marker for John 1:3' } : undefined,
+    onVerseIndicatorPress: fn(),
   },
   render: (args) => (
     <div style={{ blockSize: 520, inlineSize: 390 }}>
@@ -2156,7 +2186,7 @@ export const ClipboardFailureAfterScrolling: Story = {
       </BibleReader.Root>
     </div>
   ),
-  play: async ({ canvasElement }) => {
+  play: async ({ args, canvasElement }) => {
     const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
     const shareDescriptor = Object.getOwnPropertyDescriptor(navigator, 'share');
     const writes: string[] = [];
@@ -2205,6 +2235,33 @@ export const ClipboardFailureAfterScrolling: Story = {
         await waitFor(expectWarningInView);
       }
       await expect(writes).toHaveLength(2);
+
+      const indicator = reader.getByRole('button', { name: 'Open marker for John 1:3' });
+      const mark = indicator.querySelector('[data-slot="verse-indicator-mark"]');
+      if (!mark) throw new Error('Verse number marker not rendered');
+      const warning = status.getBoundingClientRect();
+      const marker = mark.getBoundingClientRect();
+      scroller.scrollTop += marker.top + marker.height / 2 - (warning.top + warning.height / 2);
+
+      const bounds = status.getBoundingClientRect();
+      const overlap = mark.getBoundingClientRect();
+      const x = overlap.left + overlap.width / 2;
+      const y = overlap.top + overlap.height / 2;
+      await expect(x).toBeGreaterThan(bounds.left);
+      await expect(x).toBeLessThan(bounds.right);
+      await expect(y).toBeGreaterThan(bounds.top);
+      await expect(y).toBeLessThan(bounds.bottom);
+      await expect(root.elementFromPoint(x, y)).toBe(status);
+
+      if (__YV_STORYBOOK_VITEST__) {
+        const { server, userEvent: browserUserEvent } = await import('vitest/browser');
+        if (server.provider === 'playwright') {
+          await browserUserEvent.click(status, {
+            position: { x: x - bounds.left, y: y - bounds.top },
+          });
+          await expect(args.onVerseIndicatorPress).not.toHaveBeenCalled();
+        }
+      }
     } finally {
       if (clipboardDescriptor) Object.defineProperty(navigator, 'clipboard', clipboardDescriptor);
       else Reflect.deleteProperty(navigator, 'clipboard');
