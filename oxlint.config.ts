@@ -75,7 +75,10 @@ export default defineConfig({
   overrides: [
     {
       files: ['packages/*/src/**'],
-      rules: { 'typescript/no-explicit-any': 'error' },
+      rules: {
+        'typescript/no-explicit-any': 'error',
+        'typescript/no-require-imports': 'error',
+      },
     },
     {
       files: ['packages/core/src/**'],
