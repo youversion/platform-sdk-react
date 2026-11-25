@@ -1,233 +1,381 @@
-import { useEffect, useRef, useState } from 'react';
+import { ImageLibraryButton as Button } from './image-library-button';
 import {
-  ApiClient,
-  ImagesClient,
-  getHttpStatus,
-  parseUsfmReference,
-  type Collection,
-  type VerseImage,
-} from '@youversion/platform-react-ui';
-import { API_TIMEOUT_MS } from '../api-timeout';
-import { formatHash } from '@/routes';
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+  type RefObject,
+} from 'react';
+import { clampSearchText, type VerseImage } from '@youversion/platform-react-ui';
+import {
+  createImageLibraryClients,
+  imageError,
+  type ImageLibraryClients,
+  type ReadImagePassage,
+} from './image-library-api';
+import { ImageLanguagePicker } from './image-language-picker';
+import { ImageDetail } from './image-detail';
+import { ImageArt } from './image-art';
+import { useImageResults } from './use-image-results';
+import { formatHash } from '../routes';
+import './image-library.css';
 
-const DEFAULT_PASSAGE_ID = 'JHN.3.16';
-const LIST_PAGE_SIZE = 12;
+// Matches the grid's md:grid-cols-3 breakpoint.
+const WIDE_IMAGE_GRID = '(min-width: 48rem)';
 
-type ListState =
-  | { kind: 'loading' }
-  | { kind: 'empty' }
-  | { kind: 'ready'; page: Collection<VerseImage> }
-  | { kind: 'error'; message: string };
-
-type DetailState =
-  | { kind: 'idle' }
-  | { kind: 'loading'; imageId: string }
-  | { kind: 'ready'; imageId: string; image: VerseImage }
-  | { kind: 'error'; imageId: string; message: string };
-
-function createImagesClient(): ImagesClient {
-  const appKey = import.meta.env.VITE_YVP_APP_KEY?.trim();
-  if (!appKey) {
-    throw new Error('Missing VITE_YVP_APP_KEY (set YVP_APP_KEY in the monorepo root .env)');
-  }
-  const apiHost = import.meta.env.VITE_YVP_API_HOST ?? 'api.youversion.com';
-  return new ImagesClient(new ApiClient({ appKey, apiHost, timeout: API_TIMEOUT_MS }));
+function subscribeToGridWidth(onChange: () => void) {
+  const media = window.matchMedia(WIDE_IMAGE_GRID);
+  media.addEventListener('change', onChange);
+  return () => media.removeEventListener('change', onChange);
 }
 
-function formatCaughtError(cause: unknown): string {
-  const message = cause instanceof Error ? cause.message : String(cause);
-  const status = getHttpStatus(cause);
-  return status != null ? `HTTP ${status}: ${message}` : message;
-}
-
-function thumbUrl(imageUrl: string): string {
-  const url = new URL(imageUrl);
-  url.searchParams.set('size', 'thumb');
-  return url.toString();
+function isWideImageGrid() {
+  return window.matchMedia(WIDE_IMAGE_GRID).matches;
 }
 
 export function ImagesPage({
+  scrollContainerRef,
   imageId,
+  onSelectImage,
+  active = true,
   onReadInBible,
 }: {
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
   imageId: string | null;
-  onReadInBible: (passageId: string) => void;
+  onSelectImage: (id: string | null) => void;
+  active?: boolean;
+  onReadInBible?: ReadImagePassage;
 }) {
-  const [list, setList] = useState<ListState>({ kind: 'loading' });
-  const [detail, setDetail] = useState<DetailState>({ kind: 'idle' });
-  const [passageRejected, setPassageRejected] = useState(false);
-  const detailRequestId = useRef(0);
+  const [clients] = useState(createImageLibraryClients);
+  const [draft, setDraft] = useState('');
+  const [query, setQuery] = useState('');
+  const [validation, setValidation] = useState<string | null>(null);
+  const [language, setLanguage] = useState('en');
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    const value = draft.trim();
+    if (clampSearchText(value) !== value) {
+      setValidation('Enter a search of 100 characters or fewer.');
+      return;
+    }
+    setValidation(null);
+    onSelectImage(null);
+    setQuery(value);
+  }
+  return (
+    <div className="image-library mx-auto max-w-[68rem] p-[clamp(1.25rem,4vw,3rem)] motion-reduce:[&_*]:scroll-auto">
+      <header className="mbe-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="mbe-1 text-[0.8rem] text-muted-foreground">Content library</p>
+          <h1 className="text-[clamp(1.75rem,4vw,2.5rem)] font-bold tracking-[-0.035em]">
+            Verse images
+          </h1>
+        </div>
+        <ImageLanguagePicker
+          language={language}
+          active={active}
+          onChange={(tag) => {
+            onSelectImage(null);
+            setLanguage(tag);
+          }}
+        />
+      </header>
+      <form
+        role="search"
+        className="mbe-6 flex items-center gap-2 rounded-[2rem] bg-muted p-2"
+        onSubmit={submit}
+      >
+        <input
+          className="min-w-0 flex-1 rounded-[2rem] bg-transparent px-3 py-2 outline-offset-3 focus-visible:outline-2 focus-visible:outline-foreground"
+          type="search"
+          aria-label="Search images"
+          placeholder="Search by verse or text"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+        />
+        {draft || query ? (
+          <Button
+            variant="outline"
+            type="button"
+            aria-label="Clear search"
+            onClick={() => {
+              onSelectImage(null);
+              setDraft('');
+              setQuery('');
+              setValidation(null);
+            }}
+          >
+            Clear
+          </Button>
+        ) : null}
+        <Button type="submit">Search</Button>
+      </form>
+      {validation ? (
+        <p role="alert" className="py-4 text-muted-foreground">
+          {validation}
+        </p>
+      ) : null}
+      <ImageResults
+        scrollContainerRef={scrollContainerRef}
+        key={`${language}:${query}`}
+        imageId={imageId}
+        onSelectImage={onSelectImage}
+        active={active}
+        clients={clients}
+        language={language}
+        query={query}
+        onReadInBible={onReadInBible}
+      />
+    </div>
+  );
+}
 
-  useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const client = createImagesClient();
-        const page = await client.getImages({
-          passage_id: DEFAULT_PASSAGE_ID,
-          page_size: LIST_PAGE_SIZE,
-        });
-        if (cancelled) return;
-        if (page.data.length === 0) {
-          setList({ kind: 'empty' });
-          return;
-        }
-        setList({ kind: 'ready', page });
-      } catch (err) {
-        if (cancelled) return;
-        setList({ kind: 'error', message: formatCaughtError(err) });
-      }
-    })();
-
+function ImageResults({
+  scrollContainerRef,
+  clients,
+  language,
+  query,
+  imageId,
+  onSelectImage,
+  active,
+  onReadInBible,
+}: {
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
+  clients: ImageLibraryClients;
+  language: string;
+  query: string;
+  imageId: string | null;
+  onSelectImage: (id: string | null) => void;
+  active: boolean;
+  onReadInBible?: ReadImagePassage;
+}) {
+  const { images, loading, error, hasMore, load } = useImageResults(
+    clients,
+    language,
+    query,
+    active,
+  );
+  const firstRowSize = useSyncExternalStore(subscribeToGridWidth, isWideImageGrid) ? 3 : 2;
+  const container = useRef<HTMLDivElement>(null);
+  // React runs this ref cleanup before removing a focused pagination control.
+  const loadMoreRef = useCallback((button: HTMLButtonElement | null) => {
+    if (!button) return;
     return () => {
-      cancelled = true;
+      if (document.activeElement === button) container.current?.focus({ preventScroll: true });
     };
   }, []);
-
+  const listScroll = useRef(0);
+  const openedCard = useRef<HTMLAnchorElement | null>(null);
+  const detail = useRef<HTMLDivElement>(null);
+  const previousImageId = useRef(imageId);
   useEffect(() => {
-    const requestId = ++detailRequestId.current;
-    if (imageId === null) {
-      setDetail({ kind: 'idle' });
-      setPassageRejected(false);
-      return;
-    }
-    const requestedId = imageId;
-    setDetail({ kind: 'loading', imageId: requestedId });
-    setPassageRejected(false);
-    void (async () => {
-      try {
-        const image = await createImagesClient().getImage(requestedId);
-        if (requestId !== detailRequestId.current) return;
-        setDetail({ kind: 'ready', imageId: requestedId, image });
-      } catch (err) {
-        if (requestId !== detailRequestId.current) return;
-        setDetail({
-          kind: 'error',
-          imageId: requestedId,
-          message: formatCaughtError(err),
-        });
+    if (!active || imageId !== null) return;
+    const owner = scrollContainerRef.current;
+    const remember = () => {
+      listScroll.current = owner?.scrollTop ?? 0;
+    };
+    owner?.addEventListener('scroll', remember);
+    return () => owner?.removeEventListener('scroll', remember);
+  }, [imageId, active, scrollContainerRef]);
+  useEffect(() => {
+    const entering = previousImageId.current !== imageId && imageId !== null;
+    const returning = previousImageId.current !== null && imageId === null;
+    previousImageId.current = imageId;
+    if ((!entering && !returning) || !active) return;
+    const frame = requestAnimationFrame(() => {
+      if (returning) (openedCard.current ?? container.current)?.focus({ preventScroll: true });
+      else {
+        if (
+          openedCard.current?.getAttribute('href') !==
+          formatHash({ destination: 'content', imageId })
+        )
+          openedCard.current = null;
+        detail.current?.focus({ preventScroll: true });
       }
-    })();
-  }, [imageId]);
+      const owner = scrollContainerRef.current;
+      owner?.scrollTo({ top: returning ? listScroll.current : 0 });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [imageId, active, scrollContainerRef]);
+  return (
+    <div ref={container} role="region" aria-label="Image results" tabIndex={-1}>
+      {imageId !== null ? (
+        <div ref={detail} role="region" aria-label="Image detail" tabIndex={-1}>
+          <RoutedImageDetail
+            key={imageId}
+            imageId={imageId}
+            focusTargetRef={detail}
+            cached={images.find((image) => image.id === imageId)}
+            clients={clients}
+            language={language}
+            active={active}
+            onBack={() => onSelectImage(null)}
+            onReadInBible={onReadInBible}
+          />
+        </div>
+      ) : null}
+      <div hidden={imageId !== null}>
+        {error ? (
+          <div className="my-4 border-s-[3px] border-destructive ps-4">
+            <p role="alert">{error}</p>
+            <Button
+              type="button"
+              variant="outline"
+              aria-disabled={loading}
+              onClick={() => {
+                container.current?.focus({ preventScroll: true });
+                void load();
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        ) : null}
+        <ul
+          className="image-grid grid list-none grid-cols-2 gap-x-4 gap-y-6 p-0 md:gap-7 md:grid-cols-3"
+          aria-label="Verse images"
+        >
+          {images.map((image, index) => (
+            <li className="relative min-w-0" key={image.id}>
+              <ImageArt
+                image={image}
+                size="thumb"
+                loading={index < firstRowSize ? 'eager' : 'lazy'}
+              />
+              <span className="mbs-[0.65rem] block text-[0.85rem] font-semibold" dir="auto">
+                {image.passage_id}
+              </span>
+              <a
+                className="image-open absolute inset-0 cursor-pointer rounded-[1.125rem] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground"
+                href={formatHash({ destination: 'content', imageId: image.id })}
+                aria-label={`Open ${image.passage_id}${image.attribution ? `, ${image.attribution}` : ''}`}
+                onClick={(event) => {
+                  if (
+                    event.button !== 0 ||
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.shiftKey ||
+                    event.altKey
+                  )
+                    return;
+                  event.preventDefault();
+                  openedCard.current = event.currentTarget;
+                  const owner = scrollContainerRef.current;
+                  listScroll.current = owner?.scrollTop ?? 0;
+                  onSelectImage(image.id);
+                }}
+              />
+            </li>
+          ))}
+        </ul>
+        {loading ? (
+          <p className="py-4 text-muted-foreground" role="status">
+            Loading images…
+          </p>
+        ) : null}
+        {!loading && !error && images.length === 0 ? (
+          <p role="status" aria-label="Empty image results" className="py-4 text-muted-foreground">
+            No images found{query ? ` for “${query}”` : ''}.
+          </p>
+        ) : null}
+        {hasMore && !error ? (
+          <div className="my-4 flex flex-wrap items-center gap-3">
+            <Button
+              variant="outline"
+              ref={loadMoreRef}
+              aria-disabled={loading}
+              type="button"
+              onClick={() => void load()}
+            >
+              Load more
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
-  function readPassage(passageId: string) {
-    if (parseUsfmReference(passageId) === null) {
-      setPassageRejected(true);
+function RoutedImageDetail({
+  imageId,
+  focusTargetRef,
+  cached,
+  clients,
+  language,
+  active,
+  onBack,
+  onReadInBible,
+}: {
+  imageId: string;
+  focusTargetRef: RefObject<HTMLDivElement | null>;
+  cached?: VerseImage;
+  clients: ImageLibraryClients;
+  language: string;
+  active: boolean;
+  onBack: () => void;
+  onReadInBible?: ReadImagePassage;
+}) {
+  const [image, setImage] = useState<VerseImage | null>(cached ?? null);
+  const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    if (!active || image) return;
+    if (cached) {
+      setImage(cached);
       return;
     }
-    setPassageRejected(false);
-    onReadInBible(passageId);
-  }
-
+    let current = true;
+    setError(null);
+    void clients.images.getImage(imageId).then(
+      (result) => {
+        if (current) setImage(result);
+      },
+      (cause) => {
+        if (current)
+          setError(imageError(cause instanceof Error ? cause : new Error('Unable to load image.')));
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [active, cached, clients, imageId, image, retry]);
+  if (image)
+    return (
+      <ImageDetail
+        image={image}
+        language={language}
+        clients={clients}
+        active={active}
+        onBack={onBack}
+        onReadInBible={onReadInBible}
+      />
+    );
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-6 md:p-12">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold">Images API smoke</h1>
-        <p className="text-sm text-muted-foreground">
-          Core <code>ImagesClient.getImages</code> / <code>getImage</code> against passage{' '}
-          <code>{DEFAULT_PASSAGE_ID}</code>. Not a product UI.
-        </p>
-      </header>
-
-      {list.kind === 'loading' ? <p className="text-sm">Loading list…</p> : null}
-
-      {list.kind === 'error' ? (
-        <p className="text-sm text-destructive" role="alert">
-          {list.message}
-        </p>
-      ) : null}
-
-      {list.kind === 'empty' ? (
-        <p className="text-sm text-muted-foreground">No images for this passage.</p>
-      ) : null}
-
-      {list.kind === 'ready' ? (
-        <>
-          <p className="text-sm text-muted-foreground">
-            {list.page.data.length} shown
-            {list.page.total_size != null ? ` · total_size ${list.page.total_size}` : null}
-            {list.page.next_page_token ? ' · more pages available' : ' · last page'}
-          </p>
-          <ul className="flex flex-col gap-2">
-            {list.page.data.map((item) => (
-              <li key={item.id}>
-                <a
-                  href={formatHash({ destination: 'content', imageId: item.id })}
-                  className="block w-full rounded border px-3 py-2 text-start text-sm hover:bg-muted"
-                  aria-current={item.id === imageId ? 'page' : undefined}
-                >
-                  <div className="font-mono text-xs break-all">{item.id}</div>
-                  <div className="text-muted-foreground">
-                    {item.passage_id} · {item.language_tag} · {item.width}×{item.height}
-                  </div>
-                  <div className="truncate font-mono text-xs text-muted-foreground">
-                    {item.image_url}
-                  </div>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-
-      {detail.kind === 'loading' && detail.imageId === imageId ? (
-        <p className="text-sm">Loading detail…</p>
-      ) : null}
-      {detail.kind === 'error' && detail.imageId === imageId ? (
-        <p className="text-sm text-destructive" role="alert">
-          Detail: {detail.message}
-        </p>
-      ) : null}
-
-      {imageId !== null ? (
-        <p className="text-sm">
-          <a href={formatHash({ destination: 'content', imageId: null })} className="underline">
-            Back to list
-          </a>
-        </p>
-      ) : null}
-
-      {detail.kind === 'ready' && detail.imageId === imageId ? (
-        <section className="flex flex-col gap-3 rounded border p-4">
-          <h2 className="text-sm font-semibold">Detail</h2>
-          <dl className="grid gap-1 text-sm">
-            <div>
-              <dt className="text-muted-foreground">id</dt>
-              <dd className="font-mono text-xs break-all">{detail.image.id}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">passage_id</dt>
-              <dd>{detail.image.passage_id}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">attribution</dt>
-              <dd>{detail.image.attribution || '(empty)'}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">image_url</dt>
-              <dd className="font-mono text-xs break-all">{detail.image.image_url}</dd>
-            </div>
-          </dl>
-          <img
-            src={thumbUrl(detail.image.image_url)}
-            alt=""
-            className="max-h-64 w-auto self-start rounded"
-          />
-          <button
+    <section>
+      <Button type="button" variant="outline" onClick={onBack}>
+        Back to images
+      </Button>
+      {error ? (
+        <div className="my-4 border-s-[3px] border-destructive ps-4">
+          <p role="alert">{error}</p>
+          <Button
             type="button"
-            className="self-start text-sm underline"
-            onClick={() => readPassage(detail.image.passage_id)}
+            variant="outline"
+            onClick={() => {
+              focusTargetRef.current?.focus({ preventScroll: true });
+              setRetry((value) => value + 1);
+            }}
           >
-            Read in Bible
-          </button>
-          {passageRejected ? (
-            <p className="text-sm text-destructive" role="alert">
-              Passage ID is not a Bible reference the reader can open.
-            </p>
-          ) : null}
-        </section>
-      ) : null}
-    </div>
+            Retry image details
+          </Button>
+        </div>
+      ) : (
+        <p role="status" className="py-4 text-muted-foreground">
+          Loading image details…
+        </p>
+      )}
+    </section>
   );
 }

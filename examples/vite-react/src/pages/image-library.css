@@ -1,0 +1,25 @@
+.image-stack-flight {
+  pointer-events: none;
+  animation: image-shuffle 0.48s ease-in-out both;
+}
+@keyframes image-shuffle {
+  0% {
+    transform: translateX(var(--flight-start-x)) rotate(var(--flight-start-angle));
+    z-index: 4;
+    opacity: 1;
+  }
+  45% {
+    transform: translateX(calc(var(--flight-direction) * 115%))
+      rotate(calc(var(--flight-direction) * 12deg));
+    z-index: 4;
+    opacity: 1;
+  }
+  46% {
+    z-index: 0;
+  }
+  100% {
+    transform: translateX(0) rotate(var(--flight-end-angle)) scale(var(--flight-end-scale));
+    z-index: 0;
+    opacity: var(--flight-end-opacity);
+  }
+}

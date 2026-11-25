@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type Ref, type RefObject } from 'react';
 import { BibleReaderNavigation } from '@youversion/platform-react-ui';
 import { DestinationNav } from '@/components/destination-nav';
 import { BibleCardPage } from '@/pages/BibleCardPage';
@@ -10,7 +10,7 @@ import { NavigationDemoPage } from '@/pages/NavigationDemoPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { SearchUnifiedPage } from '@/pages/SearchUnifiedPage';
 import { VotdPage } from '@/pages/VotdPage';
-import { applyReaderCommand, SAMPLE_BIBLE_VERSION_ID, type ReaderCommand } from '@/reader-command';
+import { applyReaderCommand, type ReaderCommand } from '@/reader-command';
 import {
   formatHash,
   readAppRoute,
@@ -38,6 +38,7 @@ function App() {
   const activeScreen = screenIdFor(route);
   const [visited, setVisited] = useState<ReadonlySet<ScreenId>>(() => new Set([activeScreen]));
   const [contentImageId, setContentImageId] = useState<string | null>(null);
+  const contentScrollRef = useRef<HTMLDivElement>(null);
   const pendingRead = useRef<ReaderCommand | null>(null);
   const previousScreen = useRef(activeScreen);
 
@@ -90,11 +91,11 @@ function App() {
     window.location.hash = formatHash({ destination: 'bible' });
   }
 
-  function readImageInBible(passageId: string) {
+  function readImageInBible(passageId: string, versionId: number) {
     openBible({
       kind: 'show-passage',
       passageId,
-      versionId: SAMPLE_BIBLE_VERSION_ID,
+      versionId,
       showsFullChapter: true,
     });
   }
@@ -105,8 +106,21 @@ function App() {
       <main className="relative min-h-0 flex-1">
         {screens.map((screen) =>
           visited.has(screen) ? (
-            <KeptScreen key={screen} active={screen === activeScreen} scroll={screen !== 'bible'}>
-              {screenBody(screen, navigation, contentImageId, openBible, readImageInBible)}
+            <KeptScreen
+              key={screen}
+              ref={screen === 'content' ? contentScrollRef : undefined}
+              active={screen === activeScreen}
+              scroll={screen !== 'bible'}
+            >
+              {screenBody(
+                screen,
+                navigation,
+                contentImageId,
+                openBible,
+                readImageInBible,
+                screen === activeScreen,
+                contentScrollRef,
+              )}
             </KeptScreen>
           ) : null,
         )}
@@ -120,13 +134,25 @@ function screenBody(
   navigation: BibleReaderNavigation,
   contentImageId: string | null,
   openBible: (command: ReaderCommand) => void,
-  readImageInBible: (passageId: string) => void,
+  readImageInBible: (passageId: string, versionId: number) => void,
+  active: boolean,
+  contentScrollRef: RefObject<HTMLDivElement | null>,
 ): ReactNode {
   switch (screen) {
     case 'bible':
       return <BibleReaderPage navigation={navigation} />;
     case 'content':
-      return <ImagesPage imageId={contentImageId} onReadInBible={readImageInBible} />;
+      return (
+        <ImagesPage
+          scrollContainerRef={contentScrollRef}
+          imageId={contentImageId}
+          active={active}
+          onSelectImage={(imageId) => {
+            window.location.hash = formatHash({ destination: 'content', imageId });
+          }}
+          onReadInBible={readImageInBible}
+        />
+      );
     case 'examples':
       return <ExamplesPage />;
     case 'profile':
@@ -163,6 +189,7 @@ function screenBody(
 }
 
 function KeptScreen({
+  ref,
   active,
   scroll,
   children,
@@ -170,9 +197,11 @@ function KeptScreen({
   active: boolean;
   scroll: boolean;
   children: ReactNode;
+  ref?: Ref<HTMLDivElement>;
 }) {
   return (
     <div
+      ref={ref}
       data-active-screen={active ? 'true' : undefined}
       hidden={active ? undefined : true}
       inert={active ? undefined : true}
