@@ -26,10 +26,11 @@ pnpm dev:web
 
 ## Verse marker smoke test
 
-1. Open the browser developer tools' **Network** panel, clear the log, and filter
-   for `/notes` to inspect Notes API routes while running this flow.
-2. Open **Bible Reader** at John 1. Click the purple marker beside verse 3 and
-   check that the status reads “Opened marker for JHN.1.3.”
+1. Open the browser developer tools' **Network** panel, enable **Preserve log**,
+   clear the log, and filter for `/notes`.
+2. Reload the demo with Network recording enabled and open **Bible Reader** at
+   John 1. Click the purple marker beside verse 3 and check that the status reads
+   “Opened marker for JHN.1.3.”
 3. Tap the text of verses 1 and 4, then choose **Mark verses** in the verse
    action popover. Check that the popover closes and markers appear on verses
    1 and 4 while verse 2 stays unmarked.

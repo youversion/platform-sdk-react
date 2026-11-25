@@ -215,13 +215,15 @@ type ActionButtonProps = {
   icon: ReactNode;
   label: string;
   onClick: () => void;
+  onClickCapture?: () => void;
 };
 
-function ActionButton({ icon, label, onClick }: ActionButtonProps) {
+function ActionButton({ icon, label, onClick, onClickCapture }: ActionButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
+      onClickCapture={onClickCapture}
       className={cn(
         'yv:flex yv:max-w-full yv:shrink-0 yv:flex-col yv:items-center yv:gap-1 yv:px-2 yv:py-1',
         'yv:text-xs yv:text-foreground',
@@ -276,8 +278,10 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   const documentFocusRestoreTargetRef = useRef<HTMLElement | null>(null);
   const versePointerEventsRef = useRef(new WeakSet<Event>());
   const retainOutsideFocusRef = useRef(false);
+  const customActionActivatedRef = useRef(false);
   const allowPriorFocusRestoration = (): void => {
     retainOutsideFocusRef.current = false;
+    customActionActivatedRef.current = false;
   };
 
   // The swatch row is capped to the viewport width (see the Content max-width
@@ -493,7 +497,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 if (!content) return;
 
                 const root = getOwnShadowRoot(content);
-                retainOutsideFocusRef.current = false;
+                allowPriorFocusRestoration();
                 const readerFocusRestoreTarget = takeReaderFocusRestoreTarget?.() ?? null;
                 const readerTarget =
                   isElementFromOwnerDocument(readerFocusRestoreTarget, content, 'HTMLElement') &&
@@ -519,6 +523,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 const closingContent = event.currentTarget;
                 // A custom action can mount and focus host UI before Radix finishes closing.
                 const focusMovedOutside =
+                  customActionActivatedRef.current &&
                   activeElement?.isConnected &&
                   activeElement !== focusDocument?.body &&
                   activeElement !== focusDocument?.documentElement &&
@@ -537,7 +542,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 if (!focusMovedOutside && !retainOutsideFocusRef.current) {
                   restoreTarget?.focus({ preventScroll: true });
                 }
-                retainOutsideFocusRef.current = false;
+                allowPriorFocusRestoration();
                 focusRestoreTargetRef.current = null;
               }}
               onPointerDownCapture={allowPriorFocusRestoration}
@@ -639,6 +644,9 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                         icon={item.icon}
                         label={item.label}
                         onClick={item.onSelect}
+                        onClickCapture={() => {
+                          customActionActivatedRef.current = true;
+                        }}
                       />
                     );
                   }
