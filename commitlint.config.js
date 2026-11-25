@@ -16,8 +16,8 @@
 // suggestion" on this repo because our history carries DCO trailers — writes
 // the commit message itself, defaulting to `Update <path>` for a single
 // suggestion and `Apply suggestions from code review` for a batch. Greptile
-// only supplies the ```suggestion block; greptile.json has no commit-message
-// setting (see docs/adr/0007-...). We squash-merge, so these commits never
+// only supplies the ```suggestion block (see ADR 0007), not the commit
+// subject. We squash-merge, so these commits never
 // reach main — the landing commit is the PR title, gated separately by
 // .github/workflows/pr-title.yml. Skip them rather than force an amend.
 //

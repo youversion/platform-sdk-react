@@ -1,0 +1,37 @@
+{
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "description": "Repo guardrails and guide index."
+    },
+    {
+      "path": "docs/review-guidelines.md",
+      "description": "Project review checklist."
+    },
+    {
+      "path": "docs/i18n-guidelines.md",
+      "scope": ["packages/ui/**"],
+      "description": "Locale ownership, fallback and structural checks."
+    },
+    {
+      "path": "packages/ui/AGENTS.md",
+      "scope": ["packages/ui/src/**"],
+      "description": "Style injection in light DOM and shadow roots, including document-owned fonts."
+    },
+    {
+      "path": "docs/testing.md",
+      "scope": ["packages/**/*.test.ts", "packages/**/*.test.tsx", "packages/**/*.stories.tsx"],
+      "description": "Observable contracts and package-specific test boundaries."
+    },
+    {
+      "path": "packages/core/AGENTS.md",
+      "scope": ["packages/core/src/**"],
+      "description": "Schema-first API validation and environment-specific entry points."
+    },
+    {
+      "path": "docs/adding-a-core-endpoint.md",
+      "scope": ["packages/core/src/**"],
+      "description": "Client input, wire response, and public export contracts."
+    }
+  ]
+}

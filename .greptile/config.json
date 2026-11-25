@@ -1,0 +1,84 @@
+{
+  "commentTypes": ["logic", "syntax", "style"],
+  "instructions": "Use docs/review-guidelines.md to investigate the diff. Leave a finding only when you can show a concrete counterexample or caller impact. Group matches of the same defect in one comment. Request fixes on paths covered by the PR's stated behavior; note confirmed pre-existing sibling cases separately as non-blocking. Do not repeat a finding already reported by CI or another reviewer. Imported locale values, including English, are authoritative. Leave wording-only imports alone: do not assess accuracy, propose a translation, or fill in untranslated strings. Review localization code for concrete bugs such as a mismatched interpolation argument or broken fallback.",
+  "rules": [
+    {
+      "id": "test-proves-claimed-behavior",
+      "scope": ["packages/**/*.test.ts", "packages/**/*.test.tsx", "packages/**/*.stories.tsx"],
+      "rule": "For a changed regression assertion, show a specific broken behavior that would still satisfy it and the smallest observable check that distinguishes the two. If the existing journey already distinguishes them, leave no comment."
+    },
+    {
+      "id": "changeset-consumer-impact",
+      "scope": [".changeset/*.md"],
+      "rule": "Read the PR's changesets together. Flag a consumer-visible change they collectively omit or misstate; name the affected caller and behavior. For an explicit backfill, compare the note with the referenced change. An empty note is fine when another note covers the change or there is nothing to release. Skip wording-only edits and release-generated version bumps; CI checks presence."
+    },
+    {
+      "id": "core-response-compatibility",
+      "scope": ["packages/core/src/**"],
+      "rule": "When an API parser, transform or public response type changes, trace a documented payload or supported caller through it. For unintended breaks, cite the affected method and the contract or fixture showing rejected data, lost fields or a caller that no longer type-checks. For an intentional breaking change, check that the major changeset explains who is affected and how to migrate. A sibling SDK difference alone does not establish a bug."
+    },
+    {
+      "id": "package-dependency-direction",
+      "scope": ["packages/*/src/**", "packages/*/package.json"],
+      "rule": "Core must not depend on hooks or UI; hooks must not depend on UI. UI may import from hooks and core."
+    },
+    {
+      "id": "workspace-dependency-protocol",
+      "scope": [
+        "package.json",
+        "packages/*/package.json",
+        "examples/*/package.json",
+        "tools/*/package.json"
+      ],
+      "rule": "Use workspace:* for dependencies on packages in this pnpm workspace."
+    },
+    {
+      "id": "fixed-package-versions",
+      "scope": ["packages/*/package.json", ".changeset/**"],
+      "rule": "Keep the published SDK packages in the fixed version group. Changesets synchronizes their versions; do not request a manual bump when a changeset updates one package."
+    },
+    {
+      "id": "react-free-core",
+      "scope": ["packages/core/src/**", "packages/core/package.json"],
+      "rule": "Keep core React-free."
+    },
+    {
+      "id": "hooks-context-exports",
+      "scope": ["packages/hooks/src/context/**"],
+      "rule": "Keep contexts and providers in separate files. Export public contexts through context/index.ts; private providers need no barrel export."
+    },
+    {
+      "id": "ui-style-injection",
+      "scope": ["packages/ui/src/**"],
+      "rule": "Follow the tree-specific style injection contract in packages/ui/AGENTS.md. Do not inject styles at module load."
+    },
+    {
+      "id": "ui-localized-copy",
+      "scope": ["packages/ui/src/components/**"],
+      "rule": "Localize SDK-authored, nonempty UI copy in shipped components, including accessible labels and text alternatives, with t() or Trans/i18nKey. Preserve caller- or API-provided text and empty alt on decorative images. Skip violations lint already reports. Flag SDK-authored text that reaches the UI without localization, including labels supplied by helpers. Test and story fixtures are excluded."
+    },
+    {
+      "id": "locale-ownership",
+      "scope": ["packages/ui/src/i18n/locales/**"],
+      "rule": "Locale bundles are generated from platform-localization via Crowdin and the sync bot. Direct source corrections upstream, not to these files. CI enforces ownership by PR author, not branch name."
+    },
+    {
+      "id": "squash-title",
+      "rule": "The conventional PR title becomes the squash commit. Ticket references belong in the branch name and PR body, not the title."
+    },
+    {
+      "id": "git-hook-pnpm",
+      "scope": [".husky/**"],
+      "rule": "Use corepack pnpm in Git hooks when Corepack is available; fall back to pnpm when it is not."
+    },
+    {
+      "id": "node-engine-floor",
+      "scope": ["package.json", "packages/*/package.json"],
+      "rule": "New devDependencies must support the declared Node floor (>=22.13). Do not lower the floor to escape a dependency constraint without a deliberate decision."
+    },
+    {
+      "id": "github-suggestion-commits",
+      "rule": "Leave commit-subject checks to commitlint. Do not request a rebase for its ADR 0007 exception: the subject is 'Update <path>' or 'Apply suggestions from code review' and the commit has the greptile-apps[bot] co-author trailer."
+    }
+  ]
+}
