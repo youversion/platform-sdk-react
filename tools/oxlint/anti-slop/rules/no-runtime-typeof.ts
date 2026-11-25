@@ -1,6 +1,6 @@
 import { defineRule } from '@oxlint/plugins';
 
-import type { ESTree } from '@oxlint/plugins';
+import type { ESTree, SourceCode } from '@oxlint/plugins';
 
 type RuntimeFunction = ESTree.ArrowFunctionExpression | ESTree.Function;
 
@@ -21,6 +21,32 @@ function isInsideTypeGuard(node: ESTree.Node): boolean {
     current = current.parent;
   }
   return false;
+}
+
+function probesGlobalExistence(node: ESTree.UnaryExpression, sourceCode: SourceCode): boolean {
+  const comparison = node.parent;
+  if (
+    comparison.type !== 'BinaryExpression' ||
+    !['===', '!==', '==', '!='].includes(comparison.operator)
+  )
+    return false;
+  const other = comparison.left === node ? comparison.right : comparison.left;
+  if (
+    other.type !== 'Literal' ||
+    other.value !== 'undefined' ||
+    node.argument.type !== 'Identifier'
+  )
+    return false;
+  return sourceCode
+    .getScope(node)
+    .references.some(
+      (ref) =>
+        ref.identifier === node.argument &&
+        (ref.resolved === null ||
+          ref.resolved.defs.every(
+            (def) => def.parent?.type === 'VariableDeclaration' && def.parent.declare,
+          )),
+    );
 }
 
 /** Disallow runtime typeof checks that narrow unparsed values instead of decoding them. */
@@ -55,7 +81,11 @@ export const noRuntimeTypeofRule = defineRule({
           option !== null &&
           !Array.isArray(option) &&
           option.allowInTypeGuards === true;
-        if (node.operator === 'typeof' && (!allowInTypeGuards || !isInsideTypeGuard(node))) {
+        if (
+          node.operator === 'typeof' &&
+          !probesGlobalExistence(node, context.sourceCode) &&
+          (!allowInTypeGuards || !isInsideTypeGuard(node))
+        ) {
           context.report({ node, messageId: 'runtimeTypeof' });
         }
       },
