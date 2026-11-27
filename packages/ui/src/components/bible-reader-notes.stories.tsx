@@ -721,6 +721,14 @@ export const CancelRetainsDraftAcrossNavigation: Story = {
 export const RefreshRetainedChapterWhileNavigationLoads: Story = {
   ...RefreshDisplayedChapterAfterNavigation,
   tags: ['integration', 'shadow-dom', 'cross-browser'],
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/highlights', () => highlightPage(yellow)),
+        ...writableSession.msw.handlers,
+      ],
+    },
+  },
   play: withWritableSession(async ({ canvasElement, loaded }) => {
     const root = await waitForShadowRoot(canvasElement);
     const noteSent = deferred<void>();
@@ -756,6 +764,7 @@ export const RefreshRetainedChapterWhileNavigationLoads: Story = {
       }),
     );
     const retained = await readerVerse(root, 1);
+    await waitFor(() => expect(getBackgroundColorChannels(retained)).toEqual([255, 236, 91, 255]));
     await selectVerses(root, [2]);
     const { overlays, composer } = await openComposer(root, 'John 1:2');
     try {
@@ -787,7 +796,9 @@ export const RefreshRetainedChapterWhileNavigationLoads: Story = {
       );
       const destination = await readerVerse(root, 16);
       await expect(destination).toBeVisible();
-      await expect(getBackgroundColorChannels(destination)).toEqual([180, 255, 193, 255]);
+      await waitFor(() =>
+        expect(getBackgroundColorChannels(destination)).toEqual([180, 255, 193, 255]),
+      );
       await waitFor(() => expect(postSaveReads).toEqual(['JHN.1', 'JHN.3']));
       await selectVerses(root, [16]);
       const currentActions = within(await overlays.findByRole('dialog', { name: 'Verse actions' }));
