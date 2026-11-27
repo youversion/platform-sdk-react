@@ -219,6 +219,7 @@ export const EditAndRetry: Story = {
       http.post<never, NoteRequest>('*/v1/notes', async ({ request }) => {
         const body = await request.json();
         requests.push(body);
+        if (body.content === 'Rejected thought') return new HttpResponse(null, { status: 413 });
         if (stored) return noteResponse(stored);
         stored = body;
         return HttpResponse.error();
@@ -304,9 +305,16 @@ export const EditAndRetry: Story = {
       colors.getAllByRole('button').map((button) => button.getAttribute('aria-label')),
     ).toEqual(palette.map(colorName));
 
-    await fillEditor(editor, 'First thought');
+    await fillEditor(editor, 'Rejected thought');
     await userEvent.click(composer.getByRole('radio', { name: 'Public' }));
     await userEvent.click(composer.getByRole('button', { name: 'Save' }));
+    await expect(await composer.findByRole('alert')).toBeVisible();
+
+    await fillEditor(editor, 'First thought');
+    await userEvent.click(composer.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(requests.map(({ content }) => content)).toEqual(['Rejected thought', 'First thought']),
+    );
     await expect(await composer.findByRole('alert')).toBeVisible();
     await expect(editor).toHaveValue('First thought');
     await expect(selected).toHaveAttribute('aria-pressed', 'true');
@@ -345,15 +353,17 @@ export const EditAndRetry: Story = {
       passage: { bible_id: 111, passage_id: 'JHN.1.2' },
     };
     await expect(requests).toEqual([
+      { ...common, content: 'Rejected thought' },
       { ...common, content: 'First thought' },
       { ...common, content: 'First thought' },
     ]);
     await expect(requests[1]?.request_id).toBe(requests[0]?.request_id);
+    await expect(requests[2]?.request_id).toBe(requests[0]?.request_id);
     await expect(updates).toEqual([
       { content: 'Edited thought', status: 'private', color: null },
       { content: 'First thought', status: 'public', color: 'ffdca7' },
     ]);
-    await expect(stored).toEqual(requests[0]);
+    await expect(stored).toEqual(requests[1]);
   }),
 };
 
@@ -626,7 +636,8 @@ export const CancelRetainsDraftAcrossNavigation: Story = {
   tags: ['integration', 'shadow-dom', 'cross-browser'],
   play: withWritableSession(async ({ canvasElement, loaded }) => {
     const attempts: NoteRequest[] = [];
-    const updates: { status: NoteRequest['status']; color: NoteRequest['color'] }[] = [];
+    type Update = Pick<NoteRequest, 'status' | 'color'> & { content?: string };
+    const updates: Update[] = [];
     let stored: NoteRequest | undefined;
     getWorker().use(
       http.post<never, NoteRequest>('*/v1/notes', async ({ request }) => {
@@ -636,15 +647,13 @@ export const CancelRetainsDraftAcrossNavigation: Story = {
         stored = body;
         return HttpResponse.error();
       }),
-      http.patch<never, { status: NoteRequest['status']; color: NoteRequest['color'] }>(
-        '*/v1/notes/saved-note',
-        async ({ request }) => {
-          if (!stored) return new HttpResponse(null, { status: 404 });
-          const update = await request.json();
-          updates.push(update);
-          return noteResponse({ ...stored, ...update });
-        },
-      ),
+      http.patch<never, Update>('*/v1/notes/saved-note', async ({ request }) => {
+        if (!stored) return new HttpResponse(null, { status: 404 });
+        const update = await request.json();
+        updates.push(update);
+        if (update.content !== undefined) return new HttpResponse(null, { status: 429 });
+        return noteResponse({ ...stored, ...update });
+      }),
     );
     const root = await waitForShadowRoot(canvasElement);
     const navigation = storyNavigation.parse(loaded.hostNavigation);
@@ -664,9 +673,18 @@ export const CancelRetainsDraftAcrossNavigation: Story = {
     await waitFor(() => expect(renderedPassage()).toHaveTextContent('The Word Became Flesh'));
     await selectVerses(root, [1, 4]);
     const { composer: reopened } = await openComposer(root, 'John 1:1,4');
-    await expect(reopened.getByRole('textbox', { name: 'Add Note…' })).toHaveValue('');
+    const editor = reopened.getByRole<HTMLTextAreaElement>('textbox', { name: 'Add Note…' });
+    await expect(editor).toHaveValue('');
     await userEvent.click(reopened.getByRole('radio', { name: 'Public' }));
+    await fillEditor(editor, 'Rejected text update');
     await userEvent.click(reopened.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(reopened.getByRole('alert')).toBeVisible());
+    const rejected = { content: 'Rejected text update', status: 'public', color: null };
+    await expect(updates).toEqual([rejected]);
+
+    await fillEditor(editor, '');
+    await userEvent.click(reopened.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(updates).toEqual([rejected, { status: 'public', color: null }]));
     await waitFor(() => expect(overlays.queryByRole('dialog')).toBeNull());
     const request = {
       request_id: expect.stringMatching(/^[\da-f-]{36}$/i),
@@ -676,7 +694,6 @@ export const CancelRetainsDraftAcrossNavigation: Story = {
     };
     await expect(attempts).toEqual([request, request]);
     await expect(attempts[1]?.request_id).toBe(attempts[0]?.request_id);
-    await expect(updates).toEqual([{ status: 'public', color: null }]);
   }),
 };
 
