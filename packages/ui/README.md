@@ -62,8 +62,9 @@ has gaps.
 Save opens the Notes composer for the selected verses. A reader with built-in
 sign-in requests `read_notes` and `write_notes` alongside its existing OAuth
 scopes. The composer requires a YouVersion session with `write_notes`. Start
-with `includeAuth` and an `authRedirectUrl` that returns to your reader to let
-the SDK resume the captured selection after sign-in.
+with `includeAuth` and an `authRedirectUrl` that returns to the page containing
+the reader in the same position. The SDK resumes the captured selection in
+the reader that initiated sign-in, even when its passage changes.
 
 An empty note saves its attached passage. The reader also supports a private or
 public note and an optional highlight color.

@@ -578,7 +578,9 @@ function Content() {
   const selectionScopeRef = useRef<string | null>(null);
   const hasCustomVerseActions =
     verseActions === 'popover' &&
-    verseActionItems?.some((item) => item !== 'highlights' && item !== 'copy' && item !== 'share');
+    verseActionItems?.some(
+      (item) => item !== 'highlights' && item !== 'save' && item !== 'copy' && item !== 'share',
+    );
   // Retained HTML can still be tapped by callers using the built-in actions.
   // Its selection cannot become the input to a custom action for the next passage.
   const selectionMatchesScope =
@@ -648,6 +650,7 @@ function Content() {
   }
 
   const notes = useBibleReaderNote({
+    reader: scrollContainerRef,
     enabled: verseActions !== 'none' && (!verseActionItems || verseActionItems.includes('save')),
     hostOwnsSignIn: !!onSignInPress,
     onSaved: (selection) => {
@@ -1138,7 +1141,7 @@ function Content() {
                 scrollRoot={scrollContainerRef.current}
                 onHighlight={handleHighlight}
                 onClearHighlight={handleClearHighlight}
-                onSave={notes.available ? handleSaveNote : undefined}
+                onSave={notes.available && selectionMatchesScope ? handleSaveNote : undefined}
                 onCopy={handleCopy}
                 onShare={handleShare}
                 actionItems={verseActionItems?.map((item) =>

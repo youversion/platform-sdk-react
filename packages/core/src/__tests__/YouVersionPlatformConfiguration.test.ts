@@ -37,7 +37,7 @@ describe('YouVersionPlatformConfiguration storage contracts', () => {
     ).toBeNull();
   });
 
-  it('removes a persisted session, scopes, and profile on sign-out', () => {
+  it('removes the persisted session and profile and disables scoped access on sign-out', () => {
     const storage = getLocalStorage();
     expect(storage).not.toBeNull();
     clearStorage(storage);

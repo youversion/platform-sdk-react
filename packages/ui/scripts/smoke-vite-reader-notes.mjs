@@ -22,9 +22,10 @@ const requestHeaders = {
 };
 const alice = { id: 'alice', name: 'Alice', granted: 'profile read_notes' };
 const bob = { id: 'bob', name: 'Bob', granted: 'profile' };
-const writer = { ...bob, granted: 'profile read_notes write_notes' };
+const writer = { ...bob, granted: 'profile read_notes write_notes', intermediate: true };
 const responses = new Map();
 const exchanges = new Map();
+const intermediateReturns = new Map();
 const notes = [];
 const page = await context.newPage();
 
@@ -34,6 +35,11 @@ await context.route(`${api}/**`, async (route) => {
   const url = new URL(request.url());
   const json = (body, status = 200) =>
     route.fulfill({ json: body, headers: requestHeaders, status });
+  const navigate = (destination) =>
+    route.fulfill({
+      contentType: 'text/html',
+      body: `<script>location.replace(${JSON.stringify(destination.href)})</script>`,
+    });
   if (request.method() === 'OPTIONS')
     return route.fulfill({ headers: requestHeaders, status: 204 });
 
@@ -47,24 +53,34 @@ await context.route(`${api}/**`, async (route) => {
 
       const destination = new URL(url.searchParams.get('redirect_uri'));
       assert.equal(destination.origin, new URL(app).origin, 'Expected the local app callback');
-      destination.searchParams.set('state', url.searchParams.get('state'));
+      const state = url.searchParams.get('state');
+      destination.searchParams.set('state', state);
       if (response.account) {
         const code = randomUUID();
         exchanges.set(code, response.account);
         destination.searchParams.set('code', code);
+        if (response.account.intermediate) {
+          intermediateReturns.set(state, new URL(destination));
+          destination.searchParams.delete('code');
+        }
       } else {
         destination.searchParams.set('error', 'access_denied');
       }
-      return route.fulfill({
-        contentType: 'text/html',
-        body: `<script>location.replace(${JSON.stringify(destination.href)})</script>`,
-      });
+      return navigate(destination);
+    }
+    case '/auth/callback': {
+      const state = url.searchParams.get('state');
+      const destination = intermediateReturns.get(state);
+      assert.ok(destination, 'Expected the state-only OAuth hop');
+      intermediateReturns.delete(state);
+      return navigate(destination);
     }
     case '/auth/token': {
       const code = new URLSearchParams(request.postData()).get('code');
       const account = exchanges.get(code);
       assert.ok(account, 'Expected a token for the issued authorization code');
       exchanges.delete(code);
+      if (account.tokenStatus) return json({}, account.tokenStatus);
       const claims = Buffer.from(JSON.stringify({ sub: account.id, name: account.name })).toString(
         'base64url',
       );
@@ -121,6 +137,13 @@ async function selectVerses(source, verses) {
   for (const verse of verses) await source.locator(`.yv-v[v="${verse}"]`).first().click();
 }
 
+async function selectedVerses(source) {
+  const numbers = await source
+    .locator('.yv-v-selected[v]')
+    .evaluateAll((verses) => verses.map((verse) => Number(verse.getAttribute('v'))));
+  return [...new Set(numbers)].sort((a, b) => a - b);
+}
+
 async function beginNote(source) {
   await menu(source).getByRole('button', { name: 'Save', exact: true }).click();
 }
@@ -146,6 +169,7 @@ try {
   checkScopes(await declined, readerScopes);
   await page.waitForURL(/error=access_denied/);
   await menu(page).waitFor();
+  assert.deepEqual(await selectedVerses(page), [1, 4]);
   assert.equal(await editor(page).count(), 0);
 
   const navbar = prepareSignIn(page, alice);
@@ -162,6 +186,16 @@ try {
   checkScopes(await readOnly, readerScopes);
   await menu(page).waitFor();
   assert.equal(await editor(page).count(), 0);
+  assert.equal(notes.length, 0);
+
+  // A temporary token service failure leaves the prior account and selection intact.
+  await beginNote(page);
+  const unavailable = prepareSignIn(page, { ...alice, tokenStatus: 503 });
+  await page.getByRole('button', { name: 'Yes Please' }).click();
+  checkScopes(await unavailable, readerScopes);
+  await signedInAs(page, 'Alice').waitFor();
+  await menu(page).waitFor();
+  assert.deepEqual(await selectedVerses(page), [1, 4]);
   assert.equal(notes.length, 0);
 
   // Alice's old authorization comes back after Bob replaces her session in another tab.
@@ -221,7 +255,7 @@ try {
   assert.equal(notes.length, 1);
 
   console.log(
-    'Reader Notes smoke passed (decline, grant, exact scoped create, stale callback, sign-out, and navbar scopes).',
+    'Reader Notes smoke passed (decline, token-service recovery, two-step grant, exact create, stale callback, sign-out, navbar scopes, and narrow layout).',
   );
 } finally {
   await browser.close();

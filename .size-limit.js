@@ -30,8 +30,8 @@ export default [
   {
     name: 'hooks / full barrel',
     path: 'packages/hooks/dist/index.js',
-    // Measured brotlied size 29918 B; set to measured + ~10% per CONTRIBUTING.
-    limit: '32.9 KB',
+    // Measured brotlied size 33113 B; set to measured + ~10% per CONTRIBUTING.
+    limit: '36.5 KB',
     ignore: ['react', 'react-dom', '@tanstack/react-query'],
   },
   {

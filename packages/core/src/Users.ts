@@ -26,6 +26,13 @@ const MISSING_LOCAL_STORAGE_MESSAGE =
 const REJECTED_LOCAL_STORAGE_WRITE_MESSAGE =
   'Sign In with YouVersion could not write to localStorage; the store rejected the write (its quota may be full, as it always is in Safari private browsing)';
 
+const AUTH_STATE_KEY = 'youversion-auth-state';
+
+/** The callback no longer belongs to the active authorization attempt. */
+class OAuthCallbackSupersededError extends Error {
+  override readonly name = 'OAuthCallbackSupersededError';
+}
+
 /**
  * The OAuth handoff has to survive a full-page redirect, so it cannot fall back
  * to memory the way the fail-soft accessors do.
@@ -120,10 +127,20 @@ export function __resetTokenRefreshDedupeForTests(): void {
 const clearOAuthHandoff = (storage: Storage | null): void => {
   removeStorageItem(storage, 'youversion-auth-code-verifier');
   removeStorageItem(storage, 'youversion-auth-redirect-uri');
-  removeStorageItem(storage, 'youversion-auth-state');
+  removeStorageItem(storage, AUTH_STATE_KEY);
   removeStorageItem(storage, PENDING_GRANTED_PERMISSIONS_KEY);
   removeStorageItem(storage, REQUESTED_PERMISSIONS_KEY);
 };
+
+function clearFailedRefreshSession(initialState: string | null) {
+  const currentState = getLocalStorage()?.getItem(AUTH_STATE_KEY) ?? null;
+  if (currentState && currentState !== initialState) {
+    // A newer sign-in needs its PKCE handoff and the initiating profile.
+    YouVersionPlatformConfiguration.saveAuthData(null, null, null);
+  } else {
+    YouVersionPlatformConfiguration.clearAuthTokens();
+  }
+}
 
 /**
  * Persist early grants bound to the OAuth `state` that produced them.
@@ -223,7 +240,7 @@ export class YouVersionAPIUsers {
    * @param scopes - OAuth scopes to request, such as `profile`, `email`, or `read_notes`.
    * @param permissions - YouVersion data-exchange permissions to request (e.g. `highlights`).
    *   These are sent as a comma-joined `requested_permissions` param, separate from OAuth scopes.
-   * @param beforeRedirect - Called with the authorization state immediately before navigation.
+   * @param beforeRedirect - Called with the authorization state before storing the OAuth handoff and navigating.
    * @throws An error if authentication fails or configuration is invalid.
    */
   static async signIn(
@@ -258,7 +275,7 @@ export class YouVersionAPIUsers {
       ? redirectURL.toString().slice(0, -1)
       : redirectURL.toString();
     persistOrThrow(storage, 'youversion-auth-redirect-uri', redirectUrlString);
-    persistOrThrow(storage, 'youversion-auth-state', authorizationRequest.parameters.state);
+    persistOrThrow(storage, AUTH_STATE_KEY, authorizationRequest.parameters.state);
     // Clear any stash left by a prior abandoned flow (it's only ever produced later,
     // during the callback pre-code hop, and never needs to survive a new signIn).
     // Otherwise a previous user's abandoned grants could leak into this flow.
@@ -279,6 +296,11 @@ export class YouVersionAPIUsers {
     window.location.href = authorizationRequest.url.toString();
   }
 
+  /** Whether the specified authorization attempt is still pending in this browser. */
+  static isSignInPending(state: string): boolean {
+    return getLocalStorage()?.getItem(AUTH_STATE_KEY) === state;
+  }
+
   /**
    * Handles the OAuth callback after user authentication.
    *
@@ -295,31 +317,25 @@ export class YouVersionAPIUsers {
     const state = urlParams.get('state');
     const error = urlParams.get('error');
 
-    // Check if this is an OAuth callback
-    if (!state && !error) {
-      return null;
+    const storage = state ? requireLocalStorage() : null;
+    if (state && state !== storage?.getItem(AUTH_STATE_KEY)) {
+      throw new OAuthCallbackSupersededError('Invalid state parameter - possible CSRF attack');
     }
 
-    // Handle OAuth error
     if (error) {
+      // Leave a verified denial readable when StrictMode replays this callback.
       const errorDescription = urlParams.get('error_description') || error;
       throw new Error(`OAuth authentication failed: ${errorDescription}`);
     }
 
-    const storage = requireLocalStorage();
-
-    // Verify state parameter
-    const storedState = storage.getItem('youversion-auth-state');
-    if (state !== storedState) {
-      throw new Error('Invalid state parameter - possible CSRF attack');
-    }
+    if (!state || !storage) return null;
 
     // If we don't have a code, this might be the first callback with user data
     // We need to redirect to the server callback to get the authorization code.
     // Stash any granted_permissions from this hop first — Swift keeps the original
     // callback URL for grants, but the web flow navigates away to /auth/callback
     // and the final redirect with `code` may omit them.
-    if (!code && state) {
+    if (!code) {
       const earlyGrants = parseGrantedPermissions(urlParams);
       if (earlyGrants.length > 0) {
         stashPendingGrantedPermissions(storage, state, earlyGrants);
@@ -332,7 +348,7 @@ export class YouVersionAPIUsers {
     const codeVerifier = storage.getItem('youversion-auth-code-verifier');
     const redirectUri = storage.getItem('youversion-auth-redirect-uri');
 
-    if (!code || !codeVerifier || !redirectUri) {
+    if (!codeVerifier || !redirectUri) {
       throw new Error('Missing required authentication parameters');
     }
 
@@ -374,13 +390,13 @@ export class YouVersionAPIUsers {
     code: string,
     codeVerifier: string,
     redirectUri: string,
-    state: string | null,
+    state: string,
     urlParams: URLSearchParams,
     storage: Storage,
   ): Promise<SignInWithYouVersionResult> {
     const initiatingUserId = YouVersionPlatformConfiguration.storedUserInfo?.id;
     const isCurrentSignIn = () =>
-      storage.getItem('youversion-auth-state') === state &&
+      storage.getItem(AUTH_STATE_KEY) === state &&
       YouVersionPlatformConfiguration.storedUserInfo?.id === initiatingUserId;
     let savingSession = false;
     try {
@@ -404,7 +420,9 @@ export class YouVersionAPIUsers {
         throw new Error(`Token exchange response was invalid: ${parsed.error.message}`);
       }
       const tokens = parsed.data;
-      if (!isCurrentSignIn()) throw new Error('The authentication session changed during sign-in');
+      if (!isCurrentSignIn()) {
+        throw new OAuthCallbackSupersededError('The authentication session changed during sign-in');
+      }
 
       // Match Swift: union grants from (1) this URL, (2) stashed pre-code hop,
       // (3) token scope — then drop scopes that aren't data-exchange permissions before seeding the
@@ -421,8 +439,8 @@ export class YouVersionAPIUsers {
       // (removeGrantedPermission) and the machine's PERMISSION_LOST path re-prompts.
       // Same fail-closed state binding as the granted stash; a Set union means a
       // future server echo never double-counts.
-      const stashedGrants = state ? readPendingGrantedPermissions(storage, state) : [];
-      const requestedGrants = state ? readRequestedPermissions(storage, state) : [];
+      const stashedGrants = readPendingGrantedPermissions(storage, state);
+      const requestedGrants = readRequestedPermissions(storage, state);
       const grantedPermissions = [
         ...new Set([
           ...parseGrantedPermissions(urlParams),
@@ -481,10 +499,18 @@ export class YouVersionAPIUsers {
 
       return result;
     } catch (error) {
-      if (savingSession || isCurrentSignIn()) {
+      if (error instanceof OAuthCallbackSupersededError) throw error;
+      if (savingSession) {
         YouVersionPlatformConfiguration.clearAuthTokens();
-        clearOAuthHandoff(storage);
+      } else if (!isCurrentSignIn()) {
+        throw new OAuthCallbackSupersededError(
+          'The authentication session changed during sign-in',
+          {
+            cause: error,
+          },
+        );
       }
+      clearOAuthHandoff(storage);
       throw error;
     }
   }
@@ -651,6 +677,7 @@ export class YouVersionAPIUsers {
     const userId = YouVersionPlatformConfiguration.storedUserInfo?.id;
     const oauthSession = YouVersionPlatformConfiguration.readOAuthSession();
     const appKey = YouVersionPlatformConfiguration.appKey;
+    const authState = getLocalStorage()?.getItem(AUTH_STATE_KEY) ?? null;
 
     if (!refreshToken) {
       throw new Error('No refresh token available');
@@ -728,7 +755,7 @@ export class YouVersionAPIUsers {
           [accessToken, rotatedAccessToken].includes(config.accessToken) &&
           [refreshToken, rotatedRefreshToken].includes(config.refreshToken)
         ) {
-          config.clearAuthTokens();
+          clearFailedRefreshSession(authState);
         }
         throw new Error('the rotated tokens could not be saved to browser storage');
       }
@@ -800,6 +827,7 @@ export class YouVersionAPIUsers {
     const accessToken = YouVersionPlatformConfiguration.accessToken;
     const refreshToken = YouVersionPlatformConfiguration.refreshToken;
     const userId = YouVersionPlatformConfiguration.storedUserInfo?.id;
+    const authState = getLocalStorage()?.getItem(AUTH_STATE_KEY) ?? null;
     if (YouVersionPlatformConfiguration.readOAuthSession() === null) return false;
     try {
       const result = await this.rotateTokens(true);
@@ -812,7 +840,7 @@ export class YouVersionAPIUsers {
         YouVersionPlatformConfiguration.storedUserInfo?.id === userId &&
         YouVersionPlatformConfiguration.readOAuthSession() !== null
       ) {
-        YouVersionPlatformConfiguration.clearAuthTokens();
+        clearFailedRefreshSession(authState);
       }
       return false;
     }

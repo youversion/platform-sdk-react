@@ -1,0 +1,194 @@
+import { expect, it, onTestFinished, vi } from 'vitest';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import type { PropsWithChildren } from 'react';
+import {
+  type SignInWithYouVersionResult,
+  type YouVersionUserInfoJSON,
+  YouVersionAPIUsers,
+  YouVersionPlatformConfiguration as config,
+} from '@youversion/platform-core';
+import { createMockAuthResult } from '../__tests__/mocks/auth';
+import { useYouVersionAuthContext } from './YouVersionAuthContext';
+import YouVersionAuthProvider from './YouVersionAuthProvider';
+
+function AuthWrapper({ children }: PropsWithChildren) {
+  return (
+    <YouVersionAuthProvider config={{ appKey: 'test-app-key' }}>{children}</YouVersionAuthProvider>
+  );
+}
+
+function openCallback(search: string, callback: () => Promise<SignInWithYouVersionResult | null>) {
+  YouVersionAPIUsers.signOut();
+  window.history.replaceState(null, '', search);
+  const handleCallback = vi
+    .spyOn(YouVersionAPIUsers, 'handleAuthCallback')
+    .mockImplementation(callback);
+  onTestFinished(() => {
+    handleCallback.mockRestore();
+    window.history.replaceState(null, '', '/');
+    YouVersionAPIUsers.signOut();
+  });
+  return handleCallback;
+}
+
+it('keeps auth pending on the initial OAuth hop without a code', async () => {
+  const intermediate = Promise.withResolvers<null>();
+  const handleCallback = openCallback('?state=first-hop', () => intermediate.promise);
+  const { result } = renderHook(useYouVersionAuthContext, { wrapper: AuthWrapper });
+  expect(result.current.isLoading).toBe(true);
+
+  await act(async () => {
+    intermediate.resolve(null);
+  });
+  expect(handleCallback).toHaveBeenCalled();
+  expect(result.current.error).toBeNull();
+  expect(result.current.isLoading).toBe(true);
+});
+
+it('publishes a verified callback completed after the same account rotates its token', async () => {
+  const callback = Promise.withResolvers<SignInWithYouVersionResult>();
+  openCallback('?state=notes-grant&code=grant-code', () => callback.promise);
+  config.saveAuthData('old-access', 'old-refresh', null);
+  config.saveUserInfo({ id: 'alice' });
+  const { result } = renderHook(useYouVersionAuthContext, { wrapper: AuthWrapper });
+
+  act(() => {
+    config.saveAuthData('rotated-access', 'rotated-refresh', null);
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: 'accessToken', storageArea: localStorage }),
+    );
+  });
+  expect(result.current.userInfo?.userId).toBe('alice');
+  expect(result.current.isLoading).toBe(true);
+
+  await act(async () => {
+    config.saveAuthData('granted-access', 'granted-refresh', null);
+    callback.resolve(
+      createMockAuthResult({
+        accessToken: 'granted-access',
+        refreshToken: 'granted-refresh',
+        yvpUserId: 'alice',
+      }),
+    );
+  });
+  expect(result.current.isLoading).toBe(false);
+  expect(result.current.oauthCallbackState).toBe('notes-grant');
+  expect(result.current.userInfo?.userId).toBe('alice');
+
+  act(() => {
+    config.saveUserInfo({ id: 'other-account' });
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: 'userInfo', storageArea: localStorage }),
+    );
+  });
+  expect(result.current.userInfo?.userId).toBe('other-account');
+  expect(result.current.oauthCallbackState).toBeNull();
+});
+
+it('ignores a successful callback after another account has already replaced its session', async () => {
+  const callback = Promise.withResolvers<SignInWithYouVersionResult>();
+  openCallback('?state=notes-grant&code=grant-code', () => callback.promise);
+  const { result } = renderHook(useYouVersionAuthContext, { wrapper: AuthWrapper });
+
+  await act(async () => {
+    config.saveAuthData('replacement-access', 'replacement-refresh', null);
+    config.saveUserInfo({ id: 'bob' });
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: 'userInfo', storageArea: localStorage }),
+    );
+    callback.resolve(createMockAuthResult({ accessToken: 'old-access', yvpUserId: 'alice' }));
+  });
+  expect(result.current.isLoading).toBe(false);
+  expect(result.current.userInfo?.userId).toBe('bob');
+  expect(result.current.oauthCallbackState).toBeNull();
+  expect(result.current.oauthCallbackSuperseded).toBe(true);
+});
+
+it.each([
+  { name: 'OAuthCallbackSupersededError', superseded: true },
+  { name: 'TypeError', superseded: false },
+])('reports whether a failed callback is obsolete after $name', async ({ name, superseded }) => {
+  const error = Object.assign(new Error('Authorization failed'), { name });
+  openCallback('?state=older-grant&code=older-code', () => Promise.reject(error));
+  config.saveAuthData('active-access', 'active-refresh', null);
+  config.saveUserInfo({ id: 'alice' });
+
+  const { result } = renderHook(useYouVersionAuthContext, { wrapper: AuthWrapper });
+  await waitFor(() => expect(result.current.isLoading).toBe(false));
+  expect(result.current.userInfo?.userId).toBe('alice');
+  expect(result.current.oauthCallbackState).toBeNull();
+  expect(result.current.oauthCallbackSuperseded).toBe(superseded);
+});
+
+it('keeps the account synced from another tab when the previous account refresh fails', async () => {
+  config.saveAuthData('old-access-token', 'old-refresh-token', new Date(0));
+  config.saveUserInfo({ id: 'old-account' });
+  const oldRefresh = Promise.withResolvers<boolean>();
+  const refresh = vi
+    .spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded')
+    .mockReturnValue(oldRefresh.promise);
+
+  try {
+    const { result } = renderHook(useYouVersionAuthContext, { wrapper: AuthWrapper });
+    expect(result.current.isLoading).toBe(true);
+
+    act(() => {
+      config.saveAuthData('new-access-token', 'new-refresh-token', null);
+      config.saveUserInfo({ id: 'new-account' });
+      window.dispatchEvent(
+        new StorageEvent('storage', { key: 'userInfo', storageArea: localStorage }),
+      );
+    });
+    expect(result.current.userInfo?.userId).toBe('new-account');
+
+    await act(async () => {
+      oldRefresh.resolve(false);
+    });
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.userInfo?.userId).toBe('new-account');
+
+    act(() => {
+      YouVersionAPIUsers.signOut();
+      window.dispatchEvent(new StorageEvent('storage', { storageArea: localStorage }));
+    });
+    expect(result.current.userInfo).toBeNull();
+  } finally {
+    refresh.mockRestore();
+    YouVersionAPIUsers.signOut();
+  }
+});
+
+it('takes signed-in and signed-out state from the host across browser auth events', () => {
+  openCallback('?error=access_denied', () => Promise.reject(new Error('Browser OAuth was called')));
+  config.saveAuthData('browser-access-token', 'browser-refresh-token', null);
+  config.saveUserInfo({ id: 'browser-account' });
+  let hostUser: YouVersionUserInfoJSON | null = null;
+  function HostAuthWrapper({ children }: PropsWithChildren) {
+    return (
+      <YouVersionAuthProvider config={{ appKey: 'test-app-key' }} userInfo={hostUser}>
+        {children}
+      </YouVersionAuthProvider>
+    );
+  }
+
+  const { result, rerender } = renderHook(useYouVersionAuthContext, { wrapper: HostAuthWrapper });
+  expect(result.current.isLoading).toBe(false);
+  expect(result.current.userInfo).toBeNull();
+
+  hostUser = { id: 'host-account' };
+  rerender();
+  expect(result.current.userInfo?.userId).toBe('host-account');
+
+  act(() => {
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: 'userInfo', storageArea: localStorage }),
+    );
+  });
+  expect(result.current.userInfo?.userId).toBe('host-account');
+  expect(result.current.error).toBeNull();
+  expect(result.current.oauthCallbackState).toBeNull();
+
+  hostUser = null;
+  rerender();
+  expect(result.current.userInfo).toBeNull();
+});

@@ -15,6 +15,8 @@ export interface AuthContextValue {
   redirectUri?: string;
   /** State of the verified OAuth callback handled by this provider. */
   oauthCallbackState?: string | null;
+  /** Whether the OAuth callback was replaced by another authorization attempt or session. */
+  oauthCallbackSuperseded?: boolean;
   /** Whether the host supplied the profile and owns sign-in. */
   isHostControlled?: boolean;
 }

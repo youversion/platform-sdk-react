@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
-import { StrictMode, type PropsWithChildren } from 'react';
-import { act, render, renderHook, waitFor } from '@testing-library/react';
+import { StrictMode } from 'react';
+import { render } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import YouVersionAuthProvider from './YouVersionAuthProvider';
 import { useYouVersionAuthContext } from './YouVersionAuthContext';
@@ -15,20 +15,23 @@ const mockConfig: AuthConfig = {
 const mockUserInfo = createMockUserInfo();
 const mockAuthResult = createMockAuthResult();
 
-function WebAuthWrapper({ children }: PropsWithChildren) {
-  return <YouVersionAuthProvider config={mockConfig}>{children}</YouVersionAuthProvider>;
-}
+// Mock window and location
+const mockWindow = {
+  location: {
+    href: 'https://example.com',
+    search: '',
+  },
+};
 
 // Test component to access context
 function TestChild() {
-  const { userInfo, isLoading, error, oauthCallbackState } = useYouVersionAuthContext();
+  const { userInfo, isLoading, error } = useYouVersionAuthContext();
 
   return (
     <div>
       <div data-testid="user-info">{userInfo ? JSON.stringify(userInfo) : 'null'}</div>
       <div data-testid="is-loading">{isLoading.toString()}</div>
       <div data-testid="error">{error ? error.message : 'null'}</div>
-      <div data-testid="callback-state">{oauthCallbackState ?? 'null'}</div>
     </div>
   );
 }
@@ -39,7 +42,9 @@ describe('YouVersionAuthProvider', () => {
   let refreshTokenIfNeeded: MockInstance;
 
   beforeEach(() => {
-    window.history.replaceState(null, '', '/');
+    // Setup window mock
+    vi.stubGlobal('window', mockWindow);
+    mockWindow.location.search = '';
 
     // Reset configuration
     YouVersionPlatformConfiguration.appKey = '';
@@ -55,7 +60,7 @@ describe('YouVersionAuthProvider', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    window.history.replaceState(null, '', '/');
+    vi.unstubAllGlobals();
   });
 
   describe('initialization', () => {
@@ -67,7 +72,7 @@ describe('YouVersionAuthProvider', () => {
       );
 
       // Wait for async initialization to complete
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(YouVersionPlatformConfiguration.appKey).toBe(mockConfig.appKey);
         expect(YouVersionPlatformConfiguration.apiHost).toBe(mockConfig.apiHost);
       });
@@ -85,7 +90,7 @@ describe('YouVersionAuthProvider', () => {
         </YouVersionAuthProvider>,
       );
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(YouVersionPlatformConfiguration.appKey).toBe('test-app-key');
         expect(YouVersionPlatformConfiguration.installationId).toBeTruthy();
         // Since config had no apiHost, component should set default (in real implementation this would be 'api.youversion.com')
@@ -105,15 +110,15 @@ describe('YouVersionAuthProvider', () => {
         </YouVersionAuthProvider>,
       );
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(YouVersionPlatformConfiguration.installationId).not.toBe(null);
       });
     });
   });
 
   describe('OAuth callback handling', () => {
-    it('publishes the verified callback state until another tab changes the session', async () => {
-      window.history.replaceState(null, '', '?state=test-state&code=auth-code');
+    it('should detect OAuth callback with state parameter', async () => {
+      mockWindow.location.search = '?state=test-state&code=auth-code';
       vi.spyOn(YouVersionAPIUsers, 'getStoredUserInfo').mockReturnValue(mockUserInfo);
       vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockResolvedValue(mockAuthResult);
 
@@ -123,32 +128,17 @@ describe('YouVersionAuthProvider', () => {
         </YouVersionAuthProvider>,
       );
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
       });
 
       expect(handleAuthCallback).toHaveBeenCalled();
       expect(getStoredUserInfo).toHaveBeenCalled();
       expect(getByTestId('user-info')).toHaveTextContent(JSON.stringify(mockUserInfo));
-      expect(getByTestId('callback-state')).toHaveTextContent('test-state');
-
-      const otherUser = createMockUserInfo({ id: 'other-account' });
-      getStoredUserInfo.mockReturnValue(otherUser);
-      act(() => {
-        window.dispatchEvent(
-          new StorageEvent('storage', { key: 'userInfo', storageArea: localStorage }),
-        );
-      });
-      expect(getByTestId('user-info')).toHaveTextContent('other-account');
-      expect(getByTestId('callback-state')).toHaveTextContent('null');
     });
 
     it('should detect OAuth callback with error parameter', async () => {
-      window.history.replaceState(
-        null,
-        '',
-        '?error=access_denied&error_description=User+denied+access',
-      );
+      mockWindow.location.search = '?error=access_denied&error_description=User+denied+access';
       vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockResolvedValue(mockAuthResult);
 
       const { getByTestId } = render(
@@ -157,7 +147,7 @@ describe('YouVersionAuthProvider', () => {
         </YouVersionAuthProvider>,
       );
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
       });
 
@@ -165,7 +155,7 @@ describe('YouVersionAuthProvider', () => {
     });
 
     it('should handle callback error and set error state', async () => {
-      window.history.replaceState(null, '', '?state=test-state&code=auth-code');
+      mockWindow.location.search = '?state=test-state&code=auth-code';
       const callbackError = new Error('Callback processing failed');
       vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockRejectedValue(callbackError);
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -176,11 +166,10 @@ describe('YouVersionAuthProvider', () => {
         </YouVersionAuthProvider>,
       );
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(getByTestId('error')).toHaveTextContent('Callback processing failed');
         expect(getByTestId('is-loading')).toHaveTextContent('false');
         expect(getByTestId('user-info')).toHaveTextContent('null');
-        expect(getByTestId('callback-state')).toHaveTextContent('null');
       });
       expect(errorSpy).not.toHaveBeenCalledWith('Auth callback failed:', callbackError);
     });
@@ -191,7 +180,7 @@ describe('YouVersionAuthProvider', () => {
       // dedupe (see packages/core Users.test.ts); here we only assert the
       // provider effect tolerates the double-invocation and still resolves to an
       // authenticated, error-free state.
-      window.history.replaceState(null, '', '?state=test-state&code=auth-code');
+      mockWindow.location.search = '?state=test-state&code=auth-code';
       vi.spyOn(YouVersionAPIUsers, 'getStoredUserInfo').mockReturnValue(mockUserInfo);
       vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockResolvedValue(mockAuthResult);
 
@@ -203,7 +192,7 @@ describe('YouVersionAuthProvider', () => {
         </StrictMode>,
       );
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
       });
 
@@ -215,7 +204,7 @@ describe('YouVersionAuthProvider', () => {
     });
 
     it('should leave user null when no profile was stored during callback', async () => {
-      window.history.replaceState(null, '', '?state=test-state&code=auth-code');
+      mockWindow.location.search = '?state=test-state&code=auth-code';
       vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockResolvedValue(mockAuthResult);
       vi.spyOn(YouVersionAPIUsers, 'getStoredUserInfo').mockReturnValue(null);
 
@@ -225,7 +214,7 @@ describe('YouVersionAuthProvider', () => {
         </YouVersionAuthProvider>,
       );
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
       });
 
@@ -248,7 +237,7 @@ describe('YouVersionAuthProvider', () => {
         </YouVersionAuthProvider>,
       );
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
       });
 
@@ -269,7 +258,7 @@ describe('YouVersionAuthProvider', () => {
         </YouVersionAuthProvider>,
       );
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
       });
 
@@ -287,7 +276,7 @@ describe('YouVersionAuthProvider', () => {
         </YouVersionAuthProvider>,
       );
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
       });
 
@@ -295,92 +284,4 @@ describe('YouVersionAuthProvider', () => {
       expect(getByTestId('user-info')).toHaveTextContent('null');
     });
   });
-});
-
-it('keeps the account synced from another tab when the previous account refresh fails', async () => {
-  YouVersionPlatformConfiguration.saveAuthData(
-    'old-access-token',
-    'old-refresh-token',
-    new Date(0),
-  );
-  YouVersionPlatformConfiguration.saveUserInfo({ id: 'old-account' });
-  const oldRefresh = Promise.withResolvers<boolean>();
-  const refresh = vi
-    .spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded')
-    .mockReturnValue(oldRefresh.promise);
-
-  try {
-    const { result } = renderHook(useYouVersionAuthContext, { wrapper: WebAuthWrapper });
-    expect(result.current.isLoading).toBe(true);
-
-    act(() => {
-      YouVersionPlatformConfiguration.saveAuthData('new-access-token', 'new-refresh-token', null);
-      YouVersionPlatformConfiguration.saveUserInfo({ id: 'new-account' });
-      window.dispatchEvent(
-        new StorageEvent('storage', { key: 'userInfo', storageArea: localStorage }),
-      );
-    });
-    expect(result.current.userInfo?.userId).toBe('new-account');
-
-    await act(async () => {
-      oldRefresh.resolve(false);
-    });
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.userInfo?.userId).toBe('new-account');
-
-    act(() => {
-      YouVersionAPIUsers.signOut();
-      window.dispatchEvent(new StorageEvent('storage', { storageArea: localStorage }));
-    });
-    expect(result.current.userInfo).toBeNull();
-  } finally {
-    refresh.mockRestore();
-    YouVersionAPIUsers.signOut();
-  }
-});
-
-it('takes signed-in and signed-out state from the host across browser auth events', () => {
-  window.history.replaceState(null, '', '?error=access_denied');
-  YouVersionPlatformConfiguration.saveAuthData(
-    'browser-access-token',
-    'browser-refresh-token',
-    null,
-  );
-  YouVersionPlatformConfiguration.saveUserInfo({ id: 'browser-account' });
-
-  try {
-    const { getByTestId, rerender } = render(
-      <YouVersionAuthProvider config={mockConfig} userInfo={null}>
-        <TestChild />
-      </YouVersionAuthProvider>,
-    );
-    expect(getByTestId('is-loading')).toHaveTextContent('false');
-    expect(getByTestId('user-info')).toHaveTextContent('null');
-
-    rerender(
-      <YouVersionAuthProvider config={mockConfig} userInfo={{ id: 'host-account' }}>
-        <TestChild />
-      </YouVersionAuthProvider>,
-    );
-    expect(getByTestId('user-info')).toHaveTextContent('host-account');
-
-    act(() => {
-      window.dispatchEvent(
-        new StorageEvent('storage', { key: 'userInfo', storageArea: localStorage }),
-      );
-    });
-    expect(getByTestId('user-info')).toHaveTextContent('host-account');
-    expect(getByTestId('error')).toHaveTextContent('null');
-    expect(getByTestId('callback-state')).toHaveTextContent('null');
-
-    rerender(
-      <YouVersionAuthProvider config={mockConfig} userInfo={null}>
-        <TestChild />
-      </YouVersionAuthProvider>,
-    );
-    expect(getByTestId('user-info')).toHaveTextContent('null');
-  } finally {
-    window.history.replaceState(null, '', '/');
-    YouVersionAPIUsers.signOut();
-  }
 });

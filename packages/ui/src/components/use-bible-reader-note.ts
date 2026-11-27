@@ -1,6 +1,14 @@
 'use client';
 
-import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import {
   getHttpStatus,
   getSessionStorage,
@@ -13,6 +21,7 @@ import {
 import { useCreateNote, YouVersionAuthContext } from '@youversion/platform-react-hooks';
 import * as z from 'zod/mini';
 import { buildPassageIds } from '@/lib/usfm-ranges';
+import { getOwnShadowRoot } from '@/lib/shadow-root-host';
 import { READER_SIGN_IN_SCOPES } from './bible-reader-auth';
 
 const selectionSchema = z.object({
@@ -32,7 +41,12 @@ const draftSchema = z.object({
   color: z.nullable(z.string().check(z.regex(/^[0-9a-f]{6}$/))),
 });
 
-const handoffSchema = z.object({ draft: draftSchema, state: z.string(), expiresAt: z.number() });
+const handoffSchema = z.object({
+  draft: draftSchema,
+  readerKey: z.string(),
+  state: z.string(),
+  expiresAt: z.number(),
+});
 const HANDOFF_KEY = 'youversion-platform:pending-note';
 const HANDOFF_LIFETIME = 10 * 60 * 1000;
 
@@ -62,19 +76,39 @@ type UseBibleReaderNoteResult = {
   save: () => Promise<void>;
 };
 
-function consumeNoteHandoff(match?: { state: string; requestId: string }) {
+// An OAuth return remounts the page. The Reader's placement distinguishes
+// multiple instances even when they display the same passage.
+function readerPosition(reader: HTMLElement): string {
+  const path: string[] = [];
+  for (
+    let node: Element | null = reader;
+    node;
+    node = node.parentElement ?? getOwnShadowRoot(node)?.host ?? null
+  ) {
+    if (node.id && !getOwnShadowRoot(node)) {
+      path.unshift(`#${node.id}`);
+      break;
+    }
+    const siblings = Array.from(node.parentNode?.children ?? []).filter(
+      (sibling) => sibling.localName === node?.localName,
+    );
+    path.unshift(`${node.localName}:${siblings.indexOf(node)}`);
+  }
+  return JSON.stringify([reader.ownerDocument.location?.pathname, ...path]);
+}
+
+function consumeNoteHandoff(readerKey: string, match?: { state: string; requestId: string }) {
   const storage = getSessionStorage();
   const raw = storage?.getItem(HANDOFF_KEY);
   if (!raw) return null;
-  if (!match) removeStorageItem(storage, HANDOFF_KEY);
   try {
     const parsed = handoffSchema.safeParse(JSON.parse(raw));
     if (!parsed.success) return null;
     const handoff = parsed.data;
-    if (match) {
-      if (handoff.state !== match.state || handoff.draft.requestId !== match.requestId) return null;
-      removeStorageItem(storage, HANDOFF_KEY);
-    }
+    if (handoff.readerKey !== readerKey) return null;
+    if (match && (handoff.state !== match.state || handoff.draft.requestId !== match.requestId))
+      return null;
+    removeStorageItem(storage, HANDOFF_KEY);
     return handoff.expiresAt > Date.now() ? handoff : null;
   } catch {
     return null;
@@ -96,11 +130,13 @@ function sameSelection(left: NoteSelection, right: NoteSelection): boolean {
 }
 
 export function useBibleReaderNote({
+  reader,
   enabled,
   hostOwnsSignIn,
   onSaved,
   onInvalidated,
 }: {
+  reader: RefObject<HTMLElement | null>;
   enabled: boolean;
   hostOwnsSignIn: boolean;
   onSaved: (selection: NoteSelection) => void;
@@ -147,12 +183,14 @@ export function useBibleReaderNote({
   }, [account, authLoading]);
 
   const oauthCallbackState = auth?.oauthCallbackState;
+  const oauthCallbackSuperseded = auth?.oauthCallbackSuperseded;
   useEffect(() => {
-    if (authLoading || !canAuthorize || checkedHandoff.current) return;
+    if (authLoading || !canAuthorize || checkedHandoff.current || !reader.current) return;
     checkedHandoff.current = true;
-    const handoff = consumeNoteHandoff();
+    const handoff = consumeNoteHandoff(readerPosition(reader.current));
     if (
       !handoff ||
+      oauthCallbackSuperseded ||
       (oauthCallbackState && oauthCallbackState !== handoff.state) ||
       (handoff.draft.ownerId && handoff.draft.ownerId !== account)
     ) {
@@ -164,18 +202,25 @@ export function useBibleReaderNote({
     } else {
       retainedDraft.current = handoff.draft;
     }
-  }, [account, authLoading, canAuthorize, oauthCallbackState]);
+  }, [account, authLoading, canAuthorize, oauthCallbackState, oauthCallbackSuperseded, reader]);
 
   useEffect(() => {
     // Browser Back can restore this same document without remounting the Reader.
     function onPageShow(event: PageTransitionEvent) {
       const active = currentFlow.current;
       const state = handoffState.current;
-      if (!event.persisted || active?.phase !== 'redirect' || !state) return;
+      if (!event.persisted || active?.phase !== 'redirect' || !state || !reader.current) return;
       handoffState.current = null;
-      const handoff = consumeNoteHandoff({ state, requestId: active.draft.requestId });
+      const handoff = consumeNoteHandoff(readerPosition(reader.current), {
+        state,
+        requestId: active.draft.requestId,
+      });
       const ownerId = active.draft.ownerId;
-      if ((config.storedUserInfo?.id || null) !== ownerId || latest.current.account !== ownerId) {
+      if (
+        !YouVersionAPIUsers.isSignInPending(state) ||
+        (config.storedUserInfo?.id || null) !== ownerId ||
+        latest.current.account !== ownerId
+      ) {
         show(null);
         latest.current.onInvalidated(active.draft.selection);
       } else if (handoff && latest.current.canAuthorize) {
@@ -187,7 +232,7 @@ export function useBibleReaderNote({
 
     globalThis.window?.addEventListener('pageshow', onPageShow);
     return () => globalThis.window?.removeEventListener('pageshow', onPageShow);
-  }, []);
+  }, [reader]);
 
   function open(selection: NoteSelection) {
     if (authLoading || currentFlow.current || selection.verses.length === 0) return;
@@ -217,7 +262,8 @@ export function useBibleReaderNote({
 
   async function authorize() {
     const active = currentFlow.current;
-    if (active?.phase !== 'authorize' || !canAuthorize) return;
+    if (active?.phase !== 'authorize' || !canAuthorize || !reader.current) return;
+    const readerKey = readerPosition(reader.current);
     const redirect = { ...active, phase: 'redirect' } as const;
     show(redirect);
     try {
@@ -239,6 +285,7 @@ export function useBibleReaderNote({
             HANDOFF_KEY,
             JSON.stringify({
               draft: redirect.draft,
+              readerKey,
               state,
               expiresAt: Date.now() + HANDOFF_LIFETIME,
             }),
@@ -250,7 +297,10 @@ export function useBibleReaderNote({
     } catch {
       if (currentFlow.current !== redirect) return;
       if (handoffState.current) {
-        consumeNoteHandoff({ state: handoffState.current, requestId: active.draft.requestId });
+        consumeNoteHandoff(readerKey, {
+          state: handoffState.current,
+          requestId: active.draft.requestId,
+        });
         handoffState.current = null;
       }
       restoreAfterAuthorization(active, true);

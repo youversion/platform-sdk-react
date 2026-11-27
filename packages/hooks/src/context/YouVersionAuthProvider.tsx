@@ -34,6 +34,7 @@ export default function YouVersionAuthProvider({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [oauthCallbackState, setOAuthCallbackState] = useState<string | null>(null);
+  const [oauthCallbackSuperseded, setOAuthCallbackSuperseded] = useState(false);
 
   useEffect(() => {
     if (!isHostControlled) return;
@@ -58,11 +59,24 @@ export default function YouVersionAuthProvider({
         if (isOAuthCallback) {
           try {
             const result = await YouVersionAPIUsers.handleAuthCallback();
-            if (result && !sessionChanged) {
-              // handleAuthCallback persists the decoded profile; read it back.
+            // A verified state-only callback has already navigated to obtain the code.
+            if (
+              !result &&
+              urlParams.get('state') &&
+              !urlParams.get('code') &&
+              !urlParams.has('error')
+            ) {
+              return;
+            }
+            if (result) {
               if (!mounted) return;
-              setUserInfo(YouVersionAPIUsers.getStoredUserInfo());
-              setOAuthCallbackState(urlParams.get('state'));
+              const storedUser = YouVersionAPIUsers.getStoredUserInfo();
+              const callbackMatchesSession =
+                storedUser?.userId === result.yvpUserId &&
+                result.accessToken === YouVersionPlatformConfiguration.accessToken;
+              if (!sessionChanged || callbackMatchesSession) setUserInfo(storedUser);
+              if (callbackMatchesSession) setOAuthCallbackState(urlParams.get('state'));
+              else if (sessionChanged) setOAuthCallbackSuperseded(true);
             }
           } catch (err) {
             if (!mounted) return;
@@ -70,6 +84,7 @@ export default function YouVersionAuthProvider({
             if (process.env.NODE_ENV === 'development') {
               console.error('Auth callback failed:', error);
             }
+            if (error.name === 'OAuthCallbackSupersededError') setOAuthCallbackSuperseded(true);
             if (!sessionChanged) {
               setError(error);
               setUserInfo(YouVersionAPIUsers.getStoredUserInfo());
@@ -115,11 +130,11 @@ export default function YouVersionAuthProvider({
       setUserInfo(YouVersionAPIUsers.getStoredUserInfo());
     }
 
-    globalThis.window?.addEventListener('storage', syncSession);
+    globalThis.window?.addEventListener?.('storage', syncSession);
     void initAuth();
     return () => {
       mounted = false;
-      globalThis.window?.removeEventListener('storage', syncSession);
+      globalThis.window?.removeEventListener?.('storage', syncSession);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -130,6 +145,7 @@ export default function YouVersionAuthProvider({
     error,
     redirectUri: config.redirectUri,
     oauthCallbackState,
+    oauthCallbackSuperseded,
     isHostControlled,
   };
 
