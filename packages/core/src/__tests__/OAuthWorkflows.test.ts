@@ -78,6 +78,20 @@ function tokenResponse(scope: string) {
   return Response.json({ ...makeTokens(scope), access_token: 'signed-in-access' });
 }
 
+it('reports whether any sign-in or the requested sign-in is pending', async () => {
+  const { browser } = createOAuthBrowser();
+  expect(YouVersionAPIUsers.isSignInPending()).toBe(false);
+  await YouVersionAPIUsers.signIn(redirect);
+  const state = new URL(browser.window.location.href).searchParams.get('state');
+  if (!state) throw new Error('Expected an authorization state');
+  expect(YouVersionAPIUsers.isSignInPending()).toBe(true);
+  expect(YouVersionAPIUsers.isSignInPending(state)).toBe(true);
+  expect(YouVersionAPIUsers.isSignInPending('another-state')).toBe(false);
+  YouVersionAPIUsers.signOut();
+  expect(YouVersionAPIUsers.isSignInPending()).toBe(false);
+  expect(YouVersionAPIUsers.isSignInPending(state)).toBe(false);
+});
+
 it.each([
   { timing: 'before', signInFirst: true },
   { timing: 'after', signInFirst: false },
@@ -492,6 +506,8 @@ it('rotates legacy tokens without assigning the returned scope to a stored profi
 
   expect(config.accessToken).toBe('new-access-token');
   expect(config.refreshToken).toBe('new-refresh-token');
+  expect(config.tokenExpiryDate).toEqual(result?.expiryDate);
+  expect(config.tokenExpiryDate?.getTime()).toBeGreaterThan(Date.now());
   expect(YouVersionAPIUsers.getStoredUserInfo()?.userId).toBe('legacy-user');
   expect(config.getOAuthAccessToken('legacy-user', 'write_notes')).toBeNull();
 });
@@ -503,12 +519,23 @@ it('shares one refresh request and keeps the rotated session for simultaneous ca
   const finishRefresh = holdTokenResponse();
   fetch.mockResolvedValue(new Response(null, { status: 400 }));
 
-  const first = YouVersionAPIUsers.refreshTokenIfNeeded();
-  const second = YouVersionAPIUsers.refreshTokenIfNeeded();
+  const firstRotation = vi.fn();
+  const secondRotation = vi.fn();
+  const first = YouVersionAPIUsers.refreshTokenIfNeeded(firstRotation);
+  const second = YouVersionAPIUsers.refreshTokenIfNeeded(secondRotation);
   finishRefresh(tokenResponse('openid profile'));
 
   await expect(Promise.all([first, second])).resolves.toEqual([true, true]);
   expect(fetch).toHaveBeenCalledTimes(1);
+  const rotation = {
+    result: expect.objectContaining({
+      accessToken: 'signed-in-access',
+      refreshToken: 'refresh-token-456',
+    }),
+    previousSession: { accessToken: 'old-access', refreshToken: 'old-refresh', userId: 'alice' },
+  };
+  expect(firstRotation).toHaveBeenCalledExactlyOnceWith(rotation);
+  expect(secondRotation).toHaveBeenCalledExactlyOnceWith(rotation);
   expect(config.accessToken).toBe('signed-in-access');
   expect(config.refreshToken).toBe('refresh-token-456');
   expect(YouVersionAPIUsers.getStoredUserInfo()?.userId).toBe('alice');

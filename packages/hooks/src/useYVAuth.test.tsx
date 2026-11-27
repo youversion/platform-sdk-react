@@ -1,9 +1,9 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
-import type { ReactNode } from 'react';
+import { StrictMode, type ReactNode } from 'react';
 import { expect, it, onTestFinished, vi } from 'vitest';
 import { createMockAuthResult, createMockUserInfo } from './__tests__/mocks/auth';
-import { YouVersionAuthContext } from './context/YouVersionAuthContext';
+import { YouVersionAuthContext, useYouVersionAuthContext } from './context/YouVersionAuthContext';
 import { YouVersionProvider } from './context/YouVersionProvider';
 import type { AuthContextValue } from './types/auth';
 import { useYVAuth } from './useYVAuth';
@@ -163,6 +163,79 @@ it('keeps an initial legacy token without adopting later unbound credentials', a
   });
   expect(result.current.auth.accessToken).toBe('bound-access');
 });
+
+it.each([
+  { scenario: 'rotates', replacement: null, owner: 'alice', token: 'rotated-access' },
+  { scenario: 'overlaps staged credentials', replacement: 'staged', owner: 'alice', token: null },
+  {
+    scenario: 'is superseded by another account',
+    replacement: 'bob',
+    owner: 'bob',
+    token: 'bob-access',
+  },
+])(
+  'pairs a late auth consumer with the current account when a legacy session $scenario',
+  async ({ replacement, owner, token }) => {
+    const config = YouVersionPlatformConfiguration;
+    YouVersionAPIUsers.signOut();
+    const reply = Promise.withResolvers<Response>();
+    const fetch = vi.fn(() => reply.promise);
+    vi.stubGlobal('fetch', fetch);
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+      YouVersionAPIUsers.signOut();
+    });
+    config.saveAuthData('expired-access', 'legacy-refresh', new Date(0));
+    config.saveUserInfo({ id: 'alice' });
+
+    function AfterAuth({ children }: { children: ReactNode }) {
+      return useYouVersionAuthContext().isLoading ? null : children;
+    }
+    function Wrapper({ children }: { children: ReactNode }) {
+      return (
+        <StrictMode>
+          <WebAuthWrapper>
+            <AfterAuth>{children}</AfterAuth>
+          </WebAuthWrapper>
+        </StrictMode>
+      );
+    }
+    const { result } = renderHook(useYVAuth, { wrapper: Wrapper });
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    expect(result.current).toBeNull();
+
+    if (replacement) {
+      act(() => {
+        config.saveAuthData(
+          'bob-access',
+          'bob-refresh',
+          new Date('2100-01-01'),
+          replacement === 'bob' ? { scope: 'profile', userId: 'bob' } : undefined,
+        );
+        if (replacement === 'bob') config.saveUserInfo({ id: 'bob' });
+        window.dispatchEvent(
+          new StorageEvent('storage', { key: 'accessToken', storageArea: localStorage }),
+        );
+      });
+    }
+    await act(async () => {
+      reply.resolve(
+        Response.json({
+          access_token: 'rotated-access',
+          refresh_token: 'rotated-refresh',
+          expires_in: 3600,
+          scope: 'openid write_notes',
+          token_type: 'Bearer',
+        }),
+      );
+    });
+    await waitFor(() => expect(result.current?.auth.isLoading).toBe(false));
+    expect(result.current.userInfo?.userId).toBe(owner);
+    expect(result.current.auth.accessToken).toBe(token);
+    expect(config.getOAuthAccessToken(owner, 'write_notes')).toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(1);
+  },
+);
 
 it('keeps a pending authorization profile signed out on remount and storage updates', async () => {
   YouVersionAPIUsers.signOut();

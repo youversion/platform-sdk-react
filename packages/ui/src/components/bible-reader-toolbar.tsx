@@ -50,7 +50,7 @@ function UserMenu() {
     if (onSignInPress) {
       onSignInPress();
     } else {
-      void signIn(authContext?.isHostControlled ? undefined : { scopes: READER_SIGN_IN_SCOPES });
+      void signIn({ scopes: authContext?.isHostControlled ? ['profile'] : READER_SIGN_IN_SCOPES });
     }
   };
   const handleSignOut = () => {

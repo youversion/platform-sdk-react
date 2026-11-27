@@ -106,16 +106,35 @@ export default function YouVersionAuthProvider({
           if (refreshToken) {
             const accessToken = YouVersionPlatformConfiguration.accessToken;
             const userId = YouVersionPlatformConfiguration.storedUserInfo?.id;
+            let initializedAccessToken = accessToken;
+            let initializedRefreshToken = refreshToken;
             try {
               // refreshTokenIfNeeded clears tokens (and the stored profile)
               // when the session has expired and cannot be refreshed.
-              const refreshed = await YouVersionAPIUsers.refreshTokenIfNeeded();
+              const refreshed = await YouVersionAPIUsers.refreshTokenIfNeeded(
+                ({ result, previousSession }) => {
+                  if (
+                    previousSession.accessToken === accessToken &&
+                    previousSession.refreshToken === refreshToken &&
+                    previousSession.userId === userId &&
+                    result.accessToken &&
+                    result.refreshToken
+                  ) {
+                    initializedAccessToken = result.accessToken;
+                    initializedRefreshToken = result.refreshToken;
+                  }
+                },
+              );
               if (!mounted) return;
               if (!sessionChanged) {
                 const storedUser = refreshed ? YouVersionAPIUsers.getStoredUserInfo() : null;
                 setUserInfo(storedUser);
-                if (accessToken && userId && storedUser?.userId === userId) {
-                  setLegacySession({ userId, accessToken, refreshToken });
+                if (initializedAccessToken && userId && storedUser?.userId === userId) {
+                  setLegacySession({
+                    userId,
+                    accessToken: initializedAccessToken,
+                    refreshToken: initializedRefreshToken,
+                  });
                 }
               }
             } catch {

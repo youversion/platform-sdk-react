@@ -119,16 +119,26 @@ function writerToken(account: string | null) {
   return account ? config.getOAuthAccessToken(account, 'write_notes') : null;
 }
 
-function matchesDraftOwner(owner: string | null, account: string | null, state: string | null) {
-  // A failed refresh can clear credentials while leaving an active authorization
-  // attempt and its initiating profile. That identity can recover the draft only.
+function matchesDraftOwner(
+  owner: string | null,
+  account: string | null,
+  state: string | null,
+  failedCallbackState?: string | null,
+) {
+  // A failed refresh can leave the initiating profile without credentials.
+  // A verified failed callback can then clear its pending state. That proof is
+  // useful for draft recovery only while the same signed-out attempt owns it.
   return (
     owner === account ||
     (account === null &&
       owner !== null &&
       state !== null &&
       config.storedUserInfo?.id === owner &&
-      YouVersionAPIUsers.isSignInPending(state))
+      (YouVersionAPIUsers.isSignInPending(state) ||
+        (state === failedCallbackState &&
+          !config.accessToken &&
+          !config.refreshToken &&
+          !YouVersionAPIUsers.isSignInPending())))
   );
 }
 
@@ -158,6 +168,9 @@ export function useBibleReaderNote({
   const auth = useContext(YouVersionAuthContext);
   const account = auth?.userInfo?.userId || null;
   const authLoading = auth?.isLoading ?? false;
+  const oauthCallbackState = auth?.oauthCallbackState;
+  const oauthCallbackSuperseded = auth?.oauthCallbackSuperseded;
+  const oauthFailedCallbackState = oauthCallbackSuperseded ? null : auth?.oauthFailedCallbackState;
   const canAuthorize = enabled && auth !== null && !auth.isHostControlled && !hostOwnsSignIn;
   const createNote = useCreateNote();
   const [flow, setFlow] = useState<Flow | null>(null);
@@ -169,8 +182,14 @@ export function useBibleReaderNote({
   const handoffState = useRef<string | null>(null);
   const draftAuthorizationState = useRef<string | null>(null);
   const checkedHandoff = useRef(false);
-  const latest = useRef({ account, canAuthorize, onSaved, onInvalidated });
-  latest.current = { account, canAuthorize, onSaved, onInvalidated };
+  const latest = useRef({
+    account,
+    canAuthorize,
+    oauthFailedCallbackState,
+    onSaved,
+    onInvalidated,
+  });
+  latest.current = { account, canAuthorize, oauthFailedCallbackState, onSaved, onInvalidated };
 
   function show(next: Flow | null) {
     currentFlow.current = next;
@@ -192,18 +211,20 @@ export function useBibleReaderNote({
     const draft = currentFlow.current?.draft ?? retainedDraft.current;
     if (
       !draft?.ownerId ||
-      matchesDraftOwner(draft.ownerId, account, draftAuthorizationState.current)
+      matchesDraftOwner(
+        draft.ownerId,
+        account,
+        draftAuthorizationState.current,
+        oauthFailedCallbackState,
+      )
     )
       return;
     retainedDraft.current = null;
     draftAuthorizationState.current = null;
     show(null);
     latest.current.onInvalidated(draft.selection);
-  }, [account, authLoading]);
+  }, [account, authLoading, oauthFailedCallbackState]);
 
-  const oauthCallbackState = auth?.oauthCallbackState;
-  const oauthFailedCallbackState = auth?.oauthFailedCallbackState;
-  const oauthCallbackSuperseded = auth?.oauthCallbackSuperseded;
   useEffect(() => {
     if (authLoading || !canAuthorize || checkedHandoff.current || !reader.current) return;
     checkedHandoff.current = true;
@@ -215,7 +236,8 @@ export function useBibleReaderNote({
       (returnedState
         ? returnedState !== handoff.state
         : !YouVersionAPIUsers.isSignInPending(handoff.state)) ||
-      (handoff.draft.ownerId && !matchesDraftOwner(handoff.draft.ownerId, account, handoff.state))
+      (handoff.draft.ownerId &&
+        !matchesDraftOwner(handoff.draft.ownerId, account, handoff.state, oauthFailedCallbackState))
     ) {
       return;
     }
@@ -276,7 +298,12 @@ export function useBibleReaderNote({
       retained &&
       sameSelection(retained.selection, selection) &&
       (!retained.ownerId ||
-        matchesDraftOwner(retained.ownerId, account, draftAuthorizationState.current));
+        matchesDraftOwner(
+          retained.ownerId,
+          account,
+          draftAuthorizationState.current,
+          oauthFailedCallbackState,
+        ));
     retainedDraft.current = null;
     if (!sameOwnedSelection) draftAuthorizationState.current = null;
     setAuthorizationFailed(false);
@@ -313,7 +340,12 @@ export function useBibleReaderNote({
         (state) => {
           if (
             currentFlow.current !== redirect ||
-            !matchesDraftOwner(redirect.draft.ownerId, latest.current.account, previousState) ||
+            !matchesDraftOwner(
+              redirect.draft.ownerId,
+              latest.current.account,
+              previousState,
+              latest.current.oauthFailedCallbackState,
+            ) ||
             !latest.current.canAuthorize ||
             (config.storedUserInfo?.id || null) !== redirect.draft.ownerId
           ) {
@@ -362,7 +394,12 @@ export function useBibleReaderNote({
     if (
       active?.phase !== 'compose' ||
       authLoading ||
-      !matchesDraftOwner(active.draft.ownerId, account, draftAuthorizationState.current)
+      !matchesDraftOwner(
+        active.draft.ownerId,
+        account,
+        draftAuthorizationState.current,
+        oauthFailedCallbackState,
+      )
     )
       return;
     const token = writerToken(account);
@@ -414,7 +451,12 @@ export function useBibleReaderNote({
   const visibleFlow =
     !enabled ||
     (flow?.draft.ownerId &&
-      !matchesDraftOwner(flow.draft.ownerId, account, draftAuthorizationState.current))
+      !matchesDraftOwner(
+        flow.draft.ownerId,
+        account,
+        draftAuthorizationState.current,
+        oauthFailedCallbackState,
+      ))
       ? null
       : flow;
   return {

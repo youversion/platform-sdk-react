@@ -82,6 +82,15 @@ type PendingGrantedPermissionsStash = StatePermissionsStash;
 
 type RequestedPermissionsStash = StatePermissionsStash;
 
+type TokenRotation = {
+  result: SignInWithYouVersionResult;
+  previousSession: {
+    accessToken: string | null;
+    refreshToken: string;
+    userId: string | undefined;
+  };
+};
+
 /**
  * Dedupe map for in-flight/settled code-for-token exchanges, keyed by the
  * single-use authorization `code`. Under React StrictMode the auth init effect
@@ -112,7 +121,7 @@ export function __resetAuthCallbackDedupeForTests(): void {
  * genuine refresh (e.g. the token expiring an hour on) must be able to run.
  * Sharing applies only to calls that overlap in time.
  */
-let inFlightRefresh: Promise<boolean> | null = null;
+let inFlightRefresh: Promise<TokenRotation | null> | null = null;
 
 /** Test-only: clears the shared in-flight refresh between test cases. */
 export function __resetTokenRefreshDedupeForTests(): void {
@@ -295,9 +304,10 @@ export class YouVersionAPIUsers {
     window.location.href = authorizationRequest.url.toString();
   }
 
-  /** Whether the specified authorization attempt is still pending in this browser. */
-  static isSignInPending(state: string): boolean {
-    return getLocalStorage()?.getItem(AUTH_STATE_KEY) === state;
+  /** Whether the specified authorization attempt, or any attempt when omitted, is pending. */
+  static isSignInPending(state?: string): boolean {
+    const pendingState = getLocalStorage()?.getItem(AUTH_STATE_KEY);
+    return !!pendingState && (state === undefined || pendingState === state);
   }
 
   /**
@@ -665,12 +675,10 @@ export class YouVersionAPIUsers {
    * @throws An error if refresh fails or no refresh token is available
    */
   static async refreshTokens(): Promise<SignInWithYouVersionResult | null> {
-    return this.rotateTokens(false);
+    return (await this.rotateTokens(false)).result;
   }
 
-  private static async rotateTokens(
-    clearOnPersistenceFailure: boolean,
-  ): Promise<SignInWithYouVersionResult | null> {
+  private static async rotateTokens(clearOnPersistenceFailure: boolean): Promise<TokenRotation> {
     const accessToken = YouVersionPlatformConfiguration.accessToken;
     const refreshToken = YouVersionPlatformConfiguration.refreshToken;
     const userId = YouVersionPlatformConfiguration.storedUserInfo?.id;
@@ -758,7 +766,7 @@ export class YouVersionAPIUsers {
         throw new Error('the rotated tokens could not be saved to browser storage');
       }
 
-      return result;
+      return { result, previousSession: { accessToken, refreshToken, userId } };
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Token refresh failed: ${error.message}`);
@@ -785,9 +793,12 @@ export class YouVersionAPIUsers {
   /**
    * Refreshes the access token if it's expired or about to expire.
    *
+   * @param onRotation - Receives the persisted rotation and its initiating session when a refresh occurred.
    * @returns Promise<boolean> - true if refresh was successful or not needed, false if failed
    */
-  static async refreshTokenIfNeeded(): Promise<boolean> {
+  static async refreshTokenIfNeeded(
+    onRotation?: (rotation: TokenRotation) => void,
+  ): Promise<boolean> {
     if (!this.isTokenExpired()) {
       return true; // Token is still valid
     }
@@ -796,16 +807,13 @@ export class YouVersionAPIUsers {
     // StrictMode double-invocation) can't spend the single-use refresh token a
     // second time and wipe the session on its failure. The get/set here is
     // synchronous before the first await, so the check is re-entrancy safe.
-    const existingRefresh = inFlightRefresh;
-    if (existingRefresh) {
-      return existingRefresh;
-    }
-
-    const refresh = this.performTokenRefresh();
+    const refresh = inFlightRefresh ?? this.performTokenRefresh();
     inFlightRefresh = refresh;
 
     try {
-      return await refresh;
+      const rotation = await refresh;
+      if (rotation) onRotation?.(rotation);
+      return rotation !== null;
     } finally {
       // Clear the slot once settled so a later, genuine refresh can run. Guard
       // against clobbering a newer refresh that a subsequent call may have set.
@@ -818,17 +826,15 @@ export class YouVersionAPIUsers {
   /**
    * Performs a single token refresh, clearing the session exactly once on
    * failure. Callers must share this via {@link inFlightRefresh} so a duplicate
-   * refresh never runs concurrently; a shared failure clears tokens once and
-   * resolves false for every caller awaiting it.
+   * refresh never runs concurrently. Each caller receives the same outcome.
    */
-  private static async performTokenRefresh(): Promise<boolean> {
+  private static async performTokenRefresh(): Promise<TokenRotation | null> {
     const accessToken = YouVersionPlatformConfiguration.accessToken;
     const refreshToken = YouVersionPlatformConfiguration.refreshToken;
     const userId = YouVersionPlatformConfiguration.storedUserInfo?.id;
-    if (YouVersionPlatformConfiguration.readOAuthSession() === null) return false;
+    if (YouVersionPlatformConfiguration.readOAuthSession() === null) return null;
     try {
-      const result = await this.rotateTokens(true);
-      return !!result;
+      return await this.rotateTokens(true);
     } catch {
       // Refresh failed, clear tokens
       if (
@@ -839,7 +845,7 @@ export class YouVersionAPIUsers {
       ) {
         clearFailedRefreshSession();
       }
-      return false;
+      return null;
     }
   }
 }

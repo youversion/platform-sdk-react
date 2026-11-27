@@ -22,6 +22,9 @@ import { YouVersionProvider } from './YouVersionProvider';
 
 const meta: Meta = {
   title: 'Components/BibleReader/Notes',
+  // In the shared Firefox process, the Reader's network calls can bypass MSW
+  // after switching preview files. The existing runner isolates tagged files.
+  tags: ['shadow-fresh-process'],
   parameters: { layout: 'fullscreen' },
   render: () => (
     <div className="yv:h-screen">
@@ -50,7 +53,10 @@ async function selectVerses(root: ShadowRoot, verses: number[]) {
 async function fillEditor(editor: HTMLTextAreaElement, value: string) {
   if (__YV_STORYBOOK_VITEST__) {
     const { userEvent } = await import('vitest/browser');
-    await userEvent.fill(editor, value);
+    // Native keys avoid the WebDriver lookup of an escaped Radix ID in the shadow tree.
+    editor.focus();
+    editor.select();
+    await userEvent.keyboard(value || '{Backspace}');
     return;
   }
   await userEvent.type(editor, value || '{Backspace}', {
@@ -606,6 +612,9 @@ export const WritePermissionChangesWhileEditing: Story = {
       YouVersionPlatformConfiguration.saveUserInfo(profile);
       window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
       await waitFor(() => expect(overlays.queryByRole('dialog')).toBeNull());
+      await waitFor(async () =>
+        expect(await readerVerse(root, 1)).not.toHaveClass('yv-v-selected'),
+      );
       await selectVerses(root, [2]);
       const { composer: newDraft } = await openComposer(root, 'John 1:2');
       await expect(newDraft.getByRole('textbox', { name: 'Add Note…' })).toHaveValue('');
@@ -731,7 +740,14 @@ export const RemountRecoversDraftDuringFailedRefresh: Story = {
           scope: 'profile read_notes',
         },
       );
-      getWorker().use(http.post('*/auth/token', () => new HttpResponse(null, { status: 503 })));
+      const failedGrants: string[] = [];
+      getWorker().use(
+        http.post('*/auth/token', async ({ request }) => {
+          const parameters = new URLSearchParams(await request.text());
+          failedGrants.push(parameters.get('grant_type') ?? '');
+          return new HttpResponse(null, { status: 503 });
+        }),
+      );
       await userEvent.click(page.getByRole('button', { name: 'Reload Reader' }));
       const remounted = await waitForShadowRoot(canvasElement);
       await expect(remounted).not.toBe(root);
@@ -744,6 +760,22 @@ export const RemountRecoversDraftDuringFailedRefresh: Story = {
       await userEvent.click(actions.getByRole('button', { name: 'Save' }));
       await userEvent.click(await returnedOverlays.findByRole('button', { name: 'Yes Please' }));
       await waitFor(() => expect(returnedOverlays.queryByRole('dialog')).toBeNull());
+
+      await userEvent.click(page.getByRole('button', { name: 'Return from sign-in' }));
+      const failedRoot = await waitForShadowRoot(canvasElement);
+      await expect(failedRoot).not.toBe(remounted);
+      await waitFor(() => expect(failedGrants).toEqual(['refresh_token', 'authorization_code']));
+      await waitFor(async () =>
+        expect(await readerVerse(failedRoot, 1)).toHaveClass('yv-v-selected'),
+      );
+      await expect(await readerVerse(failedRoot, 4)).toHaveClass('yv-v-selected');
+      const failedOverlays = await readerOverlays(failedRoot);
+      const failedActions = within(
+        await failedOverlays.findByRole('dialog', { name: 'Verse actions' }),
+      );
+      await userEvent.click(failedActions.getByRole('button', { name: 'Save' }));
+      await userEvent.click(await failedOverlays.findByRole('button', { name: 'Yes Please' }));
+      await waitFor(() => expect(failedOverlays.queryByRole('dialog')).toBeNull());
 
       getWorker().use(
         http.post('*/auth/token', () => tokenResponse('profile read_notes write_notes')),
@@ -925,7 +957,7 @@ export const HostControlledSignIn: Story = {
       await userEvent.click(toolbar);
       const overlays = await readerOverlays(root);
       await userEvent.click(await overlays.findByRole('button', { name: /sign in/i }));
-      await expect(signIn).toHaveBeenNthCalledWith(1, location.origin, undefined, undefined);
+      await expect(signIn).toHaveBeenNthCalledWith(1, location.origin, ['profile'], undefined);
 
       await selectVerses(root, [1]);
       const actions = within(await overlays.findByRole('dialog', { name: 'Verse actions' }));
