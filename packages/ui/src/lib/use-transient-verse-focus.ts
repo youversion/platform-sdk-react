@@ -1,5 +1,7 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import type { BibleReaderNavigationRequest } from '@/components/bible-reader-navigation';
+import { isElementFromOwnerDocument } from './shadow-root-host';
+import { prefersReducedMotion } from './reduced-motion';
 
 export type VerseFocusRequest = BibleReaderNavigationRequest &
   Readonly<{
@@ -11,7 +13,7 @@ function paintFocus(container: HTMLElement, verses: readonly number[]): void {
   container.setAttribute('data-yv-verse-focus', '');
   const wanted = new Set(verses);
   container.querySelectorAll('.yv-v[v]').forEach((node) => {
-    if (!(node instanceof HTMLElement)) return;
+    if (!isElementFromOwnerDocument(node, container, 'HTMLElement')) return;
     const verseNum = Number.parseInt(node.getAttribute('v') ?? '', 10);
     node.classList.toggle('yv-v-focused', wanted.has(verseNum));
   });
@@ -24,20 +26,17 @@ function clearFocusPaint(container: HTMLElement): void {
   });
 }
 
-function prefersReducedMotion(): boolean {
-  return Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
-}
-
 function overflowAncestor(start: HTMLElement): HTMLElement {
+  const ownerDocument = start.ownerDocument;
   let node: HTMLElement | null = start;
   while (node !== null) {
-    const overflowY = globalThis.getComputedStyle(node).overflowY;
+    const overflowY = ownerDocument.defaultView?.getComputedStyle(node).overflowY;
     if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') {
       return node;
     }
     node = node.parentElement;
   }
-  return document.documentElement;
+  return ownerDocument.documentElement;
 }
 
 /**
@@ -59,6 +58,9 @@ export function useTransientVerseFocus(args: {
     if (request === null || container === null || handledSeq.current === request.seq) {
       return;
     }
+    const ownerDocument = container.ownerDocument;
+    const ownerWindow = ownerDocument.defaultView;
+    if (ownerWindow === null) return;
     const reference = request.showsFullChapter
       ? `${request.book}.${request.chapter}`
       : request.passageId;
@@ -68,36 +70,39 @@ export function useTransientVerseFocus(args: {
 
     const verses = request.verses;
     const first = verses[0];
-    const target = container.querySelector(`.yv-v[v="${String(first)}"]`);
+    const candidate = container.querySelector(`.yv-v[v="${String(first)}"]`);
+    const target = isElementFromOwnerDocument(candidate, container, 'HTMLElement')
+      ? candidate
+      : null;
     const scroller = overflowAncestor(container);
-    const scrollEvents = scroller === document.documentElement ? document : scroller;
+    const scrollEvents = scroller === ownerDocument.documentElement ? ownerDocument : scroller;
     let waiting = false;
     let cleared = false;
-    let settle: ReturnType<typeof setTimeout> | undefined;
-    let fallback: ReturnType<typeof setTimeout> | undefined;
+    let settle: number | undefined;
+    let fallback: number | undefined;
     const clear = (): void => {
       cleared = true;
       waiting = false;
-      globalThis.clearTimeout(settle);
-      globalThis.clearTimeout(fallback);
+      ownerWindow.clearTimeout(settle);
+      ownerWindow.clearTimeout(fallback);
       clearFocusPaint(container);
     };
     const landed = (): void => {
       handledSeq.current = request.seq;
       waiting = false;
-      globalThis.clearTimeout(settle);
-      globalThis.clearTimeout(fallback);
+      ownerWindow.clearTimeout(settle);
+      ownerWindow.clearTimeout(fallback);
       if (cleared || !request.shouldFocus || verses.length === 0) return;
       paintFocus(container, verses);
-      if (target instanceof HTMLElement) {
+      if (target !== null) {
         target.tabIndex = -1;
         target.focus({ preventScroll: true });
       }
     };
     const onScroll = (): void => {
       if (!waiting) return;
-      globalThis.clearTimeout(settle);
-      settle = globalThis.setTimeout(landed, 100);
+      ownerWindow.clearTimeout(settle);
+      settle = ownerWindow.setTimeout(landed, 100);
     };
     const onScrollEnd = (): void => {
       if (waiting) landed();
@@ -113,18 +118,18 @@ export function useTransientVerseFocus(args: {
     for (const event of ['pointerdown', 'keydown', 'wheel', 'touchstart']) {
       scroller.addEventListener(event, onInteract, { passive: true });
     }
-    const frame = globalThis.requestAnimationFrame(() => {
+    const frame = ownerWindow.requestAnimationFrame(() => {
       if (cleared) return;
       if (!request.scrollsToVerse) {
         landed();
         return;
       }
-      const reducedMotion = prefersReducedMotion();
+      const reducedMotion = prefersReducedMotion(ownerWindow);
       waiting = true;
-      const destination =
-        request.showsFullChapter && target instanceof HTMLElement ? target : container;
+      const scrollToVerse = request.showsFullChapter && target !== null;
+      const destination = scrollToVerse ? target : container;
       destination.scrollIntoView({
-        block: request.showsFullChapter && target instanceof HTMLElement ? 'center' : 'start',
+        block: scrollToVerse ? 'center' : 'start',
         behavior: reducedMotion ? 'auto' : 'smooth',
       });
       if (reducedMotion) {
@@ -132,12 +137,12 @@ export function useTransientVerseFocus(args: {
         return;
       }
       // scrollend is not universal, and a no-op scroll emits no events.
-      settle = globalThis.setTimeout(landed, 100);
-      fallback = globalThis.setTimeout(landed, 2000);
+      settle = ownerWindow.setTimeout(landed, 100);
+      fallback = ownerWindow.setTimeout(landed, 2000);
     });
 
     return () => {
-      globalThis.cancelAnimationFrame(frame);
+      ownerWindow.cancelAnimationFrame(frame);
       scrollEvents.removeEventListener('scroll', onScroll);
       scrollEvents.removeEventListener('scrollend', onScrollEnd);
       for (const event of ['pointerdown', 'keydown', 'wheel', 'touchstart']) {

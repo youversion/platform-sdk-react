@@ -1,4 +1,4 @@
-import { waitFor as storybookWaitFor } from 'storybook/test';
+import { userEvent as storybookUserEvent, waitFor as storybookWaitFor } from 'storybook/test';
 import { requireShadowRoot } from './dom-stubs';
 
 interface StorybookWaitOptions {
@@ -37,6 +37,24 @@ export function requireShadowContent(root: ShadowRoot): HTMLElement {
 
 export function waitForShadowContent(root: ShadowRoot): Promise<HTMLElement> {
   return waitFor(() => requireShadowContent(root));
+}
+
+/** Resolve computed CSS colors to sRGB bytes across browser serialization formats. */
+export function getBackgroundColorChannels(element: Element): number[] {
+  const context = element.ownerDocument.createElement('canvas').getContext('2d');
+  if (!context) throw new Error('2D canvas is unavailable');
+  context.fillStyle = getComputedStyle(element).backgroundColor;
+  context.fillRect(0, 0, 1, 1);
+  return Array.from(context.getImageData(0, 0, 1, 1).data);
+}
+
+export async function clickStoryElement(element: Element): Promise<void> {
+  if (__YV_STORYBOOK_VITEST__) {
+    const { userEvent } = await import('vitest/browser');
+    await userEvent.click(element);
+    return;
+  }
+  await storybookUserEvent.click(element);
 }
 
 async function pressNativeBrowserKey(keys: string): Promise<boolean> {

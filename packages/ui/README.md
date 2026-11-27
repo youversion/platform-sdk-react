@@ -15,7 +15,7 @@ Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 
 **Use other packages instead if you:**
 - ❌ Need low-level API access → Use [@youversion/platform-core](../core/README.md)
-- ❌ Want custom UI → Use [@youversion/platform-react-hooks](../hooks/README.md)
+- ❌ Need data hooks but no SDK components → Use [@youversion/platform-react-hooks](../hooks/README.md)
 
 ## Install
 
@@ -49,6 +49,23 @@ Optional `locale` sets bundled UI copy (Verse of the Day heading, buttons, etc.)
 </YouVersionProvider>
 ```
 
+### Customize verse actions and indicators
+
+Pass `verseActionItems` to `BibleReader.Root` to choose the order of
+`'highlights'`, `'copy'`, `'share'`, and custom actions. The default order is
+highlights, copy, then share. Each custom item supplies an `id`, a localized
+`label`, a decorative `icon`, and an `onSelect` callback. Its callback receives
+the current `BibleReaderVerseSelection` before the reader clears the selection.
+`passageIds` lists each selected verse separately, including when the selection
+has gaps.
+
+Both `BibleReader.Root` and `BibleTextView` accept `getVerseIndicator`. Return a
+`VerseIndicator` with a localized `label` and optional `style` to mark a verse
+number, or return `undefined` to leave it unchanged. Use
+`onVerseIndicatorPress` to handle activation by pointer or keyboard. Both hooks
+receive a `BibleReaderReference` with the Bible version ID and verse passage ID.
+Without the press callback, the indicator is decorative.
+
 ### Limit which Bible versions the SDK uses
 
 By default the version picker offers Bible versions in every available language. Limit that with `permittedLanguageTags`, `permittedVersionIds`, and `excludedVersionIds` on `YouVersionProvider`. A version must satisfy every list that is set. Exclusion wins if an id is in both permit and exclude lists. Unset means no restriction; an empty permit list permits nothing.
@@ -65,6 +82,24 @@ By default the version picker offers Bible versions in every available language.
 ```
 
 Language tags are BCP 47 (`en`, `es`, `zh-Hans`). Version ids are YouVersion Bible version ids. An unusable id is refused everywhere — lists, picker, and `versionId` on reader/card/text/VOTD — and surfaces the existing forbidden error. Core-only hosts can set the same lists on `YouVersionPlatformConfiguration`.
+
+### Data hooks
+
+Import `usePassage`, `useVersions`, and `YouVersionProvider` from this package using the same module format (ES modules or CommonJS). Call the hooks under the same provider as your UI components. You do not need to install the hooks package directly.
+
+If you also install `@youversion/platform-react-hooks` directly, pin it to the exact UI package version and avoid duplicate installations. Separate copies or module formats can create separate React contexts and cause a "context not found" error.
+
+```tsx
+import { useVersions } from '@youversion/platform-react-ui';
+
+function VersionList() {
+  const { versions, loading, error } = useVersions('en');
+  if (loading) return <p>Loading Bible versions…</p>;
+  if (error) return <p>Bible versions are unavailable.</p>;
+
+  return <ul>{versions?.data.map((version) => <li key={version.id}>{version.title}</li>)}</ul>;
+}
+```
 
 ## Styling
 

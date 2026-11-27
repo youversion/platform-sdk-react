@@ -10,6 +10,7 @@ import {
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
 import { AnimatedHeight } from '@/components/animated-height';
 import { BibleAppLogoLockup } from '@/components/bible-app-logo-lockup';
@@ -141,10 +142,8 @@ async function share({
     } catch {
       // Silently fail
     }
-  } else if (navigator.clipboard) {
-    navigator.clipboard.writeText(text).catch(() => {
-      alert(errorMessage);
-    });
+  } else if (!(await copyTextToClipboard(text))) {
+    alert(errorMessage);
   }
 }
 

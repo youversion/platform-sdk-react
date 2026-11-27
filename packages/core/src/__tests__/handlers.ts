@@ -256,6 +256,7 @@ export const handlers = [
     } else if (includeNotes && includeHeadings) {
       return HttpResponse.json(mockNIVRom1PassageHTMLHeadingsNotes);
     }
+    return undefined;
   }),
 
   // Verse Of The Day endpoints

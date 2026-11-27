@@ -107,6 +107,11 @@ content."). Hooks surface that `error`. UI does not throw, does not
 render an empty tree, does not swap in another version. Dev: one
 `console.warn` for a host-passed unusable `versionId`.
 
+`NotesClient` applies the same version filter to a supplied list `version_id`
+or a passage supplied to create or update a note. An excluded version is
+refused before the Notes request; language restrictions may require a
+version metadata request first. Notes without a passage remain account data.
+
 Language-only allowlists need `language_tag`. Content methods may fetch
 version metadata once; if metadata is missing, refuse (fail closed).
 `getVersion` itself is refused when the id is already unusable without
@@ -173,8 +178,9 @@ round-trips an updated `highlights` prop.
 
 ## Verse action popover
 
-The floating action bar (YPE-642) that appears over a verse selection,
-offering highlight colors, copy, and share.
+The floating action bar for a verse selection, with highlight colors, copy, and
+share as the default actions. The host can reorder or omit these actions and add
+its own.
 
 ## Highlights permission
 

@@ -193,7 +193,7 @@ function writeResultFromActionEvent(event: MachineActionEvent): WriteResult | un
 export class BibleReaderHighlightError extends Error {
   readonly operation: 'apply' | 'remove';
   readonly passageId: string;
-  readonly cause: unknown;
+  override readonly cause: unknown;
 
   constructor(operation: 'apply' | 'remove', passageId: string, cause: unknown) {
     super(`Highlight ${operation} failed for ${passageId}`);

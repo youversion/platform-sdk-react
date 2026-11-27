@@ -78,6 +78,14 @@ The props also accept `userIntent` and `fields` (`verses`, `topics`, and/or
 `fields: ['images']`. An empty array is invalid. Image hits contain `id` and
 `passageId`, not image URLs. Verse hits contain passage IDs, not passage text.
 
+Video field selection is currently available through core `SearchClient`, not
+this hook. Core's `ContentLibrarySearchOptions` accepts `videos`, while
+`UseUnifiedSearchProps` and the legacy `SearchUnifiedOptions` keep the hook's
+selection types. Use those narrower types when sharing options with this hook.
+Unified responses now include a `videos` array (empty when no videos are returned),
+which adds an enumerable property to serialized results and exact snapshots.
+Existing hook overrides may continue to omit it.
+
 Image selection requires backend support. A production check on 2026-10-20
 returned HTTP 400 for `fields: ['images']`; the SDK supports mapping image hits,
 but this does not make image selection available on that deployment.
