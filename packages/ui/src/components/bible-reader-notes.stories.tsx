@@ -629,7 +629,11 @@ export const RefreshDisplayedChapterAfterNavigation: Story = {
 
     try {
       storyNavigation.parse(loaded.hostNavigation).request({ versionId: 111, passageId: 'JHN.3' });
-      await readerVerse(root, 16);
+      await waitFor(() =>
+        expect(root.querySelector('[data-slot="yv-bible-renderer"]')).toHaveTextContent(
+          'Nicodemus',
+        ),
+      );
       await waitFor(() => expect(chapterReads).toEqual(['111:JHN.3']));
       await expect(overlays.getByRole('dialog', { name: 'John 1:2' })).toBeVisible();
       releaseNote.resolve();
