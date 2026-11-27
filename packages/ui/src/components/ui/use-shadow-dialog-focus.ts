@@ -14,6 +14,7 @@ interface ShadowDialogFocusOptions {
   modal: boolean;
   open: boolean;
   overlay: HTMLElement | null;
+  restoreFocusTarget?: HTMLElement | null;
 }
 
 interface ShadowDialogFocus {
@@ -109,6 +110,7 @@ export function useShadowDialogFocus({
   modal,
   open,
   overlay,
+  restoreFocusTarget,
 }: ShadowDialogFocusOptions): ShadowDialogFocus {
   const modalPresent = modal && (overlay !== null || content !== null);
   useShadowDialogFocusContainment(modalPresent, content, overlay);
@@ -131,9 +133,8 @@ export function useShadowDialogFocus({
     }
 
     const shadowRoot = getOwnShadowRoot(container);
-    const activeElement = shadowRoot
-      ? (shadowRoot.activeElement ?? container.ownerDocument.activeElement)
-      : container.ownerDocument.activeElement;
+    const activeElement =
+      restoreFocusTarget ?? shadowRoot?.activeElement ?? container.ownerDocument.activeElement;
     if (isElementFromOwnerDocument(activeElement, container, 'HTMLElement')) {
       restoreFocusRef.current = {
         capturedRoot: activeElement.getRootNode(),
@@ -141,7 +142,7 @@ export function useShadowDialogFocus({
       };
     }
     capturedRestoreFocusRef.current = true;
-  }, [container, focusRestoration, open]);
+  }, [container, focusRestoration, open, restoreFocusTarget]);
 
   const onCloseAutoFocus = React.useCallback(
     (event: Event): void => {

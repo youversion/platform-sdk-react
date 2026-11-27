@@ -16,7 +16,7 @@ export function BibleReaderPage() {
       <p role="status" className="px-4 py-1 text-sm text-muted-foreground">
         {openedMarker
           ? `Opened marker for ${openedMarker}.`
-          : 'Select verses and choose Mark verses to add a marker.'}
+          : 'Select verses and choose Save to add a note or Mark verses to add a marker.'}
       </p>
       <div className="min-h-0 flex-1">
         <BibleReader.Root
@@ -26,6 +26,7 @@ export function BibleReaderPage() {
           defaultLanguageId={defaultLanguageId}
           verseActionItems={[
             'highlights',
+            'save',
             {
               id: 'mark',
               label: 'Mark verses',

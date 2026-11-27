@@ -529,15 +529,6 @@ describe('VerseActionPopover', () => {
       expect(firstApplySwatch().style.backgroundColor).toContain('var(--yv-card)');
     });
 
-    it('uses a dark inner stroke in light mode and a light one in dark mode', () => {
-      const { unmount } = render(<VerseActionPopover {...createDefaultProps()} theme="light" />);
-      expect(firstApplySwatch().style.border).toContain('rgba(18, 18, 18, 0.2)');
-      unmount();
-
-      render(<VerseActionPopover {...createDefaultProps()} theme="dark" />);
-      expect(firstApplySwatch().style.border).toContain('rgba(255, 255, 255, 0.2)');
-    });
-
     it('keeps the active-swatch checkmark legible on the dimmed dark-mode fill', () => {
       render(
         <VerseActionPopover

@@ -52,12 +52,22 @@ Optional `locale` sets bundled UI copy (Verse of the Day heading, buttons, etc.)
 ### Customize verse actions and indicators
 
 Pass `verseActionItems` to `BibleReader.Root` to choose the order of
-`'highlights'`, `'copy'`, `'share'`, and custom actions. The default order is
-highlights, copy, then share. Each custom item supplies an `id`, a localized
+`'highlights'`, `'save'`, `'copy'`, `'share'`, and custom actions. The default
+order is highlights, Save, copy, then share. Each custom item supplies an `id`, a localized
 `label`, a decorative `icon`, and an `onSelect` callback. Its callback receives
 the current `BibleReaderVerseSelection` before the reader clears the selection.
 `passageIds` lists each selected verse separately, including when the selection
 has gaps.
+
+Save opens the Notes composer for the selected verses. A reader with built-in
+sign-in requests `read_notes` and `write_notes` alongside its existing OAuth
+scopes. The composer requires a YouVersion session with `write_notes`. Start
+with `includeAuth` and an `authRedirectUrl` that returns to the page containing
+the reader in the same position. The SDK resumes the captured selection in
+the reader that initiated sign-in, even when its passage changes.
+
+An empty note saves its attached passage. The reader also supports a private or
+public note and an optional highlight color.
 
 Both `BibleReader.Root` and `BibleTextView` accept `getVerseIndicator`. Return a
 `VerseIndicator` with a localized `label` and optional `style` to mark a verse

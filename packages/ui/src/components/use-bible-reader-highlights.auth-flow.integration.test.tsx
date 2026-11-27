@@ -84,60 +84,6 @@ afterEach(() => {
   sessionStorage.clear();
 });
 
-describe('highlight auth flow — one-fell-swoop (signed out)', () => {
-  it('color tap opens the sign-in dialog and stashes pending; confirm starts sign-in; granted return applies', async () => {
-    const signIn = vi.spyOn(YouVersionAPIUsers, 'signIn').mockResolvedValue(undefined);
-    const createHighlight = vi
-      .spyOn(HighlightsClient.prototype, 'createHighlight')
-      .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' });
-
-    const { result, unmount } = renderHook(() => useBibleReaderHighlights(options), {
-      wrapper: Providers,
-    });
-
-    // NEW BEHAVIOR (PR-288): a signed-out color tap opens the sign-in dialog
-    // instead of redirecting immediately. It stashes the pending intent and does
-    // NOT launch OAuth until the user confirms.
-    act(() => {
-      expect(result.current.apply('FFEC5B', [16])).toBe('flow');
-    });
-
-    expect(result.current.signInDialogOpen).toBe(true);
-    const pending = readPendingHighlights()[0];
-    expect(pending).toMatchObject({ verses: [16], color: 'ffec5b', versionId: 111, chapter: '3' });
-    expect(signIn).not.toHaveBeenCalled();
-    expect(createHighlight).not.toHaveBeenCalled();
-
-    // Confirm → launch the full-page sign-in redirect requesting `highlights`.
-    act(() => {
-      result.current.confirmSignInDialog();
-    });
-    expect(signIn).toHaveBeenCalledWith(
-      'https://host.example/callback',
-      ['profile'],
-      ['highlights'],
-    );
-
-    // The confirm triggers a full-page redirect; simulate the reload on the
-    // granted return — a fresh mount, now signed in with the permission granted
-    // and the pending highlight still in sessionStorage.
-    unmount();
-    YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']);
-    signedIn = true;
-    renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
-
-    await waitFor(() => {
-      expect(createHighlight).toHaveBeenCalledWith({
-        version_id: 111,
-        passage_id: 'JHN.3.16',
-        color: 'ffec5b',
-      });
-    });
-    // Pending consumed (the write is the proof it applied).
-    expect(readPendingHighlights()).toEqual([]);
-  });
-});
-
 describe('highlight auth flow — sign-in dialog (signed out)', () => {
   it('a color tap opens the sign-in dialog and stashes pending without launching OAuth', () => {
     const signIn = vi.spyOn(YouVersionAPIUsers, 'signIn').mockResolvedValue(undefined);

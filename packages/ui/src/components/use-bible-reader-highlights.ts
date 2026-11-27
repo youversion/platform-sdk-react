@@ -5,6 +5,7 @@ import { deriveHighlightedVerses } from '@/lib/highlight-projection';
 import { isPaletteHighlightColor, normalizeHighlightHex } from '@/lib/highlight-colors';
 import type { Highlight } from '@youversion/platform-core';
 import type { BibleReaderHighlightIntent } from './bible-reader.types';
+import { READER_SIGN_IN_SCOPES } from './bible-reader-auth';
 import {
   bibleReaderHighlightsMachine,
   scopesEqual,
@@ -38,6 +39,10 @@ export type UseBibleReaderHighlightsOptions = {
   versionId: number;
   book: string;
   chapter: string;
+  /** The chapter still painted during passage navigation. */
+  retainedScope?: HighlightScope | null;
+  /** Retains legacy scopes when a host owns Reader sign-in. */
+  hostOwnsSignIn?: boolean;
   /** Presence selects controlled mode (latched by the caller at first mount). */
   controlled?: ControlledHighlightsInput;
   /** Fires when the sign-in or permission redirect promise fulfills. */
@@ -76,6 +81,8 @@ export type UseBibleReaderHighlightsReturn = {
    * render the (otherwise inert) color-swatch row.
    */
   highlightsInteractive: boolean;
+  /** Revalidates the currently displayed chapter while keeping its cached colors. */
+  refresh: () => void;
   /** Whether the just-in-time permission confirm dialog is open. */
   permissionDialogOpen: boolean;
   /** Controlled open-change for the permission confirm dialog. */
@@ -90,6 +97,8 @@ export type UseBibleReaderHighlightsReturn = {
   confirmSignInDialog: () => void;
   /** User declined/dismissed the sign-in dialog → discard the pending highlight. */
   cancelSignInDialog: () => void;
+  /** A new Reader authorization replaces the pending highlight auth intent. */
+  discardPendingAuthorization: () => void;
 };
 
 /**
@@ -166,6 +175,8 @@ export function useBibleReaderHighlights({
   versionId,
   book,
   chapter,
+  retainedScope,
+  hostOwnsSignIn,
   controlled,
   onAuthRedirectStarted,
   onAuthRedirectFailed,
@@ -203,10 +214,23 @@ export function useBibleReaderHighlights({
     startDataExchangeForHighlights,
   } = useHighlightAuthActions();
 
-  const chapterUsfm = `${book}.${chapter}`;
+  const scope: HighlightScope = useMemo(
+    () => ({ versionId, book, chapter }),
+    [versionId, book, chapter],
+  );
+  const displayScope = retainedScope ?? scope;
+  const isDisplayingRetainedChapter = !scopesEqual(scope, displayScope);
+  const displayedVersionId = displayScope.versionId;
+  const displayedChapterUsfm = `${displayScope.book}.${displayScope.chapter}`;
   const { highlights, createHighlight, deleteHighlight, refetch } = useHighlights(
-    { version_id: versionId, passage_id: chapterUsfm },
+    { version_id: displayedVersionId, passage_id: displayedChapterUsfm },
     { enabled: live },
+  );
+  // Warm the destination's existing account-scoped cache while the old passage
+  // remains on screen. The display observer shares this request on handoff.
+  const { refetch: refetchDestination } = useHighlights(
+    { version_id: versionId, passage_id: `${book}.${chapter}` },
+    { enabled: live && isDisplayingRetainedChapter },
   );
 
   // Stable refs so controlled apply/remove close over the latest callbacks
@@ -222,22 +246,26 @@ export function useBibleReaderHighlights({
   const services: HighlightServices = {
     createHighlight,
     deleteHighlight,
-    refetch,
+    refetch: () => {
+      // Highlight writes target the requested scope; Notes refresh targets the
+      // displayed chapter separately through `refresh` below.
+      if (isDisplayingRetainedChapter) refetchDestination();
+      else refetch();
+    },
     hasHighlightsPermission,
     invalidateHighlightsPermission,
     consumeDataExchangeReturn,
-    startSignInForHighlights,
+    startSignInForHighlights: () =>
+      startSignInForHighlights(
+        undefined,
+        !hostOwnsSignIn && !authContext?.isHostControlled ? READER_SIGN_IN_SCOPES : undefined,
+      ),
     startDataExchangeForHighlights,
     onAuthRedirectStarted,
     onAuthRedirectFailed,
   };
   const servicesRef = useRef(services);
   servicesRef.current = services;
-
-  const scope: HighlightScope = useMemo(
-    () => ({ versionId, book, chapter }),
-    [versionId, book, chapter],
-  );
 
   const actorRef = useActorRef(bibleReaderHighlightsMachine, {
     input: {
@@ -259,33 +287,23 @@ export function useBibleReaderHighlights({
     actorRef.send({ type: 'SCOPE_CHANGED', scope });
   }, [actorRef, scope]);
 
-  // This parses the fetch result into `serverColors`.
-  // When `serverColors` changes, this code sends `serverColors` to the machine.
-  // The machine compares the optimistic overlay with `serverColors`.
-  //
-  // This `useMemo` depends on the `highlights` reference.
-  // `useApiData` uses TanStack Query.
-  // When a refetch returns the same content, TanStack Query keeps the same `highlights` object.
-  // As a result, that refetch does not create a new `serverColors`.
-  //
-  // If `serverColors` is a new object, `highlightedVerses` is also a new object.
-  // Then `verse.tsx` runs `useLayoutEffect` again for every verse.
-  const serverColors = useMemo(
-    () => parseServerColors(highlights, versionId, chapterUsfm),
-    [highlights, versionId, chapterUsfm],
+  // Keep the same paint and machine input when a refresh returns equivalent verse colors.
+  const latestServerColors = useMemo(
+    () => parseServerColors(highlights, displayedVersionId, displayedChapterUsfm),
+    [highlights, displayedVersionId, displayedChapterUsfm],
   );
+  const paintedServerColorsRef = useRef(latestServerColors);
+  if (!serverColorsEqual(paintedServerColorsRef.current, latestServerColors)) {
+    paintedServerColorsRef.current = latestServerColors;
+  }
+  const serverColors = paintedServerColorsRef.current;
 
-  const lastSentServerColorsRef = useRef<ServerColors | null>(null);
   useEffect(() => {
-    if (
-      lastSentServerColorsRef.current !== null &&
-      serverColorsEqual(lastSentServerColorsRef.current, serverColors)
-    ) {
-      return;
-    }
-    lastSentServerColorsRef.current = serverColors;
-    actorRef.send({ type: 'HIGHLIGHTS_UPDATED', serverColors });
-  }, [actorRef, serverColors]);
+    actorRef.send({
+      type: 'HIGHLIGHTS_UPDATED',
+      serverColors: isDisplayingRetainedChapter ? {} : serverColors,
+    });
+  }, [actorRef, isDisplayingRetainedChapter, serverColors]);
 
   // ── Rendered verse map ──────────────────────────────────────────────────────
   const overlay = useSelector(actorRef, (state) => state.context.overlay);
@@ -305,7 +323,9 @@ export function useBibleReaderHighlights({
     // machine scope still points at the old chapter, so the overlay is skipped
     // and the new chapter renders from server truth alone — verse numbers
     // collide across chapters.
-    if (!scopesEqual(machineScope, scope)) return { ...serverColors };
+    if (isDisplayingRetainedChapter || !scopesEqual(machineScope, scope)) {
+      return { ...serverColors };
+    }
     // Same window for an account swap: until the AUTH_CHANGED effect runs, the
     // machine still holds the previous account's overlay. Skip it, so the new
     // account never sees those entries, not even for one paint.
@@ -313,6 +333,7 @@ export function useBibleReaderHighlights({
     return selectHighlightedVerses(serverColors, overlay);
   }, [
     isControlled,
+    isDisplayingRetainedChapter,
     controlled?.highlights,
     live,
     serverColors,
@@ -347,6 +368,7 @@ export function useBibleReaderHighlights({
       | 'cancelPermissionDialog'
       | 'confirmSignInDialog'
       | 'cancelSignInDialog'
+      | 'discardPendingAuthorization'
     >
   >(
     () => ({
@@ -396,6 +418,7 @@ export function useBibleReaderHighlights({
       cancelPermissionDialog: () => actorRef.send({ type: 'CANCEL_PERMISSION' }),
       confirmSignInDialog: () => actorRef.send({ type: 'CONFIRM_SIGN_IN' }),
       cancelSignInDialog: () => actorRef.send({ type: 'DECLINE_SIGN_IN' }),
+      discardPendingAuthorization: () => actorRef.send({ type: 'DISCARD_AUTHORIZATION' }),
     }),
     [actorRef, scope],
   );
@@ -408,6 +431,9 @@ export function useBibleReaderHighlights({
     // we intentionally exclude here — a signed-out tap still enters the sign-in
     // flow, so the row stays interactive.)
     highlightsInteractive: hasAuthProvider,
+    refresh: () => {
+      if (live) refetch();
+    },
     permissionDialogOpen,
     signInDialogOpen,
     ...api,

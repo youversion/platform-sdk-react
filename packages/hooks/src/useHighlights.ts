@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useContext } from 'react';
 import { HighlightsClient } from '@youversion/platform-core';
+import { YouVersionAuthContext } from './context/YouVersionAuthContext';
 import { useApiClient } from './internal/useApiClient';
 import { useQueryKeyBase } from './internal/useQueryKeyBase';
 import { useUserScope } from './internal/useUserScope';
@@ -39,6 +40,8 @@ export function useHighlights(
   const apiClient = useApiClient();
   const keyBase = useQueryKeyBase();
   const userScope = useUserScope();
+  const auth = useContext(YouVersionAuthContext);
+  const isManaged = auth?.isHostControlled === false;
 
   const highlightsClient = useMemo(() => new HighlightsClient(apiClient), [apiClient]);
 
@@ -58,13 +61,25 @@ export function useHighlights(
   // entry is real.
   const { data, loading, error, refetch } = useApiData<Collection<Highlight>>(
     [...keyBase, 'highlights', userScope, options.version_id, options.passage_id],
-    () => highlightsClient.getHighlights(options),
+    () => {
+      if (!isManaged) return highlightsClient.getHighlights(options);
+      const token = auth.userInfo?.userId === userScope ? auth.accessToken : null;
+      if (!token) return Promise.reject(new Error('Authentication required'));
+      // The version check can await HTTP before the client sends the request.
+      // Keep using the credential verified for this query's account.
+      return highlightsClient.getHighlights(options, token);
+    },
     {
-      enabled: userScope !== null && !override && apiOptions?.enabled !== false,
+      enabled:
+        userScope !== null &&
+        (!isManaged || Boolean(auth.accessToken)) &&
+        !override &&
+        apiOptions?.enabled !== false,
       // The `queryKey` carries the user scope. Holding previous data across a
       // key change would show one account's highlights to another during an
       // account switch, so this hook always drops to `null` instead.
       keepPreviousData: false,
+      restartInitialFetchOnRefetch: true,
     },
   );
 

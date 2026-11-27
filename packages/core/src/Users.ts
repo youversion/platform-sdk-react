@@ -14,6 +14,7 @@ import {
   type TokenExchangeResponse,
 } from './schemas/auth';
 import { getLocalStorage, removeStorageItem, setStorageItem } from './web-storage';
+import { AUTH_CODE_VERIFIER_KEY, AUTH_STATE_KEY } from './auth-storage-keys';
 
 const MISSING_LOCAL_STORAGE_MESSAGE =
   'Sign In with YouVersion requires localStorage, which is not available in this environment';
@@ -25,6 +26,15 @@ const MISSING_LOCAL_STORAGE_MESSAGE =
  */
 const REJECTED_LOCAL_STORAGE_WRITE_MESSAGE =
   'Sign In with YouVersion could not write to localStorage; the store rejected the write (its quota may be full, as it always is in Safari private browsing)';
+
+/** The callback no longer belongs to the active authorization attempt. */
+class OAuthCallbackSupersededError extends Error {
+  override readonly name = 'OAuthCallbackSupersededError';
+}
+
+class VerifiedOAuthCallbackError extends Error {
+  override readonly name = 'VerifiedOAuthCallbackError';
+}
 
 /**
  * The OAuth handoff has to survive a full-page redirect, so it cannot fall back
@@ -75,6 +85,17 @@ type PendingGrantedPermissionsStash = StatePermissionsStash;
 
 type RequestedPermissionsStash = StatePermissionsStash;
 
+type TokenRotation = {
+  readonly result: SignInWithYouVersionResult;
+  readonly previousSession: {
+    readonly accessToken: string | null;
+    readonly refreshToken: string;
+    readonly userId: string | undefined;
+  };
+};
+
+const tokenRotationObservers = new Set<(rotation: TokenRotation) => void>();
+
 /**
  * Dedupe map for in-flight/settled code-for-token exchanges, keyed by the
  * single-use authorization `code`. Under React StrictMode the auth init effect
@@ -105,7 +126,7 @@ export function __resetAuthCallbackDedupeForTests(): void {
  * genuine refresh (e.g. the token expiring an hour on) must be able to run.
  * Sharing applies only to calls that overlap in time.
  */
-let inFlightRefresh: Promise<boolean> | null = null;
+let inFlightRefresh: Promise<TokenRotation | null> | null = null;
 
 /** Test-only: clears the shared in-flight refresh between test cases. */
 export function __resetTokenRefreshDedupeForTests(): void {
@@ -118,12 +139,26 @@ export function __resetTokenRefreshDedupeForTests(): void {
  * failure path of the code exchange.
  */
 const clearOAuthHandoff = (storage: Storage | null): void => {
-  removeStorageItem(storage, 'youversion-auth-code-verifier');
+  removeStorageItem(storage, AUTH_CODE_VERIFIER_KEY);
   removeStorageItem(storage, 'youversion-auth-redirect-uri');
-  removeStorageItem(storage, 'youversion-auth-state');
+  removeStorageItem(storage, AUTH_STATE_KEY);
   removeStorageItem(storage, PENDING_GRANTED_PERMISSIONS_KEY);
   removeStorageItem(storage, REQUESTED_PERMISSIONS_KEY);
 };
+
+function pendingAuthorizationState(): string | null {
+  const storage = getLocalStorage();
+  return storage?.getItem(AUTH_CODE_VERIFIER_KEY) ? storage.getItem(AUTH_STATE_KEY) : null;
+}
+
+function clearFailedRefreshSession() {
+  if (pendingAuthorizationState()) {
+    // A pending sign-in needs its PKCE handoff and the initiating profile.
+    YouVersionPlatformConfiguration.saveAuthData(null, null, null);
+  } else {
+    YouVersionPlatformConfiguration.clearAuthTokens();
+  }
+}
 
 /**
  * Persist early grants bound to the OAuth `state` that produced them.
@@ -223,12 +258,14 @@ export class YouVersionAPIUsers {
    * @param scopes - OAuth scopes to request, such as `profile`, `email`, or `read_notes`.
    * @param permissions - YouVersion data-exchange permissions to request (e.g. `highlights`).
    *   These are sent as a comma-joined `requested_permissions` param, separate from OAuth scopes.
+   * @param beforeRedirect - Called with the authorization state before storing the OAuth handoff and navigating.
    * @throws An error if authentication fails or configuration is invalid.
    */
   static async signIn(
     redirectURL: string,
     scopes?: AuthenticationScopes[],
     permissions?: SignInWithYouVersionPermissionValues[],
+    beforeRedirect?: (state: string) => void,
   ): Promise<void> {
     const appKey = YouVersionPlatformConfiguration.appKey;
     if (!appKey) {
@@ -244,17 +281,15 @@ export class YouVersionAPIUsers {
       permissions,
     );
 
+    beforeRedirect?.(authorizationRequest.parameters.state);
+
     // Store auth data for callback handler
-    persistOrThrow(
-      storage,
-      'youversion-auth-code-verifier',
-      authorizationRequest.parameters.codeVerifier,
-    );
+    persistOrThrow(storage, AUTH_CODE_VERIFIER_KEY, authorizationRequest.parameters.codeVerifier);
     const redirectUrlString = redirectURL.toString().endsWith('/')
       ? redirectURL.toString().slice(0, -1)
       : redirectURL.toString();
     persistOrThrow(storage, 'youversion-auth-redirect-uri', redirectUrlString);
-    persistOrThrow(storage, 'youversion-auth-state', authorizationRequest.parameters.state);
+    persistOrThrow(storage, AUTH_STATE_KEY, authorizationRequest.parameters.state);
     // Clear any stash left by a prior abandoned flow (it's only ever produced later,
     // during the callback pre-code hop, and never needs to survive a new signIn).
     // Otherwise a previous user's abandoned grants could leak into this flow.
@@ -272,8 +307,13 @@ export class YouVersionAPIUsers {
       stashRequestedPermissions(storage, authorizationRequest.parameters.state, permissions);
     }
 
-    // Simple redirect to authorization URL
     window.location.href = authorizationRequest.url.toString();
+  }
+
+  /** Whether the specified authorization attempt, or any attempt when omitted, is pending. */
+  static isSignInPending(state?: string): boolean {
+    const pendingState = pendingAuthorizationState();
+    return !!pendingState && (state === undefined || pendingState === state);
   }
 
   /**
@@ -292,31 +332,29 @@ export class YouVersionAPIUsers {
     const state = urlParams.get('state');
     const error = urlParams.get('error');
 
-    // Check if this is an OAuth callback
-    if (!state && !error) {
-      return null;
+    const storage = state ? requireLocalStorage() : null;
+    if (state && state !== storage?.getItem(AUTH_STATE_KEY)) {
+      throw new OAuthCallbackSupersededError('Invalid state parameter - possible CSRF attack');
     }
 
-    // Handle OAuth error
     if (error) {
       const errorDescription = urlParams.get('error_description') || error;
+      if (state) {
+        // Retain state as proof for a replay of the denial, but end the PKCE attempt.
+        removeStorageItem(storage, AUTH_CODE_VERIFIER_KEY);
+        throw new VerifiedOAuthCallbackError(`OAuth authentication failed: ${errorDescription}`);
+      }
       throw new Error(`OAuth authentication failed: ${errorDescription}`);
     }
 
-    const storage = requireLocalStorage();
-
-    // Verify state parameter
-    const storedState = storage.getItem('youversion-auth-state');
-    if (state !== storedState) {
-      throw new Error('Invalid state parameter - possible CSRF attack');
-    }
+    if (!state || !storage) return null;
 
     // If we don't have a code, this might be the first callback with user data
     // We need to redirect to the server callback to get the authorization code.
     // Stash any granted_permissions from this hop first — Swift keeps the original
     // callback URL for grants, but the web flow navigates away to /auth/callback
     // and the final redirect with `code` may omit them.
-    if (!code && state) {
+    if (!code) {
       const earlyGrants = parseGrantedPermissions(urlParams);
       if (earlyGrants.length > 0) {
         stashPendingGrantedPermissions(storage, state, earlyGrants);
@@ -326,10 +364,10 @@ export class YouVersionAPIUsers {
     }
 
     // Get stored auth data
-    const codeVerifier = storage.getItem('youversion-auth-code-verifier');
+    const codeVerifier = storage.getItem(AUTH_CODE_VERIFIER_KEY);
     const redirectUri = storage.getItem('youversion-auth-redirect-uri');
 
-    if (!code || !codeVerifier || !redirectUri) {
+    if (!codeVerifier || !redirectUri) {
       throw new Error('Missing required authentication parameters');
     }
 
@@ -371,10 +409,15 @@ export class YouVersionAPIUsers {
     code: string,
     codeVerifier: string,
     redirectUri: string,
-    state: string | null,
+    state: string,
     urlParams: URLSearchParams,
     storage: Storage,
   ): Promise<SignInWithYouVersionResult> {
+    const initiatingUserId = YouVersionPlatformConfiguration.storedUserInfo?.id;
+    const isCurrentSignIn = () =>
+      storage.getItem(AUTH_STATE_KEY) === state &&
+      YouVersionPlatformConfiguration.storedUserInfo?.id === initiatingUserId;
+    let savingSession = false;
     try {
       // Exchange authorization code for tokens
       const tokenRequest = SignInWithYouVersionPKCEAuthorizationRequestBuilder.tokenURLRequest(
@@ -396,6 +439,9 @@ export class YouVersionAPIUsers {
         throw new Error(`Token exchange response was invalid: ${parsed.error.message}`);
       }
       const tokens = parsed.data;
+      if (!isCurrentSignIn()) {
+        throw new OAuthCallbackSupersededError('The authentication session changed during sign-in');
+      }
 
       // Match Swift: union grants from (1) this URL, (2) stashed pre-code hop,
       // (3) token scope — then drop scopes that aren't data-exchange permissions before seeding the
@@ -412,8 +458,8 @@ export class YouVersionAPIUsers {
       // (removeGrantedPermission) and the machine's PERMISSION_LOST path re-prompts.
       // Same fail-closed state binding as the granted stash; a Set union means a
       // future server echo never double-counts.
-      const stashedGrants = state ? readPendingGrantedPermissions(storage, state) : [];
-      const requestedGrants = state ? readRequestedPermissions(storage, state) : [];
+      const stashedGrants = readPendingGrantedPermissions(storage, state);
+      const requestedGrants = readRequestedPermissions(storage, state);
       const grantedPermissions = [
         ...new Set([
           ...parseGrantedPermissions(urlParams),
@@ -428,10 +474,12 @@ export class YouVersionAPIUsers {
 
       // Store tokens in configuration. The ID token is intentionally not
       // persisted — it is only used here to derive the user profile below.
+      savingSession = true;
       const tokensPersisted = YouVersionPlatformConfiguration.saveAuthData(
         result.accessToken || null,
         result.refreshToken || null,
         result.expiryDate || null,
+        result.yvpUserId ? { scope: tokens.scope, userId: result.yvpUserId } : undefined,
       );
 
       // Persist the decoded user profile so it survives reloads without
@@ -470,7 +518,17 @@ export class YouVersionAPIUsers {
 
       return result;
     } catch (error) {
-      YouVersionPlatformConfiguration.clearAuthTokens();
+      if (error instanceof OAuthCallbackSupersededError) throw error;
+      if (savingSession) {
+        YouVersionPlatformConfiguration.clearAuthTokens();
+      } else if (!isCurrentSignIn()) {
+        throw new OAuthCallbackSupersededError(
+          'The authentication session changed during sign-in',
+          {
+            cause: error,
+          },
+        );
+      }
       clearOAuthHandoff(storage);
       throw error;
     }
@@ -627,7 +685,22 @@ export class YouVersionAPIUsers {
    * @throws An error if refresh fails or no refresh token is available
    */
   static async refreshTokens(): Promise<SignInWithYouVersionResult | null> {
+    return (await this.rotateTokens(false)).result;
+  }
+
+  /** Observes successful token rotations in this SDK instance. Returns an unsubscribe function. */
+  static onTokenRotation(observer: (rotation: TokenRotation) => void): () => void {
+    tokenRotationObservers.add(observer);
+    return () => {
+      tokenRotationObservers.delete(observer);
+    };
+  }
+
+  private static async rotateTokens(clearOnPersistenceFailure: boolean): Promise<TokenRotation> {
+    const accessToken = YouVersionPlatformConfiguration.accessToken;
     const refreshToken = YouVersionPlatformConfiguration.refreshToken;
+    const userId = YouVersionPlatformConfiguration.storedUserInfo?.id;
+    const oauthSession = YouVersionPlatformConfiguration.readOAuthSession();
     const appKey = YouVersionPlatformConfiguration.appKey;
 
     if (!refreshToken) {
@@ -638,6 +711,9 @@ export class YouVersionAPIUsers {
       throw new Error(
         'YouVersionPlatformConfiguration.appKey must be set before refreshing tokens',
       );
+    }
+    if (oauthSession === null || (oauthSession && oauthSession.refreshToken !== refreshToken)) {
+      throw new Error('The authentication session changed before token refresh');
     }
 
     try {
@@ -664,6 +740,14 @@ export class YouVersionAPIUsers {
       }
 
       const tokens = TokenRefreshResponseSchema.parse(await response.json());
+      if (
+        YouVersionPlatformConfiguration.accessToken !== accessToken ||
+        YouVersionPlatformConfiguration.refreshToken !== refreshToken ||
+        YouVersionPlatformConfiguration.storedUserInfo?.id !== userId ||
+        YouVersionPlatformConfiguration.readOAuthSession() === null
+      ) {
+        throw new Error('The authentication session changed during token refresh');
+      }
 
       // Create result with new tokens. The persisted user profile is left
       // untouched — refreshing only rotates the access/refresh tokens.
@@ -675,16 +759,40 @@ export class YouVersionAPIUsers {
 
       // Store updated tokens. The rotation already spent the old refresh token,
       // so an unpersisted result is a dead session, not a refreshed one.
+      const rotatedAccessToken = result.accessToken || null;
+      const rotatedRefreshToken = result.refreshToken || null;
       const persisted = YouVersionPlatformConfiguration.saveAuthData(
-        result.accessToken || null,
-        result.refreshToken || null,
+        rotatedAccessToken,
+        rotatedRefreshToken,
         result.expiryDate || null,
+        oauthSession
+          ? { scope: tokens.scope ?? oauthSession.scope, userId: oauthSession.userId }
+          : undefined,
       );
       if (!persisted) {
+        // A partial write can change the token tuple and expiry, so the regular
+        // stale-result check cannot clean up this failure later.
+        const config = YouVersionPlatformConfiguration;
+        if (
+          clearOnPersistenceFailure &&
+          config.storedUserInfo?.id === userId &&
+          [accessToken, rotatedAccessToken].includes(config.accessToken) &&
+          [refreshToken, rotatedRefreshToken].includes(config.refreshToken)
+        ) {
+          clearFailedRefreshSession();
+        }
         throw new Error('the rotated tokens could not be saved to browser storage');
       }
 
-      return result;
+      const rotation = { result, previousSession: { accessToken, refreshToken, userId } };
+      for (const observer of tokenRotationObservers) {
+        try {
+          observer(rotation);
+        } catch {
+          // An observer cannot turn an already persisted rotation into an authentication failure.
+        }
+      }
+      return rotation;
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Token refresh failed: ${error.message}`);
@@ -711,9 +819,12 @@ export class YouVersionAPIUsers {
   /**
    * Refreshes the access token if it's expired or about to expire.
    *
+   * @param onRotation - Receives the persisted rotation and its initiating session when a refresh occurred.
    * @returns Promise<boolean> - true if refresh was successful or not needed, false if failed
    */
-  static async refreshTokenIfNeeded(): Promise<boolean> {
+  static async refreshTokenIfNeeded(
+    onRotation?: (rotation: TokenRotation) => void,
+  ): Promise<boolean> {
     if (!this.isTokenExpired()) {
       return true; // Token is still valid
     }
@@ -722,16 +833,13 @@ export class YouVersionAPIUsers {
     // StrictMode double-invocation) can't spend the single-use refresh token a
     // second time and wipe the session on its failure. The get/set here is
     // synchronous before the first await, so the check is re-entrancy safe.
-    const existingRefresh = inFlightRefresh;
-    if (existingRefresh) {
-      return existingRefresh;
-    }
-
-    const refresh = this.performTokenRefresh();
+    const refresh = inFlightRefresh ?? this.performTokenRefresh();
     inFlightRefresh = refresh;
 
     try {
-      return await refresh;
+      const rotation = await refresh;
+      if (rotation) onRotation?.(rotation);
+      return rotation !== null;
     } finally {
       // Clear the slot once settled so a later, genuine refresh can run. Guard
       // against clobbering a newer refresh that a subsequent call may have set.
@@ -744,17 +852,26 @@ export class YouVersionAPIUsers {
   /**
    * Performs a single token refresh, clearing the session exactly once on
    * failure. Callers must share this via {@link inFlightRefresh} so a duplicate
-   * refresh never runs concurrently; a shared failure clears tokens once and
-   * resolves false for every caller awaiting it.
+   * refresh never runs concurrently. Each caller receives the same outcome.
    */
-  private static async performTokenRefresh(): Promise<boolean> {
+  private static async performTokenRefresh(): Promise<TokenRotation | null> {
+    const accessToken = YouVersionPlatformConfiguration.accessToken;
+    const refreshToken = YouVersionPlatformConfiguration.refreshToken;
+    const userId = YouVersionPlatformConfiguration.storedUserInfo?.id;
+    if (YouVersionPlatformConfiguration.readOAuthSession() === null) return null;
     try {
-      const result = await this.refreshTokens();
-      return !!result;
+      return await this.rotateTokens(true);
     } catch {
       // Refresh failed, clear tokens
-      YouVersionPlatformConfiguration.clearAuthTokens();
-      return false;
+      if (
+        YouVersionPlatformConfiguration.accessToken === accessToken &&
+        YouVersionPlatformConfiguration.refreshToken === refreshToken &&
+        YouVersionPlatformConfiguration.storedUserInfo?.id === userId &&
+        YouVersionPlatformConfiguration.readOAuthSession() !== null
+      ) {
+        clearFailedRefreshSession();
+      }
+      return null;
     }
   }
 }

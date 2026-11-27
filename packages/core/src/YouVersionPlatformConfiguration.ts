@@ -1,7 +1,37 @@
-import { StoredGrantsSchema } from './schemas/auth';
+import {
+  StoredGrantsSchema,
+  StoredOAuthSessionSchema,
+  type StoredOAuthSession,
+} from './schemas/auth';
 import { YouVersionUserInfoJSONSchema, type YouVersionUserInfoJSON } from './schemas/user-info';
+import { parsePermissionList } from './permissions';
+import type { AuthenticationScopes } from './types';
 import { versionFilterState } from './version-filter-state';
 import { getLocalStorage, removeStorageItem, setStorageItem } from './web-storage';
+import { AUTH_STATE_KEY } from './auth-storage-keys';
+
+type LegacyAuthSession = {
+  userId: string | null;
+  accessToken: string;
+  refreshToken: string | null;
+};
+
+function parseStoredUserInfo(raw: string | null | undefined): YouVersionUserInfoJSON | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    const result = YouVersionUserInfoJSONSchema.safeParse(parsed);
+    return result.success ? result.data : null;
+  } catch {
+    return null;
+  }
+}
+
+function invalidateAuthorization(storage: Storage | null, state: string | null | undefined) {
+  if (state && storage?.getItem(AUTH_STATE_KEY) === state) {
+    removeStorageItem(storage, AUTH_STATE_KEY);
+  }
+}
 
 /**
  * Security Note: Tokens and the decoded user profile are stored in localStorage
@@ -57,14 +87,26 @@ export class YouVersionPlatformConfiguration {
     accessToken: string | null,
     refreshToken: string | null,
     expiryDate: Date | null,
+    oauthSession?: Pick<StoredOAuthSession, 'scope' | 'userId'>,
   ): boolean {
     const storage = getLocalStorage();
+    const previousState =
+      accessToken !== null && oauthSession && oauthSession.userId !== this.currentUserId
+        ? storage?.getItem(AUTH_STATE_KEY)
+        : null;
     let persisted = true;
 
     if (accessToken !== null) {
+      if (oauthSession) {
+        const value = JSON.stringify({ ...oauthSession, accessToken, refreshToken });
+        persisted = setStorageItem(storage, 'youversion-auth-scope', value) && persisted;
+      } else {
+        removeStorageItem(storage, 'youversion-auth-scope');
+      }
       persisted = setStorageItem(storage, 'accessToken', accessToken) && persisted;
     } else {
       removeStorageItem(storage, 'accessToken');
+      removeStorageItem(storage, 'youversion-auth-scope');
     }
 
     if (refreshToken !== null) {
@@ -79,6 +121,7 @@ export class YouVersionPlatformConfiguration {
       removeStorageItem(storage, 'expiryDate');
     }
 
+    if (persisted) invalidateAuthorization(storage, previousState);
     return persisted;
   }
 
@@ -91,13 +134,19 @@ export class YouVersionPlatformConfiguration {
    */
   public static saveUserInfo(userInfo: YouVersionUserInfoJSON | null): boolean {
     const storage = getLocalStorage();
+    const previousId = parseStoredUserInfo(storage?.getItem('userInfo'))?.id ?? null;
+    const previousState =
+      previousId !== (userInfo?.id ?? null) ? storage?.getItem(AUTH_STATE_KEY) : null;
 
     if (userInfo === null) {
       removeStorageItem(storage, 'userInfo');
+      if (!storage?.getItem('userInfo')) invalidateAuthorization(storage, previousState);
       return true;
     }
 
-    return setStorageItem(storage, 'userInfo', JSON.stringify(userInfo));
+    const persisted = setStorageItem(storage, 'userInfo', JSON.stringify(userInfo));
+    if (persisted) invalidateAuthorization(storage, previousState);
+    return persisted;
   }
 
   public static clearAuthTokens(): void {
@@ -105,6 +154,55 @@ export class YouVersionPlatformConfiguration {
     this.saveUserInfo(null);
     this.clearGrantedPermissions();
     this.clearDataExchangeInitiator();
+    removeStorageItem(getLocalStorage(), AUTH_STATE_KEY);
+  }
+
+  /** Returns an account's current access token, verifying the scope or the unchanged legacy session. */
+  public static getOAuthAccessToken(
+    userId: string | null,
+    scope?: AuthenticationScopes,
+    legacySession?: LegacyAuthSession,
+  ): string | null {
+    const session = this.readOAuthSession();
+    if (session) {
+      return session.userId === userId &&
+        (scope === undefined || parsePermissionList(session.scope).includes(scope))
+        ? session.accessToken
+        : null;
+    }
+    if (session === null || scope !== undefined || legacySession?.userId !== userId) return null;
+    return this.currentUserId === userId &&
+      this.accessToken === legacySession.accessToken &&
+      this.refreshToken === legacySession.refreshToken
+      ? legacySession.accessToken
+      : null;
+  }
+
+  /**
+   * Whether a persisted OAuth binding is invalid or disagrees with the stored credentials or profile.
+   * An absent legacy binding does not block profile display. Managed account requests still need
+   * a validated token from `getOAuthAccessToken`.
+   */
+  public static get hasMismatchedOAuthSession(): boolean {
+    return this.readOAuthSession() === null;
+  }
+
+  /** @internal Reads the OAuth session for token rotation, or `null` for a mismatched record. */
+  public static readOAuthSession(): StoredOAuthSession | null | undefined {
+    const storage = getLocalStorage();
+    const raw = storage?.getItem('youversion-auth-scope');
+    if (raw === null || raw === undefined) return undefined;
+    try {
+      const session = StoredOAuthSessionSchema.parse(JSON.parse(raw));
+      // A different tab may be partway through replacing the token or profile.
+      return session.accessToken === storage?.getItem('accessToken') &&
+        session.refreshToken === (storage?.getItem('refreshToken') ?? null) &&
+        session.userId === this.currentUserId
+        ? session
+        : null;
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -232,18 +330,17 @@ export class YouVersionPlatformConfiguration {
    * Returns `null` when nothing is stored or the stored value is malformed.
    */
   public static get storedUserInfo(): YouVersionUserInfoJSON | null {
-    const raw = getLocalStorage()?.getItem('userInfo');
-    if (!raw) {
-      return null;
-    }
+    return parseStoredUserInfo(getLocalStorage()?.getItem('userInfo'));
+  }
 
-    try {
-      const parsed: unknown = JSON.parse(raw);
-      const result = YouVersionUserInfoJSONSchema.safeParse(parsed);
-      return result.success ? result.data : null;
-    } catch {
-      return null;
-    }
+  /** Whether a storage event records the loss or replacement of a signed-in profile. */
+  public static didStoredAccountChange(
+    event: Pick<StorageEvent, 'key' | 'oldValue' | 'newValue'>,
+  ): boolean {
+    if (event.key === null) return true;
+    if (event.key !== 'userInfo') return false;
+    const previousUserId = parseStoredUserInfo(event.oldValue)?.id;
+    return !!previousUserId && previousUserId !== parseStoredUserInfo(event.newValue)?.id;
   }
 
   public static get tokenExpiryDate(): Date | null {

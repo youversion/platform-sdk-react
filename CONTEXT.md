@@ -178,9 +178,9 @@ round-trips an updated `highlights` prop.
 
 ## Verse action popover
 
-The floating action bar for a verse selection, with highlight colors, copy, and
-share as the default actions. The host can reorder or omit these actions and add
-its own.
+The floating action bar for a verse selection, with highlight colors, Save,
+copy, and share as the default actions. The host can reorder or omit these
+actions and add its own.
 
 ## Highlights permission
 

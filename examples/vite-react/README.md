@@ -24,6 +24,26 @@ pnpm dev:web
 - **Images** — Smoke page for `ImagesClient` list and detail (metadata only)
 - **Sign in with YouVersion Button** - Authentication with YouVersion
 
+## Reader Notes smoke test
+
+Select verses and choose **Save** to open the Notes composer. Sign in from the
+Reader when prompted, then save the passage with optional note text, visibility,
+and color. The demo also exposes **Mark verses** for its local verse markers.
+
+Run the repeatable browser smoke with a mocked YouVersion API. The script
+checks the Navbar and Reader OAuth scopes, declined authorization, exact
+selection resumption, cross-account invalidation, and the Notes create payload.
+Run these commands from the repository root after installing Playwright Chromium.
+
+```bash
+pnpm build
+VITE_YVP_APP_KEY=notes-smoke VITE_YVP_API_HOST=notes-smoke.example.test \
+  VITE_YVP_AUTH_REDIRECT_URL=http://127.0.0.1:5176/callback/ VITE_YVP_LOCALE=en \
+  pnpm --filter vite-react dev --port 5176 --strictPort
+```
+
+With the server running, execute `node packages/ui/scripts/smoke-vite-reader-notes.mjs`.
+
 ## Verse marker smoke test
 
 1. Open the browser developer tools' **Network** panel, enable **Preserve log**,

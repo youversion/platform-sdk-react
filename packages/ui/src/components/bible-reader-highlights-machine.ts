@@ -172,6 +172,7 @@ export type HighlightsEvent =
   | { type: 'DECLINE_SIGN_IN' }
   | { type: 'CONFIRM_PERMISSION' }
   | { type: 'CANCEL_PERMISSION' }
+  | { type: 'DISCARD_AUTHORIZATION' }
   | { type: 'ENQUEUE'; op: WriteOp }
   | { type: 'PERMISSION_LOST' };
 
@@ -759,6 +760,7 @@ export const bibleReaderHighlightsMachine = setup({
     AUTH_CHANGED: { actions: ['resetWriteStateOnAccountChange', 'assignAuth'] },
     HIGHLIGHTS_UPDATED: { actions: 'reconcileOverlay' },
     SCOPE_CHANGED: { guard: 'scopeIsDifferent', actions: 'resetForScopeChange' },
+    DISCARD_AUTHORIZATION: { actions: 'clearPending' },
   },
   initial: 'booting',
   states: {
@@ -783,6 +785,7 @@ export const bibleReaderHighlightsMachine = setup({
         flow: {
           initial: 'resuming',
           on: {
+            DISCARD_AUTHORIZATION: { target: '.idle', actions: 'clearPending' },
             // A write's 401/403 (raised by settleWrite) re-opens the JIT dialog.
             PERMISSION_LOST: { target: '.permissionDialog' },
             // Taps are handled here so any flow substate resolves them.

@@ -60,6 +60,8 @@ const DialogDescription = DialogPrimitive.Description;
 
 type DialogContentProps = React.ComponentProps<typeof DialogPrimitive.Content> & {
   theme?: 'light' | 'dark';
+  /** Durable focus target when the dialog replaces an overlay that is closing. */
+  restoreFocusTarget?: HTMLElement | null;
 };
 
 /**
@@ -75,6 +77,7 @@ function DialogContent({
   children,
   onCloseAutoFocus,
   ref,
+  restoreFocusTarget,
   ...props
 }: DialogContentProps): React.ReactNode {
   const direction = useInterfaceDirection();
@@ -88,6 +91,7 @@ function DialogContent({
     modal: portal.modal,
     open: portal.open,
     overlay: overlayNode,
+    restoreFocusTarget,
   });
 
   if (portal.awaitingPortalTarget) return null;

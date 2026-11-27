@@ -46,11 +46,16 @@ export const CreateNoteSchema = strictObject({
   ...optionalWriteFields,
   /** Reuse this UUID to retry the same logical create without duplicating the note. */
   request_id: z.uuid(),
-  /** Non-empty note text. */
-  content: nonEmptyContent,
+  /** Note text. May be empty when saving an attached passage. */
+  content: z.string(),
   /** `private` is visible only to the author; `public` is visible to others. */
   status,
-});
+}).check(
+  z.refine((note) => note.content.length > 0 || Boolean(note.passage), {
+    path: ['content'],
+    message: 'Content is required without an attached passage',
+  }),
+);
 
 export const UpdateNoteSchema = strictObject({
   ...optionalWriteFields,

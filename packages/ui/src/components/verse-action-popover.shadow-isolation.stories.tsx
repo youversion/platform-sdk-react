@@ -5,7 +5,12 @@ import { useRef, useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import i18n from '../i18n';
 import { ShadowRootHost } from '../lib/shadow-root-host';
-import { waitFor, waitForElement, waitForShadowRoot } from '../test/storybook-dom';
+import {
+  getColorChannels,
+  waitFor,
+  waitForElement,
+  waitForShadowRoot,
+} from '../test/storybook-dom';
 import { VerseActionPopover } from './verse-action-popover';
 
 function IsolatedVerseActionPopover(): React.ReactNode {
@@ -142,6 +147,54 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const StandaloneSwatchUnderHostReset: Story = {
+  tags: ['cross-browser'],
+  render: function StandalonePopover() {
+    const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+    const close = () => setAnchor(null);
+    return (
+      <>
+        <style>{'body button[type="button"] { border: 0; }'}</style>
+        <button type="button" onClick={(event) => setAnchor(event.currentTarget)}>
+          Select verse
+        </button>
+        <VerseActionPopover
+          open={anchor !== null}
+          onOpenChange={(open) => {
+            if (!open) close();
+          }}
+          activeHighlights={new Set()}
+          selectedVerses={anchor ? [1] : []}
+          highlightedVerses={{}}
+          anchorElement={anchor}
+          onHighlight={close}
+          onClearHighlight={close}
+          onCopy={close}
+          onShare={close}
+        />
+      </>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const host = await within(canvasElement).findByRole('button', { name: 'Select verse' });
+    await userEvent.click(host);
+    await expect(getComputedStyle(host).borderTopWidth).toBe('0px');
+    const doc = canvasElement.ownerDocument;
+    const popover = await within(doc.body).findByRole('dialog', { name: 'Verse actions' });
+    const [swatch] = within(popover).getAllByRole('button', { name: 'Apply highlight' });
+    if (!swatch) throw new Error('Verse action highlight swatch is missing');
+    await waitFor(async () => {
+      const style = getComputedStyle(swatch);
+      await expect(swatch).toBeVisible();
+      await expect(style.borderTopWidth).toBe('1px');
+      await expect(style.borderTopStyle).toBe('solid');
+      await expect(getColorChannels(style.borderTopColor, doc)).toEqual(
+        getColorChannels('rgba(18, 18, 18, 0.2)', doc),
+      );
+    });
+  },
+};
 
 async function waitForClosed(topLayer: HTMLElement): Promise<void> {
   await waitFor(async () => {

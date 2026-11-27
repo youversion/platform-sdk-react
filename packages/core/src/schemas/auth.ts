@@ -15,6 +15,15 @@ export const StoredGrantsSchema = object({
 });
 export type StoredGrants = z.infer<typeof StoredGrantsSchema>;
 
+/** OAuth grants bound to the access token and verified profile that received them. */
+export const StoredOAuthSessionSchema = object({
+  accessToken: z.string(),
+  refreshToken: z.nullable(z.string()),
+  userId: z.string(),
+  scope: z.string(),
+});
+export type StoredOAuthSession = z.infer<typeof StoredOAuthSessionSchema>;
+
 /** Claims read from an ID token for UI display. Signature is not verified here. */
 export const IdTokenClaimsSchema = object({
   sub: z.catch(z.optional(z.string()), undefined),
@@ -44,7 +53,7 @@ export const TokenRefreshResponseSchema = object({
   access_token: z.string(),
   expires_in: TokenExpiresInSchema,
   refresh_token: z.string(),
-  scope: z.string(),
+  scope: z.optional(z.string()),
   token_type: z.string(),
 });
 export type TokenRefreshResponse = z.infer<typeof TokenRefreshResponseSchema>;
