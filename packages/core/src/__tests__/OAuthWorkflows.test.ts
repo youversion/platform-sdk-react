@@ -11,6 +11,13 @@ function createOAuthBrowser(transport: 'deferred' | 'msw' = 'deferred') {
   const browser = setupBrowserMocks();
   const fetch = vi.fn<(request: Request) => Promise<Response>>();
   if (transport === 'deferred') vi.stubGlobal('fetch', fetch);
+  else if (process.env.INTEGRATION_TESTS) {
+    server.listen();
+    onTestFinished(() => {
+      server.resetHandlers();
+      server.close();
+    });
+  }
   const previousAppKey = config.appKey;
   const previousHost = config.apiHost;
   config.appKey = 'test-app-key';
@@ -81,10 +88,12 @@ function tokenResponse(scope: string) {
 it('reports whether any sign-in or the requested sign-in is pending', async () => {
   const { browser } = createOAuthBrowser();
   expect(YouVersionAPIUsers.isSignInPending()).toBe(false);
+  config.saveUserInfo({ id: 'alice' });
   await YouVersionAPIUsers.signIn(redirect);
   const state = new URL(browser.window.location.href).searchParams.get('state');
   if (!state) throw new Error('Expected an authorization state');
   expect(YouVersionAPIUsers.isSignInPending()).toBe(true);
+  config.saveUserInfo({ id: 'alice', name: 'Updated Alice' });
   expect(YouVersionAPIUsers.isSignInPending(state)).toBe(true);
   expect(YouVersionAPIUsers.isSignInPending('another-state')).toBe(false);
   YouVersionAPIUsers.signOut();
@@ -121,8 +130,8 @@ it.each([
   expect(config.getOAuthAccessToken('alice', 'write_notes')).toBe('signed-in-access');
 });
 
-it('reports the same verified denial when StrictMode processes the callback twice', async () => {
-  const { browser, fetch } = createOAuthBrowser();
+it('reports a verified denial on replay without keeping the authorization active', async () => {
+  const { browser, fetch, arriveWithCode } = createOAuthBrowser();
   await YouVersionAPIUsers.signIn(redirect, ['write_notes']);
   const authorize = new URL(browser.window.location.href);
   const callback = new URL(redirect);
@@ -136,7 +145,91 @@ it('reports the same verified denial when StrictMode processes the callback twic
     expect(first).rejects.toThrow('OAuth authentication failed: access_denied'),
     expect(second).rejects.toThrow('OAuth authentication failed: access_denied'),
   ]);
+  expect(YouVersionAPIUsers.isSignInPending()).toBe(false);
+  expect(YouVersionAPIUsers.isSignInPending(callback.searchParams.get('state') ?? '')).toBe(false);
+
+  arriveWithCode('code-after-denial');
+  await expect(YouVersionAPIUsers.handleAuthCallback()).rejects.toThrow();
   expect(fetch).not.toHaveBeenCalled();
+});
+
+it('clears the session on a later refresh failure after a verified OAuth denial', async () => {
+  const { browser } = createOAuthBrowser('msw');
+  config.saveAuthData('alice-access', 'alice-refresh', new Date(0), {
+    scope: 'profile',
+    userId: 'alice',
+  });
+  config.saveUserInfo({ id: 'alice' });
+  config.saveGrantedPermissions(['highlights']);
+  await YouVersionAPIUsers.signIn(redirect, ['write_notes']);
+  const state = new URL(browser.window.location.href).searchParams.get('state');
+  if (!state) throw new Error('Expected an authorization state');
+  const callback = new URL(redirect);
+  callback.searchParams.set('state', state);
+  callback.searchParams.set('error', 'access_denied');
+  browser.window.location = { href: callback.href, search: callback.search };
+
+  await expect(YouVersionAPIUsers.handleAuthCallback()).rejects.toThrow('access_denied');
+  expect(YouVersionAPIUsers.getStoredUserInfo()?.userId).toBe('alice');
+  browser.window.location = { href: redirect, search: '' };
+  server.use(
+    http.post(
+      'https://api.youversion.com/auth/token',
+      () => new HttpResponse(null, { status: 401 }),
+    ),
+  );
+  await expect(YouVersionAPIUsers.refreshTokenIfNeeded()).resolves.toBe(false);
+
+  expect(config.accessToken).toBeNull();
+  expect(config.refreshToken).toBeNull();
+  expect(config.storedUserInfo).toBeNull();
+  expect(config.grantedPermissions).toEqual([]);
+  expect(YouVersionAPIUsers.isSignInPending(state)).toBe(false);
+});
+
+it.each(['bob', 'alice'])(
+  'rejects an earlier callback when the account was replaced before return to %s',
+  async (replacement) => {
+    const { browser, fetch, arriveWithCode } = createOAuthBrowser();
+    config.saveAuthData('alice-access', 'alice-refresh', null);
+    config.saveUserInfo({ id: 'alice' });
+    await YouVersionAPIUsers.signIn(redirect, ['write_notes']);
+
+    config.saveAuthData('bob-access', 'bob-refresh', null);
+    config.saveUserInfo({ id: 'bob' });
+    if (replacement === 'alice') {
+      config.saveAuthData('new-alice-access', 'new-alice-refresh', null);
+      config.saveUserInfo({ id: 'alice' });
+    }
+    arriveWithCode(`obsolete-before-return-${replacement}`);
+    browser.atob.mockReturnValue(JSON.stringify({ sub: 'alice' }));
+    fetch.mockResolvedValueOnce(tokenResponse('write_notes'));
+
+    await expect(YouVersionAPIUsers.handleAuthCallback()).rejects.toThrow(
+      'Invalid state parameter',
+    );
+    expect(fetch).not.toHaveBeenCalled();
+    expect(config.storedUserInfo?.id).toBe(replacement);
+    expect(config.accessToken).toBe(replacement === 'bob' ? 'bob-access' : 'new-alice-access');
+  },
+);
+
+it('rejects an earlier callback once another account has staged its scoped credentials', async () => {
+  const { browser, fetch, arriveWithCode } = createOAuthBrowser();
+  config.saveAuthData('alice-access', 'alice-refresh', null);
+  config.saveUserInfo({ id: 'alice' });
+  await YouVersionAPIUsers.signIn(redirect, ['write_notes']);
+
+  config.saveAuthData('bob-access', 'bob-refresh', null, { scope: 'profile', userId: 'bob' });
+  arriveWithCode('obsolete-after-staging');
+  browser.atob.mockReturnValue(JSON.stringify({ sub: 'alice' }));
+  fetch.mockResolvedValueOnce(tokenResponse('write_notes'));
+
+  await expect(YouVersionAPIUsers.handleAuthCallback()).rejects.toThrow('Invalid state parameter');
+  expect(fetch).not.toHaveBeenCalled();
+  expect(config.accessToken).toBe('bob-access');
+  config.saveUserInfo({ id: 'bob' });
+  expect(config.getOAuthAccessToken('bob', 'profile')).toBe('bob-access');
 });
 
 it.each(['network', 'server'] as const)(
@@ -464,16 +557,15 @@ it('rotates legacy tokens without assigning the returned scope to a stored profi
   const originalAccessToken = 'old-access-token';
   const originalRefreshToken = 'old-refresh-token';
   config.saveAuthData(originalAccessToken, originalRefreshToken, null);
-  config.saveUserInfo({ id: 'legacy-user' });
+  const originalProfile = {
+    id: 'legacy-user',
+    name: 'Legacy Reader',
+    email: 'legacy@example.com',
+    avatar_url: 'https://example.com/legacy-avatar.png',
+  };
+  config.saveUserInfo(originalProfile);
 
   const requests: Request[] = [];
-  if (process.env.INTEGRATION_TESTS) {
-    server.listen();
-    onTestFinished(() => {
-      server.resetHandlers();
-      server.close();
-    });
-  }
   server.use(
     http.all('*', ({ request }) => {
       requests.push(request);
@@ -508,7 +600,7 @@ it('rotates legacy tokens without assigning the returned scope to a stored profi
   expect(config.refreshToken).toBe('new-refresh-token');
   expect(config.tokenExpiryDate).toEqual(result?.expiryDate);
   expect(config.tokenExpiryDate?.getTime()).toBeGreaterThan(Date.now());
-  expect(YouVersionAPIUsers.getStoredUserInfo()?.userId).toBe('legacy-user');
+  expect(config.storedUserInfo).toEqual(originalProfile);
   expect(config.getOAuthAccessToken('legacy-user', 'write_notes')).toBeNull();
 });
 

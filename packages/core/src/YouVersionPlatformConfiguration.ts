@@ -8,6 +8,7 @@ import { parsePermissionList } from './permissions';
 import type { AuthenticationScopes } from './types';
 import { versionFilterState } from './version-filter-state';
 import { getLocalStorage, removeStorageItem, setStorageItem } from './web-storage';
+import { AUTH_STATE_KEY } from './auth-storage-keys';
 
 type LegacyAuthSession = {
   userId: string | null;
@@ -23,6 +24,12 @@ function parseStoredUserInfo(raw: string | null | undefined): YouVersionUserInfo
     return result.success ? result.data : null;
   } catch {
     return null;
+  }
+}
+
+function invalidateAuthorization(storage: Storage | null, state: string | null | undefined) {
+  if (state && storage?.getItem(AUTH_STATE_KEY) === state) {
+    removeStorageItem(storage, AUTH_STATE_KEY);
   }
 }
 
@@ -83,6 +90,10 @@ export class YouVersionPlatformConfiguration {
     oauthSession?: Pick<StoredOAuthSession, 'scope' | 'userId'>,
   ): boolean {
     const storage = getLocalStorage();
+    const previousState =
+      accessToken !== null && oauthSession && oauthSession.userId !== this.currentUserId
+        ? storage?.getItem(AUTH_STATE_KEY)
+        : null;
     let persisted = true;
 
     if (accessToken !== null) {
@@ -110,6 +121,7 @@ export class YouVersionPlatformConfiguration {
       removeStorageItem(storage, 'expiryDate');
     }
 
+    if (persisted) invalidateAuthorization(storage, previousState);
     return persisted;
   }
 
@@ -122,13 +134,19 @@ export class YouVersionPlatformConfiguration {
    */
   public static saveUserInfo(userInfo: YouVersionUserInfoJSON | null): boolean {
     const storage = getLocalStorage();
+    const previousId = parseStoredUserInfo(storage?.getItem('userInfo'))?.id ?? null;
+    const previousState =
+      previousId !== (userInfo?.id ?? null) ? storage?.getItem(AUTH_STATE_KEY) : null;
 
     if (userInfo === null) {
       removeStorageItem(storage, 'userInfo');
+      if (!storage?.getItem('userInfo')) invalidateAuthorization(storage, previousState);
       return true;
     }
 
-    return setStorageItem(storage, 'userInfo', JSON.stringify(userInfo));
+    const persisted = setStorageItem(storage, 'userInfo', JSON.stringify(userInfo));
+    if (persisted) invalidateAuthorization(storage, previousState);
+    return persisted;
   }
 
   public static clearAuthTokens(): void {
@@ -136,7 +154,7 @@ export class YouVersionPlatformConfiguration {
     this.saveUserInfo(null);
     this.clearGrantedPermissions();
     this.clearDataExchangeInitiator();
-    removeStorageItem(getLocalStorage(), 'youversion-auth-state');
+    removeStorageItem(getLocalStorage(), AUTH_STATE_KEY);
   }
 
   /** Returns an account's current access token, verifying the scope or the unchanged legacy session. */

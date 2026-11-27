@@ -72,7 +72,7 @@ type UseBibleReaderNoteResult = {
   authorize: () => Promise<void>;
   cancelAuthorization: () => void;
   change: (fields: Partial<NoteDraftFields>) => void;
-  dismiss: () => void;
+  dismiss: (intent: 'cancel' | 'discard') => void;
   save: () => Promise<void>;
 };
 
@@ -393,8 +393,12 @@ export function useBibleReaderNote({
     if (active?.phase === 'compose') show({ ...active, draft: { ...active.draft, ...fields } });
   }
 
-  function dismiss() {
-    if (currentFlow.current?.phase === 'compose') show(null);
+  function dismiss(intent: 'cancel' | 'discard') {
+    const active = currentFlow.current;
+    if (active?.phase !== 'compose') return;
+    retainedDraft.current = intent === 'cancel' ? active.draft : null;
+    if (intent === 'discard') draftAuthorizationState.current = null;
+    show(null);
   }
 
   async function save() {

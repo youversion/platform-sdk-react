@@ -13,6 +13,7 @@ import { globalHandlers } from '@/test/mocks/handlers';
 import mockPassages from '@/test/mock-data/passages.json';
 import {
   getBackgroundColorChannels,
+  getColorChannels,
   verifyNativeBrowserKey,
   waitForShadowRoot,
 } from '@/test/storybook-dom';
@@ -152,6 +153,17 @@ async function openComposer(root: ShadowRoot, reference: string) {
   return { overlays, composer: within(composer) };
 }
 
+async function expectSwatchBorder(swatch: HTMLElement | undefined, expectedColor: string) {
+  if (!swatch) throw new Error('Reader highlight swatch is missing');
+  const { ownerDocument } = swatch;
+  const style = getComputedStyle(swatch);
+  await expect(style.borderTopWidth).toBe('1px');
+  await expect(style.borderTopStyle).toBe('solid');
+  await expect(getColorChannels(style.borderTopColor, ownerDocument)).toEqual(
+    getColorChannels(expectedColor, ownerDocument),
+  );
+}
+
 export const SavePassage: Story = {
   tags: ['integration', 'shadow-dom', 'cross-browser'],
   loaders: [prepareCallback],
@@ -171,6 +183,10 @@ export const SavePassage: Story = {
     const actions = within(await overlays.findByRole('dialog', { name: 'Verse actions' }));
     await expect(actions.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
     await expect(actions.getByRole('button', { name: 'Share' })).toBeInTheDocument();
+    await expectSwatchBorder(
+      actions.getAllByRole('button', { name: 'Apply highlight' })[0],
+      'rgba(18, 18, 18, 0.2)',
+    );
     const { composer } = await openComposer(root, 'John 1:1,3-4');
     await expect(composer.getByRole('textbox', { name: 'Add Note…' })).toHaveValue('');
     await expect(composer.getByRole('radio', { name: 'Private' })).toBeChecked();
@@ -208,6 +224,13 @@ export const EditAndRetry: Story = {
     if (!settings) throw new Error('Reader settings control is missing');
     settings.focus();
     await selectVerses(root, [2]);
+    const actions = within(
+      await (await readerOverlays(root)).findByRole('dialog', { name: 'Verse actions' }),
+    );
+    await expectSwatchBorder(
+      actions.getAllByRole('button', { name: 'Apply highlight' })[0],
+      'rgba(255, 255, 255, 0.2)',
+    );
     const { overlays, composer } = await openComposer(root, 'John 1:2');
     const editor = composer.getByRole<HTMLTextAreaElement>('textbox', { name: 'Add Note…' });
     await waitFor(() => expect(root.activeElement).toBe(editor));
@@ -426,6 +449,65 @@ export const BuiltInActionsDuringNavigation: Story = {
   }),
 };
 
+export const ControlledHighlightsDuringSameChapterNavigation: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  loaders: [async () => ({ hostNavigation: new BibleReaderNavigation() })],
+  render: function ControlledReader(_args, { loaded }) {
+    const [applied, setApplied] = useState('');
+    return (
+      <>
+        <output aria-label="Applied highlight">{applied}</output>
+        <div className="yv:h-screen">
+          <BibleReader.Root
+            defaultBook="JHN"
+            defaultChapter="1"
+            defaultVersionId={111}
+            navigation={storyNavigation.parse(loaded.hostNavigation)}
+            highlights={[]}
+            onHighlightApply={({ versionId, passageIds, color }) =>
+              setApplied(`${versionId}:${passageIds.join('+')}:${color}`)
+            }
+          >
+            <BibleReader.Content />
+          </BibleReader.Root>
+        </div>
+      </>
+    );
+  },
+  play: async ({ canvasElement, loaded }) => {
+    const passageRequested = deferred<void>();
+    const releasePassage = deferred<void>();
+    getWorker().use(
+      http.get('*/v1/bibles/111/passages/JHN.1.4', async () => {
+        passageRequested.resolve();
+        await releasePassage.promise;
+        return new HttpResponse(null, { status: 503 });
+      }),
+    );
+    const root = await waitForShadowRoot(canvasElement);
+    const retainedVerse = await readerVerse(root, 1);
+    try {
+      storyNavigation
+        .parse(loaded.hostNavigation)
+        .request({ versionId: 111, passageId: 'JHN.1.4' });
+      await passageRequested.promise;
+      await expect(retainedVerse).toBeVisible();
+      await userEvent.click(retainedVerse);
+      const overlays = await readerOverlays(root);
+      const actions = within(await overlays.findByRole('dialog', { name: 'Verse actions' }));
+      await waitFor(() => expect(actions.getByRole('button', { name: 'Copy' })).toBeVisible());
+      const [color] = actions.getAllByRole('button', { name: 'Apply highlight' });
+      if (!color) throw new Error('Controlled highlight swatches are missing');
+      await userEvent.click(color);
+      await expect(
+        within(canvasElement).getByRole('status', { name: 'Applied highlight' }),
+      ).toHaveTextContent('111:JHN.1.1:ffec5b');
+    } finally {
+      releasePassage.resolve();
+    }
+  },
+};
+
 export const RefreshDisplayedChapterAfterNavigation: Story = {
   tags: ['integration', 'shadow-dom', 'cross-browser'],
   loaders: [prepareCallback, async () => ({ hostNavigation: new BibleReaderNavigation() })],
@@ -494,6 +576,50 @@ export const RefreshDisplayedChapterAfterNavigation: Story = {
       releaseNote.resolve();
       releaseFirstRead.resolve();
     }
+  }),
+};
+
+export const CancelRetainsDraftAcrossNavigation: Story = {
+  ...RefreshDisplayedChapterAfterNavigation,
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  play: withWritableSession(async ({ canvasElement, loaded }) => {
+    const attempts: NoteRequest[] = [];
+    getWorker().use(
+      http.post<never, NoteRequest>('*/v1/notes', async ({ request }) => {
+        const body = await request.json();
+        attempts.push(body);
+        return attempts.length === 1 ? HttpResponse.error() : noteResponse(body);
+      }),
+    );
+    const root = await waitForShadowRoot(canvasElement);
+    const navigation = storyNavigation.parse(loaded.hostNavigation);
+    const renderedPassage = () => root.querySelector('[data-slot="yv-bible-renderer"]');
+    await selectVerses(root, [1, 4]);
+    const { composer, overlays } = await openComposer(root, 'John 1:1,4');
+    await userEvent.click(composer.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(composer.getByRole('alert')).toBeVisible());
+
+    navigation.request({ versionId: 111, passageId: 'JHN.3' });
+    await waitFor(() => expect(renderedPassage()).toHaveTextContent('Nicodemus'));
+    await userEvent.click(composer.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(overlays.queryByRole('dialog')).toBeNull());
+    await expect(renderedPassage()).toHaveTextContent('Nicodemus');
+
+    navigation.request({ versionId: 111, passageId: 'JHN.1' });
+    await waitFor(() => expect(renderedPassage()).toHaveTextContent('The Word Became Flesh'));
+    await selectVerses(root, [1, 4]);
+    const { composer: reopened } = await openComposer(root, 'John 1:1,4');
+    await expect(reopened.getByRole('textbox', { name: 'Add Note…' })).toHaveValue('');
+    await userEvent.click(reopened.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(overlays.queryByRole('dialog')).toBeNull());
+    const request = {
+      request_id: expect.stringMatching(/^[\da-f-]{36}$/i),
+      passage: { bible_id: 111, passage_id: 'JHN.1.1+JHN.1.4' },
+      content: '',
+      status: 'private',
+    };
+    await expect(attempts).toEqual([request, request]);
+    await expect(attempts[1]?.request_id).toBe(attempts[0]?.request_id);
   }),
 };
 
@@ -637,6 +763,19 @@ export const WritePermissionChangesWhileEditing: Story = {
   }),
 };
 
+function ReaderPage({ version }: { version: number }) {
+  const [mountedVersion] = useState(version);
+  return <output aria-label="Reader page">{mountedVersion}</output>;
+}
+
+function waitForReaderPage(container: HTMLElement, version: number) {
+  return waitFor(() =>
+    expect(within(container).getByLabelText('Reader page')).toHaveTextContent(
+      new RegExp(`^${version}$`),
+    ),
+  );
+}
+
 function ReloadableReader({ withCallback = false }: { withCallback?: boolean }) {
   const [pageVersion, setPageVersion] = useState(0);
   return (
@@ -665,6 +804,7 @@ function ReloadableReader({ withCallback = false }: { withCallback?: boolean }) 
         locale="en"
         includeAuth
       >
+        <ReaderPage version={pageVersion} />
         <div className="yv:h-screen">
           <BibleReader.Root defaultBook="JHN" defaultChapter="1" defaultVersionId={111}>
             <BibleReader.Content />
@@ -707,8 +847,8 @@ export const RemountDropsDraftFromReplacedSession: Story = {
       YouVersionPlatformConfiguration.saveUserInfo(profile);
 
       await userEvent.click(within(canvasElement).getByRole('button', { name: 'Reload Reader' }));
+      await waitForReaderPage(canvasElement, 1);
       const remounted = await waitForShadowRoot(canvasElement);
-      await expect(remounted).not.toBe(root);
       await expect(await readerVerse(remounted, 1)).not.toHaveClass('yv-v-selected');
       await expect(await readerVerse(remounted, 4)).not.toHaveClass('yv-v-selected');
       await selectVerses(remounted, [1, 4]);
@@ -761,8 +901,8 @@ export const RemountRecoversDraftDuringFailedRefresh: Story = {
         }),
       );
       await userEvent.click(page.getByRole('button', { name: 'Reload Reader' }));
+      await waitForReaderPage(canvasElement, 1);
       const remounted = await waitForShadowRoot(canvasElement);
-      await expect(remounted).not.toBe(root);
       const returnedOverlays = await readerOverlays(remounted);
       const actions = within(
         await returnedOverlays.findByRole('dialog', { name: 'Verse actions' }),
@@ -774,8 +914,8 @@ export const RemountRecoversDraftDuringFailedRefresh: Story = {
       await waitFor(() => expect(returnedOverlays.queryByRole('dialog')).toBeNull());
 
       await userEvent.click(page.getByRole('button', { name: 'Return from sign-in' }));
+      await waitForReaderPage(canvasElement, 2);
       const failedRoot = await waitForShadowRoot(canvasElement);
-      await expect(failedRoot).not.toBe(remounted);
       await waitFor(() => expect(failedGrants).toEqual(['refresh_token', 'authorization_code']));
       await waitFor(async () =>
         expect(await readerVerse(failedRoot, 1)).toHaveClass('yv-v-selected'),
@@ -793,6 +933,7 @@ export const RemountRecoversDraftDuringFailedRefresh: Story = {
         http.post('*/auth/token', () => tokenResponse('profile read_notes write_notes')),
       );
       await userEvent.click(page.getByRole('button', { name: 'Return from sign-in' }));
+      await waitForReaderPage(canvasElement, 3);
       const finalRoot = await waitForShadowRoot(canvasElement);
       const finalOverlays = await readerOverlays(finalRoot);
       const returned = within(await finalOverlays.findByRole('dialog', { name: 'John 1:1,4' }));
@@ -811,6 +952,7 @@ function stayOnAuthorizationHandoff() {
       const state = crypto.randomUUID();
       beforeRedirect?.(state);
       localStorage.setItem('youversion-auth-state', state);
+      localStorage.setItem('youversion-auth-code-verifier', 'notes-story-verifier');
     },
   );
 }
@@ -867,6 +1009,7 @@ function ParallelReaders() {
         locale="en"
         includeAuth
       >
+        <ReaderPage version={callbackCount} />
         <div className="yv:grid yv:grid-cols-2 yv:h-[30rem]">
           {['First Reader', 'Second Reader'].map((label) => (
             <section key={label} aria-label={label} className="yv:min-h-0">
@@ -907,11 +1050,7 @@ export const OAuthReturnsToTheInitiatingReader: Story = {
       );
       await userEvent.click(page.getByRole('button', { name: 'Return from sign-in' }));
 
-      await waitFor(async () =>
-        expect(
-          await waitForShadowRoot(page.getByRole('region', { name: 'Second Reader' })),
-        ).not.toBe(secondRoot),
-      );
+      await waitForReaderPage(canvasElement, 1);
       const returned = await waitForShadowRoot(page.getByRole('region', { name: 'Second Reader' }));
       const returnedOverlays = await readerOverlays(returned);
       const note = await returnedOverlays.findByRole('dialog', { name: 'John 1:1,4' });

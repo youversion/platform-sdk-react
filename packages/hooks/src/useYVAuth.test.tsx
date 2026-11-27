@@ -226,6 +226,71 @@ it('exposes an unscoped token from a verified callback with no decoded account',
   expect(YouVersionPlatformConfiguration.getOAuthAccessToken(null, 'write_notes')).toBeNull();
 });
 
+it.each([
+  {
+    outcome: 'a hosted denial',
+    query: 'state=prior-auth&error=access_denied',
+    exchange: false,
+    token: 'legacy-access',
+  },
+  {
+    outcome: 'an exchange failure',
+    query: 'state=prior-auth&code=temporarily-unavailable',
+    exchange: true,
+    token: 'legacy-access',
+  },
+  {
+    outcome: 'a superseded callback',
+    query: 'state=old-auth&code=old-code',
+    exchange: false,
+    token: null,
+  },
+  {
+    outcome: 'an unverified denial',
+    query: 'error=access_denied',
+    exchange: false,
+    token: null,
+  },
+])(
+  'preserves only the verified legacy token after $outcome',
+  async ({ query, exchange, token }) => {
+    YouVersionAPIUsers.signOut();
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+      window.history.replaceState(null, '', '/');
+      YouVersionAPIUsers.signOut();
+    });
+    const config = YouVersionPlatformConfiguration;
+    config.saveAuthData('legacy-access', 'legacy-refresh', new Date('2100-01-01'));
+    config.saveUserInfo({ id: 'legacy-alice' });
+    localStorage.setItem('youversion-auth-state', 'prior-auth');
+    localStorage.setItem('youversion-auth-code-verifier', 'test-verifier');
+    localStorage.setItem('youversion-auth-redirect-uri', 'https://example.com/callback');
+    window.history.replaceState(null, '', `?${query}`);
+    const fetch = vi.fn(async () => new Response(null, { status: 503 }));
+    vi.stubGlobal('fetch', fetch);
+
+    const { result } = renderHook(
+      () => ({ ...useYVAuth(), failedState: useYouVersionAuthContext().oauthFailedCallbackState }),
+      {
+        wrapper: ({ children }) => (
+          <StrictMode>
+            <WebAuthWrapper>{children}</WebAuthWrapper>
+          </StrictMode>
+        ),
+      },
+    );
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+    expect(result.current.auth.isAuthenticated).toBe(true);
+    expect(result.current.userInfo?.userId).toBe('legacy-alice');
+    expect(result.current.auth.error).toBeInstanceOf(Error);
+    expect(result.current.auth.accessToken).toBe(token);
+    expect(result.current.failedState).toBe(token ? 'prior-auth' : null);
+    expect(config.getOAuthAccessToken('legacy-alice', 'write_notes')).toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(Number(exchange));
+  },
+);
+
 it('exposes a verified direct rotation to a new consumer in the same Provider', async () => {
   const config = YouVersionPlatformConfiguration;
   YouVersionAPIUsers.signOut();
@@ -357,6 +422,7 @@ it('keeps a pending authorization profile signed out on remount and storage upda
   onTestFinished(() => YouVersionAPIUsers.signOut());
   YouVersionPlatformConfiguration.saveUserInfo({ id: 'pending-alice' });
   localStorage.setItem('youversion-auth-state', 'pending-note-authorization');
+  localStorage.setItem('youversion-auth-code-verifier', 'test-verifier');
 
   const { result } = renderHook(useYVAuth, { wrapper: WebAuthWrapper });
   await waitFor(() => expect(result.current.auth.isLoading).toBe(false));

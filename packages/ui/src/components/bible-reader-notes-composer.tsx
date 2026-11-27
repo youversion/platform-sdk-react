@@ -17,7 +17,7 @@ type NotesComposerProps = {
   failed: boolean;
   onChange: (fields: Partial<NoteDraftFields>) => void;
   onSave: () => void;
-  onDismiss: () => void;
+  onDismiss: (intent: 'cancel' | 'discard') => void;
   theme: 'light' | 'dark';
   restoreFocusTarget: HTMLElement | null;
 };
@@ -66,7 +66,7 @@ export function BibleReaderNotesComposer({
       }
       setConfirmDiscard(true);
     } else {
-      onDismiss();
+      onDismiss('cancel');
     }
   }
 
@@ -179,7 +179,7 @@ export function BibleReaderNotesComposer({
               <Button ref={stayButtonRef} type="button" variant="ghost" onClick={requestDismiss}>
                 {t('cancel')}
               </Button>
-              <Button type="button" variant="destructive" onClick={onDismiss}>
+              <Button type="button" variant="destructive" onClick={() => onDismiss('discard')}>
                 {t('notesDiscard')}
               </Button>
             </div>

@@ -616,9 +616,13 @@ function Content() {
   useLayoutEffect(() => {
     if (renderedReference) displayedHighlightScope.current = { versionId, book, chapter };
   }, [renderedReference, versionId, book, chapter]);
-  // While the old passage stays on screen, its highlight read and paint stay with it.
-  const retainedHighlightScope =
-    isRefetching && !isHighlightsControlled ? displayedHighlightScope.current : null;
+  // Read and paint follow the retained passage. Writes target the selected chapter.
+  const retainedChapter = isRefetching ? displayedHighlightScope.current : null;
+  const highlightSelectionMatchesChapter =
+    selectionMatchesScope ||
+    (retainedChapter?.versionId === versionId &&
+      retainedChapter.book === book &&
+      retainedChapter.chapter === chapter);
 
   const {
     highlightedVerses,
@@ -637,7 +641,7 @@ function Content() {
     versionId,
     book,
     chapter,
-    retainedScope: retainedHighlightScope,
+    retainedScope: isHighlightsControlled ? null : retainedChapter,
     hostOwnsSignIn: !!onSignInPress,
     controlled: isHighlightsControlled
       ? {
@@ -1151,7 +1155,7 @@ function Content() {
                 activeHighlights={activeHighlights}
                 selectedVerses={selectedVerses}
                 highlightedVerses={highlightedVerses}
-                highlightsEnabled={highlightsEnabled && selectionMatchesScope}
+                highlightsEnabled={highlightsEnabled && highlightSelectionMatchesChapter}
                 anchorElement={anchorElement}
                 scrollRoot={scrollContainerRef.current}
                 onHighlight={handleHighlight}

@@ -67,6 +67,10 @@ export default function YouVersionAuthProvider({
       YouVersionPlatformConfiguration.apiHost = config.apiHost ?? 'api.youversion.com';
 
       if (globalThis.window) {
+        const accessToken = YouVersionPlatformConfiguration.accessToken;
+        const refreshToken = YouVersionPlatformConfiguration.refreshToken;
+        const userId = YouVersionPlatformConfiguration.storedUserInfo?.id ?? null;
+        let legacyFallback = accessToken ? { userId, accessToken, refreshToken } : null;
         // Check for OAuth callback
         const urlParams = new URLSearchParams(globalThis.window.location.search);
         const state = urlParams.get('state');
@@ -82,6 +86,7 @@ export default function YouVersionAuthProvider({
             }
             if (result) {
               if (!mounted) return;
+              legacyFallback = null;
               const storedUser = YouVersionAPIUsers.getStoredUserInfo();
               const refreshToken = result.refreshToken || null;
               const callbackMatchesSession =
@@ -104,18 +109,23 @@ export default function YouVersionAuthProvider({
             if (process.env.NODE_ENV === 'development') {
               console.error('Auth callback failed:', error);
             }
-            if (error.name === 'OAuthCallbackSupersededError') setOAuthCallbackSuperseded(true);
-            else setOAuthFailedCallbackState(pendingState);
+            if (error.name === 'OAuthCallbackSupersededError') {
+              legacyFallback = null;
+              setOAuthCallbackSuperseded(true);
+            } else {
+              const failedState =
+                error.name === 'VerifiedOAuthCallbackError' ? state : pendingState;
+              if (!failedState) legacyFallback = null;
+              setOAuthFailedCallbackState(failedState);
+            }
             if (!sessionChanged) {
               setError(error);
               setUserInfo(getCredentialedUserInfo());
             }
           }
         } else {
-          const accessToken = YouVersionPlatformConfiguration.accessToken;
-          const refreshToken = YouVersionPlatformConfiguration.refreshToken;
-          const userId = YouVersionPlatformConfiguration.storedUserInfo?.id ?? null;
           if (refreshToken) {
+            legacyFallback = null;
             let initializedAccessToken = accessToken;
             let initializedRefreshToken = refreshToken;
             try {
@@ -157,9 +167,9 @@ export default function YouVersionAuthProvider({
             }
           } else {
             setUserInfo(null);
-            if (accessToken) legacySession.current = { userId, accessToken, refreshToken };
           }
         }
+        if (mounted && !sessionChanged && legacyFallback) legacySession.current = legacyFallback;
       }
 
       if (!mounted) return;

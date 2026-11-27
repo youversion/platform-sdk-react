@@ -39,13 +39,17 @@ export function waitForShadowContent(root: ShadowRoot): Promise<HTMLElement> {
   return waitFor(() => requireShadowContent(root));
 }
 
-/** Resolve computed CSS colors to sRGB bytes across browser serialization formats. */
-export function getBackgroundColorChannels(element: Element): number[] {
-  const context = element.ownerDocument.createElement('canvas').getContext('2d');
+/** Resolve CSS colors to sRGB bytes across browser serialization formats. */
+export function getColorChannels(color: string, ownerDocument: Document): number[] {
+  const context = ownerDocument.createElement('canvas').getContext('2d');
   if (!context) throw new Error('2D canvas is unavailable');
-  context.fillStyle = getComputedStyle(element).backgroundColor;
+  context.fillStyle = color;
   context.fillRect(0, 0, 1, 1);
   return Array.from(context.getImageData(0, 0, 1, 1).data);
+}
+
+export function getBackgroundColorChannels(element: Element): number[] {
+  return getColorChannels(getComputedStyle(element).backgroundColor, element.ownerDocument);
 }
 
 export async function clickStoryElement(element: Element): Promise<void> {

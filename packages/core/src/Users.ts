@@ -14,6 +14,7 @@ import {
   type TokenExchangeResponse,
 } from './schemas/auth';
 import { getLocalStorage, removeStorageItem, setStorageItem } from './web-storage';
+import { AUTH_CODE_VERIFIER_KEY, AUTH_STATE_KEY } from './auth-storage-keys';
 
 const MISSING_LOCAL_STORAGE_MESSAGE =
   'Sign In with YouVersion requires localStorage, which is not available in this environment';
@@ -26,11 +27,13 @@ const MISSING_LOCAL_STORAGE_MESSAGE =
 const REJECTED_LOCAL_STORAGE_WRITE_MESSAGE =
   'Sign In with YouVersion could not write to localStorage; the store rejected the write (its quota may be full, as it always is in Safari private browsing)';
 
-const AUTH_STATE_KEY = 'youversion-auth-state';
-
 /** The callback no longer belongs to the active authorization attempt. */
 class OAuthCallbackSupersededError extends Error {
   override readonly name = 'OAuthCallbackSupersededError';
+}
+
+class VerifiedOAuthCallbackError extends Error {
+  override readonly name = 'VerifiedOAuthCallbackError';
 }
 
 /**
@@ -136,15 +139,20 @@ export function __resetTokenRefreshDedupeForTests(): void {
  * failure path of the code exchange.
  */
 const clearOAuthHandoff = (storage: Storage | null): void => {
-  removeStorageItem(storage, 'youversion-auth-code-verifier');
+  removeStorageItem(storage, AUTH_CODE_VERIFIER_KEY);
   removeStorageItem(storage, 'youversion-auth-redirect-uri');
   removeStorageItem(storage, AUTH_STATE_KEY);
   removeStorageItem(storage, PENDING_GRANTED_PERMISSIONS_KEY);
   removeStorageItem(storage, REQUESTED_PERMISSIONS_KEY);
 };
 
+function pendingAuthorizationState(): string | null {
+  const storage = getLocalStorage();
+  return storage?.getItem(AUTH_CODE_VERIFIER_KEY) ? storage.getItem(AUTH_STATE_KEY) : null;
+}
+
 function clearFailedRefreshSession() {
-  if (getLocalStorage()?.getItem(AUTH_STATE_KEY)) {
+  if (pendingAuthorizationState()) {
     // A pending sign-in needs its PKCE handoff and the initiating profile.
     YouVersionPlatformConfiguration.saveAuthData(null, null, null);
   } else {
@@ -276,11 +284,7 @@ export class YouVersionAPIUsers {
     beforeRedirect?.(authorizationRequest.parameters.state);
 
     // Store auth data for callback handler
-    persistOrThrow(
-      storage,
-      'youversion-auth-code-verifier',
-      authorizationRequest.parameters.codeVerifier,
-    );
+    persistOrThrow(storage, AUTH_CODE_VERIFIER_KEY, authorizationRequest.parameters.codeVerifier);
     const redirectUrlString = redirectURL.toString().endsWith('/')
       ? redirectURL.toString().slice(0, -1)
       : redirectURL.toString();
@@ -308,7 +312,7 @@ export class YouVersionAPIUsers {
 
   /** Whether the specified authorization attempt, or any attempt when omitted, is pending. */
   static isSignInPending(state?: string): boolean {
-    const pendingState = getLocalStorage()?.getItem(AUTH_STATE_KEY);
+    const pendingState = pendingAuthorizationState();
     return !!pendingState && (state === undefined || pendingState === state);
   }
 
@@ -334,8 +338,12 @@ export class YouVersionAPIUsers {
     }
 
     if (error) {
-      // Leave a verified denial readable when StrictMode replays this callback.
       const errorDescription = urlParams.get('error_description') || error;
+      if (state) {
+        // Retain state as proof for a replay of the denial, but end the PKCE attempt.
+        removeStorageItem(storage, AUTH_CODE_VERIFIER_KEY);
+        throw new VerifiedOAuthCallbackError(`OAuth authentication failed: ${errorDescription}`);
+      }
       throw new Error(`OAuth authentication failed: ${errorDescription}`);
     }
 
@@ -356,7 +364,7 @@ export class YouVersionAPIUsers {
     }
 
     // Get stored auth data
-    const codeVerifier = storage.getItem('youversion-auth-code-verifier');
+    const codeVerifier = storage.getItem(AUTH_CODE_VERIFIER_KEY);
     const redirectUri = storage.getItem('youversion-auth-redirect-uri');
 
     if (!codeVerifier || !redirectUri) {

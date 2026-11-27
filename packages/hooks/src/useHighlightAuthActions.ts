@@ -51,9 +51,9 @@ export type UseHighlightAuthActionsResult = {
    */
   consumeDataExchangeReturn: () => DataExchangeCallbackResult | null;
   /**
-   * One-fell-swoop: full-page redirect to sign-in, requesting the `highlights`
-   * permission alongside `profile`. Returns to `redirectUrl` (or the auth
-   * provider's configured `redirectUri`, falling back to the current URL).
+   * Redirects to sign-in with the `highlights` permission and supplied OAuth
+   * scopes. The scopes default to `profile` when omitted. Returns to `redirectUrl`
+   * or the provider's `redirectUri`, falling back to the current URL.
    */
   startSignInForHighlights: (
     redirectUrl?: string,
