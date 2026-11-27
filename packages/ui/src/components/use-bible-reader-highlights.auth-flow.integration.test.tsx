@@ -114,7 +114,7 @@ describe('highlight auth flow — one-fell-swoop (signed out)', () => {
     });
     expect(signIn).toHaveBeenCalledWith(
       'https://host.example/callback',
-      ['profile'],
+      ['profile', 'read_notes', 'write_notes'],
       ['highlights'],
     );
 

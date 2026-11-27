@@ -80,6 +80,37 @@ describe('YouVersionAPIUsers', () => {
     mocks.btoa.mockReturnValue('mockBase64Value');
   }
 
+  function persistBrowserWrites() {
+    const values = new Map<string, string>();
+    mocks.localStorage.getItem.mockImplementation((key: string) => values.get(key) ?? null);
+    mocks.localStorage.setItem.mockImplementation((key: string, value: string) => {
+      values.set(key, value);
+    });
+    mocks.localStorage.removeItem.mockImplementation((key: string) => {
+      values.delete(key);
+    });
+  }
+
+  function arriveWithAuthorizationCode(code: string) {
+    const authorizeUrl = new URL(mocks.window.location.href);
+    const redirect = new URL(authorizeUrl.searchParams.get('redirect_uri') ?? '');
+    redirect.searchParams.set('state', authorizeUrl.searchParams.get('state') ?? '');
+    redirect.searchParams.set('code', code);
+    mocks.window.location.href = redirect.href;
+    mocks.window.location.search = redirect.search;
+    vi.mocked(atob).mockReturnValue(JSON.stringify(DEFAULT_CALLBACK_PROFILE));
+  }
+
+  function holdTokenResponse() {
+    let respond!: (response: Response) => void;
+    mockFetch.mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        respond = resolve;
+      }),
+    );
+    return respond;
+  }
+
   /**
    * Wires up the shared handleAuthCallback token-exchange setup: callback URL,
    * localStorage reads (state/verifier/redirect-uri + optional pending grant),
@@ -127,6 +158,7 @@ describe('YouVersionAPIUsers', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetch.mockReset();
 
     // The code-exchange dedupe map is module-scoped and persists across test
     // cases within this file (it only resets on page reload in production).
@@ -154,6 +186,236 @@ describe('YouVersionAPIUsers', () => {
     vi.unstubAllGlobals();
     YouVersionPlatformConfiguration.appKey = null;
   });
+
+  it('requests note scopes at authorize and reads the grants from the exchanged token', async () => {
+    persistBrowserWrites();
+    stubSignInCrypto();
+    const redirect = 'https://example.com/callback';
+    const beforeRedirect = vi.fn(() => {
+      expect(mocks.window.location.href).toBe('');
+    });
+
+    await YouVersionAPIUsers.signIn(
+      redirect,
+      ['profile', 'read_notes', 'write_notes'],
+      ['highlights'],
+      beforeRedirect,
+    );
+
+    const authorize = new URL(mocks.window.location.href);
+    expect(authorize.pathname).toBe('/auth/authorize');
+    expect(authorize.searchParams.get('scope')?.split(' ').sort()).toEqual([
+      'openid',
+      'profile',
+      'read_notes',
+      'write_notes',
+    ]);
+    expect(authorize.searchParams.get('requested_permissions')).toBe('highlights');
+    expect(beforeRedirect).toHaveBeenCalledWith(authorize.searchParams.get('state'));
+    expect(
+      YouVersionPlatformConfiguration.getOAuthAccessToken('1234567890', 'write_notes'),
+    ).toBeNull();
+
+    arriveWithAuthorizationCode('notes-code');
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse(makeTokens('openid profile read_notes write_notes')),
+    );
+    await YouVersionAPIUsers.handleAuthCallback();
+
+    expect(YouVersionPlatformConfiguration.getOAuthAccessToken('1234567890', 'read_notes')).toBe(
+      'access-token-123',
+    );
+    expect(YouVersionPlatformConfiguration.getOAuthAccessToken('1234567890', 'write_notes')).toBe(
+      'access-token-123',
+    );
+    expect(YouVersionPlatformConfiguration.grantedPermissions).toEqual(['highlights']);
+  });
+
+  it('retains note scopes when rotation omits scope and replaces them when the response narrows it', async () => {
+    persistBrowserWrites();
+    YouVersionPlatformConfiguration.saveAuthData(
+      'initial-access-token',
+      'initial-refresh-token',
+      new Date(0),
+      { scope: 'openid read_notes write_notes', userId: 'notes-account' },
+    );
+    YouVersionPlatformConfiguration.saveUserInfo({ id: 'notes-account' });
+    const rotation = { expires_in: 3600, token_type: 'Bearer' };
+    mockFetch
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...rotation,
+          access_token: 'rotated-access',
+          refresh_token: 'rotated-refresh',
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...rotation,
+          access_token: 'reduced-access',
+          refresh_token: 'reduced-refresh',
+          scope: 'openid read_notes',
+        }),
+      );
+
+    await YouVersionAPIUsers.refreshTokens();
+    expect(YouVersionPlatformConfiguration.getOAuthAccessToken('notes-account', 'read_notes')).toBe(
+      'rotated-access',
+    );
+    expect(
+      YouVersionPlatformConfiguration.getOAuthAccessToken('notes-account', 'write_notes'),
+    ).toBe('rotated-access');
+
+    await YouVersionAPIUsers.refreshTokens();
+    expect(YouVersionPlatformConfiguration.getOAuthAccessToken('notes-account', 'read_notes')).toBe(
+      'reduced-access',
+    );
+    expect(
+      YouVersionPlatformConfiguration.getOAuthAccessToken('notes-account', 'write_notes'),
+    ).toBeNull();
+    expect(YouVersionAPIUsers.getStoredUserInfo()?.userId).toBe('notes-account');
+  });
+
+  it('waits for a matching profile instead of refreshing a staged account token', async () => {
+    persistBrowserWrites();
+    const config = YouVersionPlatformConfiguration;
+    config.saveAuthData('old-access', 'old-refresh', new Date(0), {
+      scope: 'read_notes',
+      userId: 'old-account',
+    });
+    config.saveUserInfo({ id: 'old-account' });
+    config.saveAuthData('new-access', 'new-refresh', new Date(0), {
+      scope: 'write_notes',
+      userId: 'new-account',
+    });
+    mockFetch.mockResolvedValueOnce(jsonResponse(makeTokens('openid write_notes')));
+
+    await expect(YouVersionAPIUsers.refreshTokens()).rejects.toThrow();
+    const refreshed = await YouVersionAPIUsers.refreshTokenIfNeeded();
+
+    expect(config.getOAuthAccessToken('old-account', 'write_notes')).toBeNull();
+    expect(config.getOAuthAccessToken('new-account', 'write_notes')).toBeNull();
+    expect(refreshed).toBe(false);
+    expect(mockFetch).not.toHaveBeenCalled();
+    config.saveUserInfo({ id: 'new-account' });
+    expect(config.getOAuthAccessToken('new-account', 'write_notes')).toBe('new-access');
+  });
+
+  it('can complete a newer authorization after an older code exchange fails', async () => {
+    persistBrowserWrites();
+    stubSignInCrypto();
+    const redirect = 'https://example.com/callback';
+    await YouVersionAPIUsers.signIn(redirect, ['write_notes']);
+    arriveWithAuthorizationCode('old-code');
+    const releaseOldResponse = holdTokenResponse();
+    const oldCallback = YouVersionAPIUsers.handleAuthCallback();
+    expect(mockFetch).toHaveBeenCalled();
+
+    mocks.btoa.mockReturnValue('new-authorization-value');
+    await YouVersionAPIUsers.signIn(redirect, ['read_notes', 'write_notes']);
+    releaseOldResponse(emptyResponse(400, 'Bad Request'));
+    await expect(oldCallback).rejects.toThrow();
+
+    arriveWithAuthorizationCode('new-code');
+    mockFetch.mockResolvedValueOnce(jsonResponse(makeTokens('openid read_notes')));
+    await YouVersionAPIUsers.handleAuthCallback();
+    expect(YouVersionPlatformConfiguration.getOAuthAccessToken('1234567890', 'read_notes')).toBe(
+      'access-token-123',
+    );
+    expect(
+      YouVersionPlatformConfiguration.getOAuthAccessToken('1234567890', 'write_notes'),
+    ).toBeNull();
+  });
+
+  it.each([
+    { responseOutcome: 'succeeds', status: 200 },
+    { responseOutcome: 'fails', status: 400 },
+  ])(
+    'preserves the newer account when an older code exchange $responseOutcome',
+    async ({ status }) => {
+      persistBrowserWrites();
+      stubSignInCrypto();
+      await YouVersionAPIUsers.signIn('https://example.com/callback', ['write_notes']);
+      arriveWithAuthorizationCode('old-code');
+      const releaseOldResponse = holdTokenResponse();
+      const oldCallback = YouVersionAPIUsers.handleAuthCallback();
+      expect(mockFetch).toHaveBeenCalled();
+
+      YouVersionPlatformConfiguration.saveAuthData('new-access', 'new-refresh', null, {
+        scope: 'read_notes',
+        userId: 'new-account',
+      });
+      YouVersionPlatformConfiguration.saveUserInfo({ id: 'new-account' });
+      releaseOldResponse(jsonResponse(makeTokens('openid write_notes'), status));
+      await expect(oldCallback).rejects.toThrow();
+
+      expect(YouVersionPlatformConfiguration.accessToken).toBe('new-access');
+      expect(YouVersionPlatformConfiguration.refreshToken).toBe('new-refresh');
+      expect(YouVersionAPIUsers.getStoredUserInfo()?.userId).toBe('new-account');
+      expect(YouVersionPlatformConfiguration.getOAuthAccessToken('new-account', 'read_notes')).toBe(
+        'new-access',
+      );
+      expect(
+        YouVersionPlatformConfiguration.getOAuthAccessToken('new-account', 'write_notes'),
+      ).toBeNull();
+    },
+  );
+
+  it('stays signed out when a canceled sign-in exchange later succeeds', async () => {
+    persistBrowserWrites();
+    stubSignInCrypto();
+    await YouVersionAPIUsers.signIn('https://example.com/callback', ['write_notes']);
+    arriveWithAuthorizationCode('canceled-code');
+    const releaseOldResponse = holdTokenResponse();
+    const oldCallback = YouVersionAPIUsers.handleAuthCallback();
+    expect(mockFetch).toHaveBeenCalled();
+
+    YouVersionAPIUsers.signOut();
+    releaseOldResponse(jsonResponse(makeTokens('openid write_notes')));
+    await expect(oldCallback).rejects.toThrow();
+
+    expect(YouVersionPlatformConfiguration.accessToken).toBeNull();
+    expect(YouVersionAPIUsers.getStoredUserInfo()).toBeNull();
+    expect(
+      YouVersionPlatformConfiguration.getOAuthAccessToken('1234567890', 'write_notes'),
+    ).toBeNull();
+  });
+
+  it.each([
+    { responseOutcome: 'succeeds', status: 200 },
+    { responseOutcome: 'fails', status: 401 },
+  ])(
+    'preserves the newer account when an older token refresh $responseOutcome',
+    async ({ status }) => {
+      persistBrowserWrites();
+      YouVersionPlatformConfiguration.saveAuthData('old-access', 'old-refresh', new Date(0), {
+        scope: 'write_notes',
+        userId: 'old-account',
+      });
+      YouVersionPlatformConfiguration.saveUserInfo({ id: 'old-account' });
+      const releaseOldResponse = holdTokenResponse();
+      const oldRefresh = YouVersionAPIUsers.refreshTokenIfNeeded();
+      expect(mockFetch).toHaveBeenCalled();
+
+      YouVersionPlatformConfiguration.saveAuthData('new-access', 'new-refresh', null, {
+        scope: 'read_notes',
+        userId: 'new-account',
+      });
+      YouVersionPlatformConfiguration.saveUserInfo({ id: 'new-account' });
+      releaseOldResponse(jsonResponse(makeTokens('openid write_notes'), status));
+      await expect(oldRefresh).resolves.toBe(false);
+
+      expect(YouVersionPlatformConfiguration.accessToken).toBe('new-access');
+      expect(YouVersionPlatformConfiguration.refreshToken).toBe('new-refresh');
+      expect(YouVersionAPIUsers.getStoredUserInfo()?.userId).toBe('new-account');
+      expect(YouVersionPlatformConfiguration.getOAuthAccessToken('new-account', 'read_notes')).toBe(
+        'new-access',
+      );
+      expect(
+        YouVersionPlatformConfiguration.getOAuthAccessToken('new-account', 'write_notes'),
+      ).toBeNull();
+    },
+  );
 
   describe('signIn', () => {
     afterEach(() => {
@@ -220,7 +482,12 @@ describe('YouVersionAPIUsers', () => {
       );
 
       // Verify redirect occurred
-      expect(mocks.window.location.href).toContain('https://api.youversion.com/auth/authorize');
+      const authorize = new URL(mocks.window.location.href);
+      expect(authorize.origin + authorize.pathname).toBe(
+        'https://api.youversion.com/auth/authorize',
+      );
+      expect(authorize.searchParams.get('scope')).toBe('openid');
+      expect(authorize.searchParams.has('requested_permissions')).toBe(false);
     });
 
     it('should forward requested permissions to the authorize URL', async () => {
@@ -440,11 +707,12 @@ describe('YouVersionAPIUsers', () => {
       expect(result?.name).toBe('John Doe');
       expect(result?.email).toBe('john@example.com');
 
-      // Verify saveAuthData was called with tokens only (no id token persisted)
+      // Verify the access and refresh tokens and granted scopes are persisted.
       expect(saveAuthDataSpy).toHaveBeenCalledWith(
         'access-token-123',
         'refresh-token-456',
         expect.any(Date),
+        { scope: 'bibles highlights openid', userId: '1234567890' },
       );
 
       // Verify the decoded profile was persisted instead of the id token
@@ -982,30 +1250,24 @@ describe('YouVersionAPIUsers', () => {
       );
     });
 
-    it('should successfully rotate the access and refresh tokens', async () => {
+    it('rotates legacy tokens without assigning the returned scope to a stored profile', async () => {
+      persistBrowserWrites();
       const originalAccessToken = 'old-access-token';
       const originalRefreshToken = 'old-refresh-token';
+      YouVersionPlatformConfiguration.saveAuthData(originalAccessToken, originalRefreshToken, null);
+      YouVersionPlatformConfiguration.saveUserInfo({ id: 'legacy-user' });
 
       const mockRefreshResponse = {
         access_token: 'new-access-token',
         expires_in: 3600,
         refresh_token: 'new-refresh-token',
-        scope: 'bibles highlights openid',
+        scope: 'openid write_notes',
         token_type: 'Bearer',
       };
 
       const mockResponse = jsonResponse(mockRefreshResponse);
 
-      mocks.localStorage.getItem.mockImplementation((key: string) => {
-        if (key === 'refreshToken') return originalRefreshToken;
-        if (key === 'accessToken') return originalAccessToken;
-        return null;
-      });
-
       mockFetch.mockResolvedValue(mockResponse);
-
-      const saveAuthDataSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveAuthData');
-      const saveUserInfoSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveUserInfo');
 
       const result = await YouVersionAPIUsers.refreshTokens();
 
@@ -1038,18 +1300,12 @@ describe('YouVersionAPIUsers', () => {
       const body = new URLSearchParams(bodyText);
       expect(body.get('grant_type')).toBe('refresh_token');
 
-      // Verify saveAuthData was called with the rotated tokens only
-      expect(saveAuthDataSpy).toHaveBeenCalledWith(
-        'new-access-token',
-        'new-refresh-token',
-        expect.any(Date),
-      );
-
-      // The stored profile is left untouched by a refresh
-      expect(saveUserInfoSpy).not.toHaveBeenCalled();
-
-      saveAuthDataSpy.mockRestore();
-      saveUserInfoSpy.mockRestore();
+      expect(YouVersionPlatformConfiguration.accessToken).toBe('new-access-token');
+      expect(YouVersionPlatformConfiguration.refreshToken).toBe('new-refresh-token');
+      expect(YouVersionAPIUsers.getStoredUserInfo()?.userId).toBe('legacy-user');
+      expect(
+        YouVersionPlatformConfiguration.getOAuthAccessToken('legacy-user', 'write_notes'),
+      ).toBeNull();
     });
 
     it('should fail the refresh when the rotated tokens cannot be stored', async () => {
@@ -1266,6 +1522,7 @@ describe('YouVersionAPIUsers', () => {
         'new-access-token',
         'new-refresh-token',
         expect.any(Date),
+        undefined,
       );
 
       clearAuthTokensSpy.mockRestore();

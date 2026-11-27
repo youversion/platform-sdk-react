@@ -21,6 +21,7 @@ export default function ThemedApp() {
       includeAuth
       authRedirectUrl={authRedirectUrl}
       appName="SDK Demo"
+      signInPromptMessage="Save Notes and highlights to your YouVersion account."
       locale={locale}
     >
       <App />

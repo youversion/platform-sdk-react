@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import type { FontFamily } from '@/lib/verse-html-utils';
 import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 import { useBibleReaderContext } from './bible-reader-context';
+import { READER_SIGN_IN_SCOPES } from './bible-reader-auth';
 import { BibleChapterPicker } from './bible-chapter-picker';
 import { BibleVersionPicker } from './bible-version-picker';
 import { BibleReaderSearch } from './bible-reader-search';
@@ -44,7 +45,7 @@ function UserMenu() {
     if (onSignInPress) {
       onSignInPress();
     } else {
-      void signIn({ scopes: ['profile'] });
+      void signIn({ scopes: READER_SIGN_IN_SCOPES });
     }
   };
   const handleSignOut = () => {

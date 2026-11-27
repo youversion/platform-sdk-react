@@ -33,6 +33,8 @@ import { LoaderIcon } from './icons/loader';
 import { ReuseShadowBoundary, ShadowIsolationBoundary } from '@/lib/shadow-isolation';
 import { VerseActionPopover } from './verse-action-popover';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
+import { useBibleReaderNote, type NoteDraft } from './use-bible-reader-note';
+import { BibleReaderNotesComposer } from './bible-reader-notes-composer';
 import { HighlightPermissionDialog } from './highlight-permission-dialog';
 import { SignInDialog } from './sign-in-dialog';
 import {
@@ -193,8 +195,7 @@ export type RootProps = BibleReaderSettingsProps & {
   /**
    * Which verse-action UI the reader renders over a selection.
    *
-   * - `'popover'` (default) renders the built-in {@link VerseActionPopover} —
-   *   today's behavior, unchanged.
+   * - `'popover'` (default) renders the built-in {@link VerseActionPopover}.
    * - `'none'` renders **no** verse-action UI while keeping everything else
    *   intact: verses still select and paint, and {@link onVerseSelect} still
    *   fires with `reference` and `shareData` populated, so the host can render
@@ -215,8 +216,8 @@ export type RootProps = BibleReaderSettingsProps & {
   verseActions?: 'popover' | 'none';
   /**
    * Items in the existing popover, in display order. Defaults to highlights,
-   * copy and share. Omit an item to hide it. Each built-in may appear once.
-   * Respects highlight availability and is ignored when `verseActions="none"`.
+   * save, copy and share. Omit an item to hide it. Each built-in may appear once.
+   * Respects highlight and Notes availability and is ignored when `verseActions="none"`.
    *
    * An empty list hides the popover while keeping verse selection enabled.
    * The host can clear the selection through {@link clearSelectionSignal}.
@@ -492,6 +493,7 @@ function Content() {
     onFootnotePress,
     onCopy,
     onShare,
+    onSignInPress,
     highlights,
     isHighlightsControlled,
     onVerseSelect,
@@ -608,6 +610,7 @@ function Content() {
   const {
     highlightedVerses,
     highlightsInteractive,
+    refresh: refreshHighlights,
     apply: applyHighlight,
     remove: removeHighlight,
     permissionDialogOpen,
@@ -630,6 +633,28 @@ function Content() {
       : undefined,
     onAuthRedirectStarted: () => highlightRedirectRef.current.onStarted(),
     onAuthRedirectFailed: () => highlightRedirectRef.current.onFailed(),
+  });
+
+  function clearNoteSelection(selection: NoteDraft['selection']) {
+    if (
+      selection.versionId === versionId &&
+      selection.book === book &&
+      selection.chapter === chapter &&
+      lastSelectionRef.current.length === selection.verses.length &&
+      selection.verses.every((verse) => lastSelectionRef.current.includes(verse))
+    ) {
+      closeAndClearSelection();
+    }
+  }
+
+  const notes = useBibleReaderNote({
+    enabled: verseActions !== 'none' && (!verseActionItems || verseActionItems.includes('save')),
+    hostOwnsSignIn: !!onSignInPress,
+    onSaved: (selection) => {
+      clearNoteSelection(selection);
+      refreshHighlights();
+    },
+    onInvalidated: clearNoteSelection,
   });
 
   // Color row: controlled mode always shows it (YPE-3705 bypasses HIGHLIGHTS_LIVE).
@@ -813,6 +838,28 @@ function Content() {
     setPopoverOpen(true);
   }
 
+  const restoreNoteSelectionRef = useRef(handleVerseSelect);
+  restoreNoteSelectionRef.current = handleVerseSelect;
+  const { restoredSelection: restoredNoteSelection, clearRestoredSelection } = notes;
+  useEffect(() => {
+    if (!restoredNoteSelection || !renderedReference) return;
+    if (
+      restoredNoteSelection.versionId === versionId &&
+      restoredNoteSelection.book === book &&
+      restoredNoteSelection.chapter === chapter &&
+      lastSelectionRef.current.length === 0
+    ) {
+      restoreNoteSelectionRef.current(restoredNoteSelection.verses);
+    }
+    clearRestoredSelection();
+  }, [restoredNoteSelection, clearRestoredSelection, renderedReference, versionId, book, chapter]);
+
+  function handleSaveNote() {
+    if (renderedVerseScope && selectionScopeRef.current === renderedVerseScope) {
+      notes.open(buildVerseSelection(lastSelectionRef.current));
+    }
+  }
+
   function handleHighlight(color: string) {
     const outcome = applyHighlight(color, selectedVerses);
     // Entering the auth flow (sign-in or permission prompt) keeps only the verse
@@ -970,7 +1017,7 @@ function Content() {
       setPopoverOpen(true);
       return;
     }
-    if (highlightDialogOpen) return;
+    if (highlightDialogOpen || notes.flow) return;
     // Outside click / Escape closes and clears (YPE-642, Resolved round 2).
     closeAndClearSelection();
   }
@@ -1026,6 +1073,7 @@ function Content() {
         className="yv:sticky yv:[inset-block-start:0] yv:z-20 yv:rounded-md yv:bg-background yv:px-4 yv:py-2 yv:empty:sr-only yv:text-center yv:text-destructive"
       >
         {clipboardFailed ? t('unableToShare') : null}
+        {notes.authorizationFailed ? t('generic.requestErrorBody') : null}
       </div>
 
       {chapterUnavailable ? (
@@ -1078,6 +1126,7 @@ function Content() {
                   popoverOpen &&
                   canShowSelection &&
                   selectedVerses.length > 0 &&
+                  !notes.flow &&
                   !highlightPromptOpen
                 }
                 onOpenChange={handlePopoverOpenChange}
@@ -1089,10 +1138,11 @@ function Content() {
                 scrollRoot={scrollContainerRef.current}
                 onHighlight={handleHighlight}
                 onClearHighlight={handleClearHighlight}
+                onSave={notes.available ? handleSaveNote : undefined}
                 onCopy={handleCopy}
                 onShare={handleShare}
                 actionItems={verseActionItems?.map((item) =>
-                  item === 'highlights' || item === 'copy' || item === 'share'
+                  item === 'highlights' || item === 'save' || item === 'copy' || item === 'share'
                     ? item
                     : {
                         ...item,
@@ -1134,6 +1184,31 @@ function Content() {
             onDecline={cancelSignInDialog}
             theme={background}
           />
+
+          <SignInDialog
+            open={notes.flow?.phase === 'authorize'}
+            onOpenChange={(open) => {
+              if (!open) notes.cancelAuthorization();
+            }}
+            appName={signInAppName}
+            promptMessage={signInPromptMessage}
+            onConfirm={() => void notes.authorize()}
+            onDecline={notes.cancelAuthorization}
+            theme={background}
+          />
+
+          {(notes.flow?.phase === 'compose' || notes.flow?.phase === 'save') && (
+            <BibleReaderNotesComposer
+              key={notes.flow.draft.requestId}
+              draft={notes.flow.draft}
+              saving={notes.flow.phase === 'save'}
+              failed={notes.flow.failed ?? false}
+              onChange={notes.change}
+              onSave={() => void notes.save()}
+              onDismiss={notes.dismiss}
+              theme={background}
+            />
+          )}
 
           {showLoadingOverlay ? (
             <div

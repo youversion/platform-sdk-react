@@ -17,15 +17,15 @@ import i18n from '@/i18n';
 import { cn } from '../lib/utils';
 import { BoxStackIcon } from './icons/box-stack';
 import { Share } from './icons/share';
-import { CheckIcon } from './icons/check';
+import { BookOpenIcon } from './icons/book-open';
+import { HighlightColorCircle } from './highlight-color-circle';
 import { useShadowPortalState } from './ui/use-shadow-portal-state';
-import { buildVerseActionSwatches, highlightFillColorMix } from '@/lib/highlight-colors';
+import { buildVerseActionSwatches } from '@/lib/highlight-colors';
 import {
   getOwnShadowRoot,
   isElementFromOwnerDocument,
   useShadowFocusRestoreTarget,
 } from '@/lib/shadow-root-host';
-import { isDarkHighlightHex } from './verse';
 import { useInterfaceDirection } from '@/lib/direction';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
 import { useTakeVerseActionPopoverFocusRestoreTarget } from '@/lib/verse-action-popover-focus';
@@ -120,8 +120,8 @@ function isDurableFocusRestoreTarget(
   );
 }
 
-/** The SDK-provided actions for highlighting, copying, and sharing a verse selection. */
-export type BuiltInVerseAction = 'highlights' | 'copy' | 'share';
+/** The SDK-provided actions for highlighting, saving, copying, and sharing a verse selection. */
+export type BuiltInVerseAction = 'highlights' | 'save' | 'copy' | 'share';
 
 /** A built-in or host-provided action for a standalone {@link VerseActionPopover}. */
 export type VerseActionPopoverItem =
@@ -137,7 +137,7 @@ export type VerseActionPopoverItem =
       onSelect: () => void;
     };
 
-const DEFAULT_ACTION_ITEMS: readonly BuiltInVerseAction[] = ['highlights', 'copy', 'share'];
+const DEFAULT_ACTION_ITEMS: readonly BuiltInVerseAction[] = ['highlights', 'save', 'copy', 'share'];
 
 type VerseActionPopoverProps = {
   open: boolean;
@@ -161,55 +161,12 @@ type VerseActionPopoverProps = {
   actionItems?: readonly VerseActionPopoverItem[];
   onHighlight: (color: string) => void;
   onClearHighlight: (color: string) => void;
+  /** Enables the Save action. The Reader opens its Notes composer here. */
+  onSave?: () => void;
   onCopy: () => void;
   onShare: () => void;
   theme?: 'light' | 'dark';
 };
-
-type ColorCircleProps = {
-  color: string;
-  showRemove: boolean;
-  label: string;
-  onClick: () => void;
-  theme: 'light' | 'dark';
-};
-
-function ColorCircle({ color, showRemove, label, onClick, theme }: ColorCircleProps) {
-  const isDark = theme === 'dark';
-  // Dots sit on `yv:bg-card`. Same `--yv-highlight-mix-p` as the reader;
-  // mix against `--yv-card` so a host card override stays authoritative.
-  const backgroundColor = highlightFillColorMix(color, 'card') ?? undefined;
-  // Inner border matches the Figma "highlight stroke" (#121212 @ 20%), giving
-  // pale swatches definition on the light popover. On the dark popover a dark
-  // stroke would vanish against the dimmed fill, so flip it to a light stroke.
-  const border = isDark ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(18, 18, 18, 0.2)';
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'yv:size-8 yv:shrink-0 yv:rounded-full yv:flex yv:items-center yv:justify-center',
-        'yv:transition-transform yv:hover:scale-110',
-        'yv:focus-visible:outline-none yv:focus-visible:ring-2 yv:focus-visible:ring-ring yv:focus-visible:ring-offset-2',
-      )}
-      style={{ backgroundColor, border }}
-      aria-label={label}
-    >
-      {/* Active/remove swatch: a 24px checkmark on the solid color circle. Matches
-          iOS (platform-sdk-swift #179), which swapped the earlier X for a check.
-          Light mode uses Text/Everdark; dark mode dims the fill, so the check goes
-          white to stay legible. Tapping it still removes the highlight. */}
-      {showRemove && (
-        <CheckIcon
-          className={cn(
-            'yv:size-6',
-            isDark || isDarkHighlightHex(color) ? 'yv:text-white' : 'yv:text-(--yv-gray-50)',
-          )}
-        />
-      )}
-    </button>
-  );
-}
 
 type ActionButtonProps = {
   icon: ReactNode;
@@ -251,15 +208,16 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   actionItems = DEFAULT_ACTION_ITEMS,
   onHighlight,
   onClearHighlight,
+  onSave,
   onCopy,
   onShare,
   theme = 'light',
 }) => {
   const { t } = useTranslation(undefined, { i18n });
   const direction = useInterfaceDirection();
-  const visibleActionItems = highlightsEnabled
-    ? actionItems
-    : actionItems.filter((item) => item !== 'highlights');
+  const visibleActionItems = actionItems.filter(
+    (item) => (item !== 'highlights' || highlightsEnabled) && (item !== 'save' || onSave),
+  );
   const open = requestedOpen && visibleActionItems.length > 0;
   const portal = useShadowPortalState({ open, onOpenChange });
   const getShadowFocusRestoreTarget = useShadowFocusRestoreTarget();
@@ -621,6 +579,19 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 }
               >
                 {view.actionItems.map((item, index) => {
+                  if (item === 'save') {
+                    return (
+                      <ActionButton
+                        key={item}
+                        icon={<BookOpenIcon className="yv:size-5" />}
+                        label={t('notesSave')}
+                        onClick={() => onSave?.()}
+                        onClickCapture={() => {
+                          customActionActivatedRef.current = true;
+                        }}
+                      />
+                    );
+                  }
                   if (item === 'copy' || item === 'share') {
                     return (
                       <ActionButton
@@ -681,10 +652,10 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                         aria-label={t('highlightColorsAriaLabel')}
                       >
                         {view.colorCircles.map(({ color, showRemove, key }) => (
-                          <ColorCircle
+                          <HighlightColorCircle
                             key={key}
                             color={color}
-                            showRemove={showRemove}
+                            selected={showRemove}
                             theme={theme}
                             label={
                               showRemove

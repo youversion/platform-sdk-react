@@ -8,6 +8,7 @@ import {
   SignInWithYouVersionPermission,
   YouVersionAPIUsers,
   YouVersionPlatformConfiguration,
+  type AuthenticationScopes,
   type DataExchangeCallbackResult,
 } from '@youversion/platform-core';
 import { YouVersionContext } from './context/YouVersionContext';
@@ -54,7 +55,10 @@ export type UseHighlightAuthActionsResult = {
    * permission alongside `profile`. Returns to `redirectUrl` (or the auth
    * provider's configured `redirectUri`, falling back to the current URL).
    */
-  startSignInForHighlights: (redirectUrl?: string) => Promise<void>;
+  startSignInForHighlights: (
+    redirectUrl?: string,
+    scopes?: AuthenticationScopes[],
+  ) => Promise<void>;
   /**
    * Just-in-time: mint a data-exchange token then full-page redirect to the
    * hosted consent page for the `highlights` permission.
@@ -74,12 +78,12 @@ export function useHighlightAuthActions(): UseHighlightAuthActionsResult {
   );
 
   const startSignInForHighlights = useCallback(
-    async (redirectUrl?: string) => {
+    async (redirectUrl?: string, scopes: AuthenticationScopes[] = ['profile']) => {
       const url = redirectUrl ?? redirectUri ?? globalThis.window?.location.href;
       if (!url) {
         throw new Error('A redirect URL is required to start sign-in for highlights.');
       }
-      await YouVersionAPIUsers.signIn(url, ['profile'], [HIGHLIGHTS_PERMISSION]);
+      await YouVersionAPIUsers.signIn(url, scopes, [HIGHLIGHTS_PERMISSION]);
     },
     [redirectUri],
   );

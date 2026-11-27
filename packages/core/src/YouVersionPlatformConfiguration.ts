@@ -1,5 +1,11 @@
-import { StoredGrantsSchema } from './schemas/auth';
+import {
+  StoredGrantsSchema,
+  StoredOAuthSessionSchema,
+  type StoredOAuthSession,
+} from './schemas/auth';
 import { YouVersionUserInfoJSONSchema, type YouVersionUserInfoJSON } from './schemas/user-info';
+import { parsePermissionList } from './permissions';
+import type { AuthenticationScopes } from './types';
 import { versionFilterState } from './version-filter-state';
 import { getLocalStorage, removeStorageItem, setStorageItem } from './web-storage';
 
@@ -57,14 +63,22 @@ export class YouVersionPlatformConfiguration {
     accessToken: string | null,
     refreshToken: string | null,
     expiryDate: Date | null,
+    oauthSession?: Pick<StoredOAuthSession, 'scope' | 'userId'>,
   ): boolean {
     const storage = getLocalStorage();
     let persisted = true;
 
     if (accessToken !== null) {
+      if (oauthSession) {
+        const value = JSON.stringify({ ...oauthSession, accessToken, refreshToken });
+        persisted = setStorageItem(storage, 'youversion-auth-scope', value) && persisted;
+      } else {
+        removeStorageItem(storage, 'youversion-auth-scope');
+      }
       persisted = setStorageItem(storage, 'accessToken', accessToken) && persisted;
     } else {
       removeStorageItem(storage, 'accessToken');
+      removeStorageItem(storage, 'youversion-auth-scope');
     }
 
     if (refreshToken !== null) {
@@ -105,6 +119,33 @@ export class YouVersionPlatformConfiguration {
     this.saveUserInfo(null);
     this.clearGrantedPermissions();
     this.clearDataExchangeInitiator();
+    removeStorageItem(getLocalStorage(), 'youversion-auth-state');
+  }
+
+  /** Returns an access token only for the specified account and granted OAuth scope. */
+  public static getOAuthAccessToken(userId: string, scope: AuthenticationScopes): string | null {
+    const session = this.readOAuthSession();
+    return session?.userId === userId && parsePermissionList(session.scope).includes(scope)
+      ? session.accessToken
+      : null;
+  }
+
+  /** @internal Reads the OAuth session for token rotation, or `null` for a mismatched record. */
+  public static readOAuthSession(): StoredOAuthSession | null | undefined {
+    const storage = getLocalStorage();
+    const raw = storage?.getItem('youversion-auth-scope');
+    if (!raw) return undefined;
+    try {
+      const session = StoredOAuthSessionSchema.parse(JSON.parse(raw));
+      // A different tab may be partway through replacing the token or profile.
+      return session.accessToken === storage?.getItem('accessToken') &&
+        session.refreshToken === (storage?.getItem('refreshToken') ?? null) &&
+        session.userId === this.currentUserId
+        ? session
+        : null;
+    } catch {
+      return null;
+    }
   }
 
   /**

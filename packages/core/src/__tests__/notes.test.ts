@@ -143,6 +143,26 @@ it('creates, gets, partially updates, and deletes a note on the regular Notes ro
   await expect(client.getNote(updated.id, 'reader').catch(getHttpStatus)).resolves.toBe(404);
 });
 
+it('saves an attached passage without note text', async () => {
+  server.use(
+    http.post(collectionUrl, async ({ request }) => {
+      expect(await request.json()).toEqual({
+        request_id: requestId,
+        content: '',
+        status: 'private',
+        passage: wireNote.passage,
+      });
+      return HttpResponse.json({ ...wireNote, content: '' }, { status: 201 });
+    }),
+  );
+
+  const create = { request_id: requestId, content: '', status: 'private' } as const;
+  await expect(createClient().createNote(create, 'writer')).rejects.toThrow('content');
+  await expect(
+    createClient().createNote({ ...create, passage: note.passage }, 'writer'),
+  ).resolves.toMatchObject({ content: '', passage: note.passage });
+});
+
 it('propagates API authentication and permission failures for every Notes operation', async () => {
   const client = createClient();
   const create = { request_id: requestId, content: note.content, status: note.status };

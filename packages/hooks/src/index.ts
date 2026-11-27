@@ -20,6 +20,7 @@ export * from './useUnifiedSearch';
 export * from './usePassage';
 export * from './useVOTD';
 export * from './useHighlights';
+export * from './useCreateNote';
 export * from './useHighlightAuthActions';
 export * from './useLanguages';
 export * from './useLanguage';

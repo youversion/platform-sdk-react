@@ -4,6 +4,7 @@ import {
   YouVersionAPIUsers,
   YouVersionPlatformConfiguration,
   YouVersionUserInfo,
+  getLocalStorage,
   type YouVersionUserInfoJSON,
 } from '@youversion/platform-core';
 import React, { useEffect, useState, type ReactNode } from 'react';
@@ -32,6 +33,7 @@ export default function YouVersionAuthProvider({
   const [userInfo, setUserInfo] = useState<YouVersionUserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [oauthCallbackState, setOAuthCallbackState] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isHostControlled) return;
@@ -42,6 +44,7 @@ export default function YouVersionAuthProvider({
   useEffect(() => {
     if (isHostControlled) return;
     let mounted = true;
+    let sessionChanged = false;
     const initAuth = async () => {
       // Set configuration
       YouVersionPlatformConfiguration.appKey = config.appKey;
@@ -55,10 +58,11 @@ export default function YouVersionAuthProvider({
         if (isOAuthCallback) {
           try {
             const result = await YouVersionAPIUsers.handleAuthCallback();
-            if (result) {
+            if (result && !sessionChanged) {
               // handleAuthCallback persists the decoded profile; read it back.
               if (!mounted) return;
               setUserInfo(YouVersionAPIUsers.getStoredUserInfo());
+              setOAuthCallbackState(urlParams.get('state'));
             }
           } catch (err) {
             if (!mounted) return;
@@ -66,7 +70,10 @@ export default function YouVersionAuthProvider({
             if (process.env.NODE_ENV === 'development') {
               console.error('Auth callback failed:', error);
             }
-            setError(error);
+            if (!sessionChanged) {
+              setError(error);
+              setUserInfo(YouVersionAPIUsers.getStoredUserInfo());
+            }
           }
         } else {
           // Check for existing token
@@ -77,10 +84,12 @@ export default function YouVersionAuthProvider({
               // when the session has expired and cannot be refreshed.
               const refreshed = await YouVersionAPIUsers.refreshTokenIfNeeded();
               if (!mounted) return;
-              setUserInfo(refreshed ? YouVersionAPIUsers.getStoredUserInfo() : null);
+              if (!sessionChanged) {
+                setUserInfo(refreshed ? YouVersionAPIUsers.getStoredUserInfo() : null);
+              }
             } catch {
               if (!mounted) return;
-              setUserInfo(null);
+              if (!sessionChanged) setUserInfo(null);
             }
           }
         }
@@ -90,9 +99,27 @@ export default function YouVersionAuthProvider({
       setIsLoading(false);
     };
 
+    function syncSession(event: StorageEvent) {
+      if (
+        event.storageArea !== getLocalStorage() ||
+        (event.key !== null &&
+          event.key !== 'userInfo' &&
+          event.key !== 'accessToken' &&
+          event.key !== 'refreshToken' &&
+          event.key !== 'youversion-auth-scope')
+      ) {
+        return;
+      }
+      sessionChanged = true;
+      setOAuthCallbackState(null);
+      setUserInfo(YouVersionAPIUsers.getStoredUserInfo());
+    }
+
+    globalThis.window?.addEventListener('storage', syncSession);
     void initAuth();
     return () => {
       mounted = false;
+      globalThis.window?.removeEventListener('storage', syncSession);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -102,6 +129,8 @@ export default function YouVersionAuthProvider({
     isLoading,
     error,
     redirectUri: config.redirectUri,
+    oauthCallbackState,
+    isHostControlled,
   };
 
   return <YouVersionAuthContext.Provider value={value}>{children}</YouVersionAuthContext.Provider>;

@@ -223,12 +223,14 @@ export class YouVersionAPIUsers {
    * @param scopes - OAuth scopes to request, such as `profile`, `email`, or `read_notes`.
    * @param permissions - YouVersion data-exchange permissions to request (e.g. `highlights`).
    *   These are sent as a comma-joined `requested_permissions` param, separate from OAuth scopes.
+   * @param beforeRedirect - Called with the authorization state immediately before navigation.
    * @throws An error if authentication fails or configuration is invalid.
    */
   static async signIn(
     redirectURL: string,
     scopes?: AuthenticationScopes[],
     permissions?: SignInWithYouVersionPermissionValues[],
+    beforeRedirect?: (state: string) => void,
   ): Promise<void> {
     const appKey = YouVersionPlatformConfiguration.appKey;
     if (!appKey) {
@@ -243,6 +245,8 @@ export class YouVersionAPIUsers {
       scopes,
       permissions,
     );
+
+    beforeRedirect?.(authorizationRequest.parameters.state);
 
     // Store auth data for callback handler
     persistOrThrow(
@@ -272,7 +276,6 @@ export class YouVersionAPIUsers {
       stashRequestedPermissions(storage, authorizationRequest.parameters.state, permissions);
     }
 
-    // Simple redirect to authorization URL
     window.location.href = authorizationRequest.url.toString();
   }
 
@@ -375,6 +378,11 @@ export class YouVersionAPIUsers {
     urlParams: URLSearchParams,
     storage: Storage,
   ): Promise<SignInWithYouVersionResult> {
+    const initiatingUserId = YouVersionPlatformConfiguration.storedUserInfo?.id;
+    const isCurrentSignIn = () =>
+      storage.getItem('youversion-auth-state') === state &&
+      YouVersionPlatformConfiguration.storedUserInfo?.id === initiatingUserId;
+    let savingSession = false;
     try {
       // Exchange authorization code for tokens
       const tokenRequest = SignInWithYouVersionPKCEAuthorizationRequestBuilder.tokenURLRequest(
@@ -396,6 +404,7 @@ export class YouVersionAPIUsers {
         throw new Error(`Token exchange response was invalid: ${parsed.error.message}`);
       }
       const tokens = parsed.data;
+      if (!isCurrentSignIn()) throw new Error('The authentication session changed during sign-in');
 
       // Match Swift: union grants from (1) this URL, (2) stashed pre-code hop,
       // (3) token scope — then drop scopes that aren't data-exchange permissions before seeding the
@@ -428,10 +437,12 @@ export class YouVersionAPIUsers {
 
       // Store tokens in configuration. The ID token is intentionally not
       // persisted — it is only used here to derive the user profile below.
+      savingSession = true;
       const tokensPersisted = YouVersionPlatformConfiguration.saveAuthData(
         result.accessToken || null,
         result.refreshToken || null,
         result.expiryDate || null,
+        result.yvpUserId ? { scope: tokens.scope, userId: result.yvpUserId } : undefined,
       );
 
       // Persist the decoded user profile so it survives reloads without
@@ -470,8 +481,10 @@ export class YouVersionAPIUsers {
 
       return result;
     } catch (error) {
-      YouVersionPlatformConfiguration.clearAuthTokens();
-      clearOAuthHandoff(storage);
+      if (savingSession || isCurrentSignIn()) {
+        YouVersionPlatformConfiguration.clearAuthTokens();
+        clearOAuthHandoff(storage);
+      }
       throw error;
     }
   }
@@ -627,7 +640,10 @@ export class YouVersionAPIUsers {
    * @throws An error if refresh fails or no refresh token is available
    */
   static async refreshTokens(): Promise<SignInWithYouVersionResult | null> {
+    const accessToken = YouVersionPlatformConfiguration.accessToken;
     const refreshToken = YouVersionPlatformConfiguration.refreshToken;
+    const userId = YouVersionPlatformConfiguration.storedUserInfo?.id;
+    const oauthSession = YouVersionPlatformConfiguration.readOAuthSession();
     const appKey = YouVersionPlatformConfiguration.appKey;
 
     if (!refreshToken) {
@@ -638,6 +654,9 @@ export class YouVersionAPIUsers {
       throw new Error(
         'YouVersionPlatformConfiguration.appKey must be set before refreshing tokens',
       );
+    }
+    if (oauthSession === null || (oauthSession && oauthSession.refreshToken !== refreshToken)) {
+      throw new Error('The authentication session changed before token refresh');
     }
 
     try {
@@ -664,6 +683,14 @@ export class YouVersionAPIUsers {
       }
 
       const tokens = TokenRefreshResponseSchema.parse(await response.json());
+      if (
+        YouVersionPlatformConfiguration.accessToken !== accessToken ||
+        YouVersionPlatformConfiguration.refreshToken !== refreshToken ||
+        YouVersionPlatformConfiguration.storedUserInfo?.id !== userId ||
+        YouVersionPlatformConfiguration.readOAuthSession() === null
+      ) {
+        throw new Error('The authentication session changed during token refresh');
+      }
 
       // Create result with new tokens. The persisted user profile is left
       // untouched — refreshing only rotates the access/refresh tokens.
@@ -679,6 +706,9 @@ export class YouVersionAPIUsers {
         result.accessToken || null,
         result.refreshToken || null,
         result.expiryDate || null,
+        oauthSession
+          ? { scope: tokens.scope ?? oauthSession.scope, userId: oauthSession.userId }
+          : undefined,
       );
       if (!persisted) {
         throw new Error('the rotated tokens could not be saved to browser storage');
@@ -748,12 +778,23 @@ export class YouVersionAPIUsers {
    * resolves false for every caller awaiting it.
    */
   private static async performTokenRefresh(): Promise<boolean> {
+    const accessToken = YouVersionPlatformConfiguration.accessToken;
+    const refreshToken = YouVersionPlatformConfiguration.refreshToken;
+    const userId = YouVersionPlatformConfiguration.storedUserInfo?.id;
+    if (YouVersionPlatformConfiguration.readOAuthSession() === null) return false;
     try {
       const result = await this.refreshTokens();
       return !!result;
     } catch {
       // Refresh failed, clear tokens
-      YouVersionPlatformConfiguration.clearAuthTokens();
+      if (
+        YouVersionPlatformConfiguration.accessToken === accessToken &&
+        YouVersionPlatformConfiguration.refreshToken === refreshToken &&
+        YouVersionPlatformConfiguration.storedUserInfo?.id === userId &&
+        YouVersionPlatformConfiguration.readOAuthSession() !== null
+      ) {
+        YouVersionPlatformConfiguration.clearAuthTokens();
+      }
       return false;
     }
   }

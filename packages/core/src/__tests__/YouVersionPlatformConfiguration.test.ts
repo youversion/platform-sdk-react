@@ -32,9 +32,12 @@ describe('YouVersionPlatformConfiguration storage contracts', () => {
     expect(storage?.getItem('refreshToken')).toBe('refresh-token');
     expect(YouVersionPlatformConfiguration.tokenExpiryDate).toEqual(expiryDate);
     expect(storage?.getItem('idToken')).toBeNull();
+    expect(
+      YouVersionPlatformConfiguration.getOAuthAccessToken('user-123', 'write_notes'),
+    ).toBeNull();
   });
 
-  it('removes a persisted session and profile on sign-out', () => {
+  it('removes a persisted session, scopes, and profile on sign-out', () => {
     const storage = getLocalStorage();
     expect(storage).not.toBeNull();
     clearStorage(storage);
@@ -42,15 +45,54 @@ describe('YouVersionPlatformConfiguration storage contracts', () => {
       'access-token',
       'refresh-token',
       new Date('2026-01-01T00:00:00Z'),
+      { scope: 'read_notes write_notes', userId: 'user-123' },
     );
     YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-123' });
 
     const sessionKeys = ['accessToken', 'refreshToken', 'expiryDate', 'userInfo'];
     for (const key of sessionKeys) expect(storage?.getItem(key)).not.toBeNull();
+    expect(YouVersionPlatformConfiguration.getOAuthAccessToken('user-123', 'read_notes')).toBe(
+      'access-token',
+    );
+    expect(YouVersionPlatformConfiguration.getOAuthAccessToken('user-123', 'write_notes')).toBe(
+      'access-token',
+    );
 
     YouVersionPlatformConfiguration.clearAuthTokens();
 
     for (const key of sessionKeys) expect(storage?.getItem(key)).toBeNull();
+    expect(
+      YouVersionPlatformConfiguration.getOAuthAccessToken('user-123', 'read_notes'),
+    ).toBeNull();
+    expect(
+      YouVersionPlatformConfiguration.getOAuthAccessToken('user-123', 'write_notes'),
+    ).toBeNull();
+  });
+
+  it('authorizes note requests only after replacement tokens and profile belong to the same account', () => {
+    clearStorage(getLocalStorage());
+    const config = YouVersionPlatformConfiguration;
+    config.saveAuthData('a-access', 'a-refresh', null, {
+      scope: 'write_notes',
+      userId: 'account-a',
+    });
+    config.saveUserInfo({ id: 'account-a' });
+    expect(config.getOAuthAccessToken('account-a', 'write_notes')).toBe('a-access');
+    expect(config.getOAuthAccessToken('account-b', 'write_notes')).toBeNull();
+
+    config.saveAuthData('b-access', 'b-refresh', null, {
+      scope: 'write_notes',
+      userId: 'account-b',
+    });
+    expect(config.getOAuthAccessToken('account-a', 'write_notes')).toBeNull();
+    expect(config.getOAuthAccessToken('account-b', 'write_notes')).toBeNull();
+
+    config.saveUserInfo({ id: 'account-b' });
+    expect(config.getOAuthAccessToken('account-a', 'write_notes')).toBeNull();
+    expect(config.getOAuthAccessToken('account-b', 'write_notes')).toBe('b-access');
+
+    config.saveAuthData('unbound-access', 'unbound-refresh', null);
+    expect(config.getOAuthAccessToken('account-b', 'write_notes')).toBeNull();
   });
 
   it('fails closed when stored user information is malformed or untrusted', () => {

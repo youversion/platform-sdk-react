@@ -564,7 +564,7 @@ export const CustomVerseActions: Story = {
     await expect(dialog).toHaveAttribute('data-state', 'closed');
     await expect(mark).toBeInTheDocument();
     const item = args.verseActionItems?.[1];
-    if (!item || item === 'highlights' || item === 'copy' || item === 'share') {
+    if (!item || item === 'highlights' || item === 'save' || item === 'copy' || item === 'share') {
       throw new Error('Custom action fixture missing');
     }
     await expect(item.onSelect).toHaveBeenCalledTimes(1);
@@ -2076,7 +2076,7 @@ export const ChapterChangeLoadingOverlay: Story = {
   play: async ({ args, canvasElement }) => {
     const { root, reader } = await getReaderStory(canvasElement);
     const [mark] = args.verseActionItems ?? [];
-    if (!mark || mark === 'highlights' || mark === 'copy' || mark === 'share') {
+    if (!mark || mark === 'highlights' || mark === 'save' || mark === 'copy' || mark === 'share') {
       throw new Error('Custom action fixture missing');
     }
     await waitFor(

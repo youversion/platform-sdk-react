@@ -5,6 +5,7 @@ import { deriveHighlightedVerses } from '@/lib/highlight-projection';
 import { isPaletteHighlightColor, normalizeHighlightHex } from '@/lib/highlight-colors';
 import type { Highlight } from '@youversion/platform-core';
 import type { BibleReaderHighlightIntent } from './bible-reader.types';
+import { READER_SIGN_IN_SCOPES } from './bible-reader-auth';
 import {
   bibleReaderHighlightsMachine,
   scopesEqual,
@@ -76,6 +77,8 @@ export type UseBibleReaderHighlightsReturn = {
    * render the (otherwise inert) color-swatch row.
    */
   highlightsInteractive: boolean;
+  /** Revalidates the currently displayed chapter while keeping its cached colors. */
+  refresh: () => void;
   /** Whether the just-in-time permission confirm dialog is open. */
   permissionDialogOpen: boolean;
   /** Controlled open-change for the permission confirm dialog. */
@@ -226,7 +229,7 @@ export function useBibleReaderHighlights({
     hasHighlightsPermission,
     invalidateHighlightsPermission,
     consumeDataExchangeReturn,
-    startSignInForHighlights,
+    startSignInForHighlights: () => startSignInForHighlights(undefined, READER_SIGN_IN_SCOPES),
     startDataExchangeForHighlights,
     onAuthRedirectStarted,
     onAuthRedirectFailed,
@@ -270,10 +273,15 @@ export function useBibleReaderHighlights({
   //
   // If `serverColors` is a new object, `highlightedVerses` is also a new object.
   // Then `verse.tsx` runs `useLayoutEffect` again for every verse.
-  const serverColors = useMemo(
+  const latestServerColors = useMemo(
     () => parseServerColors(highlights, versionId, chapterUsfm),
     [highlights, versionId, chapterUsfm],
   );
+  const paintedServerColorsRef = useRef(latestServerColors);
+  if (!serverColorsEqual(paintedServerColorsRef.current, latestServerColors)) {
+    paintedServerColorsRef.current = latestServerColors;
+  }
+  const serverColors = paintedServerColorsRef.current;
 
   const lastSentServerColorsRef = useRef<ServerColors | null>(null);
   useEffect(() => {
@@ -408,6 +416,9 @@ export function useBibleReaderHighlights({
     // we intentionally exclude here — a signed-out tap still enters the sign-in
     // flow, so the row stays interactive.)
     highlightsInteractive: hasAuthProvider,
+    refresh: () => {
+      if (live) refetch();
+    },
     permissionDialogOpen,
     signInDialogOpen,
     ...api,
