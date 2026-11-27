@@ -17,8 +17,14 @@ import {
   YouVersionAPIUsers,
   YouVersionPlatformConfiguration as config,
   type CreateNote,
+  type Note,
+  type UpdateNote,
 } from '@youversion/platform-core';
-import { useCreateNote, YouVersionAuthContext } from '@youversion/platform-react-hooks';
+import {
+  useCreateNote,
+  useUpdateNote,
+  YouVersionAuthContext,
+} from '@youversion/platform-react-hooks';
 import * as z from 'zod/mini';
 import { buildPassageIds } from '@/lib/usfm-ranges';
 import { getOwnShadowRoot } from '@/lib/shadow-root-host';
@@ -32,13 +38,23 @@ const selectionSchema = z.object({
   reference: z.string(),
 });
 
+const editableFields = {
+  text: z.string(),
+  visibility: z.enum(['private', 'public']),
+  color: z.nullable(z.string().check(z.regex(/^[0-9a-f]{6}$/))),
+};
+
 const draftSchema = z.object({
   selection: selectionSchema,
   requestId: z.uuid(),
   ownerId: z.nullable(z.string()),
-  text: z.string(),
-  visibility: z.enum(['private', 'public']),
-  color: z.nullable(z.string().check(z.regex(/^[0-9a-f]{6}$/))),
+  ...editableFields,
+  recovery: z.optional(
+    z.object({
+      submitted: z.object(editableFields),
+      savedNote: z.optional(z.object({ id: z.string(), contentMayExist: z.boolean() })),
+    }),
+  ),
 });
 
 const handoffSchema = z.object({
@@ -131,6 +147,14 @@ function writerToken(account: string | null) {
   return account ? config.getOAuthAccessToken(account, 'write_notes') : null;
 }
 
+function noteMatchesDraft(note: Note, draft: NoteDraftFields) {
+  return (
+    note.content === draft.text &&
+    note.status === draft.visibility &&
+    (note.color?.toLowerCase() ?? null) === draft.color
+  );
+}
+
 function matchesDraftOwner(
   owner: string | null,
   account: string | null,
@@ -189,6 +213,7 @@ export function useBibleReaderNote({
   const oauthFailedCallbackState = oauthCallbackSuperseded ? null : auth?.oauthFailedCallbackState;
   const canAuthorize = enabled && auth !== null && !auth.isHostControlled && !hostOwnsSignIn;
   const createNote = useCreateNote();
+  const updateNote = useUpdateNote();
   const [flow, setFlow] = useState<Flow | null>(null);
   const [restoredSelection, setRestoredSelection] = useState<NoteSelection | null>(null);
   const clearRestoredSelection = useCallback(() => setRestoredSelection(null), []);
@@ -458,33 +483,68 @@ export function useBibleReaderNote({
       });
       return;
     }
-    const saving = { draft: active.draft, phase: 'save' } as const;
+    const draft = active.draft;
+    const saving = { draft, phase: 'save' } as const;
     show(saving);
-    const { selection, text, color, visibility, requestId, ownerId } = active.draft;
+    const { selection, text, color, visibility, requestId, ownerId, recovery } = draft;
+    const submitted = recovery?.submitted ?? { text, color, visibility };
+    let savedNote = recovery?.savedNote;
+    let patchToken: string | null = null;
     const isCurrent = () =>
       currentFlow.current === saving &&
       latest.current.account === ownerId &&
       config.storedUserInfo?.id === ownerId;
-    const request: CreateNote = {
-      request_id: requestId,
-      content: text,
-      status: visibility,
-      passage: {
-        version_id: selection.versionId,
-        passage_id: buildPassageIds(selection.book, selection.chapter, selection.verses).join('+'),
-      },
-    };
-    if (color) request.color = color;
     try {
-      await createNote(request, token);
+      if (!savedNote) {
+        const request: CreateNote = {
+          request_id: requestId,
+          content: submitted.text,
+          status: submitted.visibility,
+          passage: {
+            version_id: selection.versionId,
+            passage_id: buildPassageIds(selection.book, selection.chapter, selection.verses).join(
+              '+',
+            ),
+          },
+        };
+        if (submitted.color) request.color = submitted.color;
+        const note = await createNote(request, token);
+        if (!isCurrent()) return;
+        if (!noteMatchesDraft(note, draft)) {
+          savedNote = { id: note.id, contentMayExist: note.content.length > 0 };
+        }
+      }
+      if (savedNote) {
+        // Recheck the live scope after the create round trip and before updating.
+        patchToken = writerToken(ownerId);
+        if (!patchToken) throw new Error('An access token is required to finish saving the note');
+        if (!text && savedNote.contentMayExist) {
+          throw new Error('The Notes API cannot clear saved note text');
+        }
+        const update: UpdateNote = { status: visibility, color };
+        if (text) update.content = text;
+        const note = await updateNote(savedNote.id, update, patchToken);
+        if (note.id !== savedNote.id || !noteMatchesDraft(note, draft)) {
+          throw new Error('The updated note does not match the draft');
+        }
+      }
     } catch (error) {
       if (isCurrent()) {
         const status = getHttpStatus(error);
+        const deniedToken = status === 401 || status === 403 ? (patchToken ?? token) : undefined;
+        // A lost update may already have changed the note. Retry the desired
+        // fields against this ID, even if the user restored the create values.
+        if (savedNote && patchToken && text && !deniedToken) {
+          savedNote = { ...savedNote, contentMayExist: true };
+        }
         show({
           phase: 'compose',
-          draft: active.draft,
+          draft: {
+            ...draft,
+            recovery: savedNote || recovery || !deniedToken ? { submitted, savedNote } : undefined,
+          },
           failed: true,
-          deniedToken: status === 401 || status === 403 ? token : undefined,
+          deniedToken,
         });
       }
       return;

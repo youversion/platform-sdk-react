@@ -21,6 +21,7 @@ export * from './usePassage';
 export * from './useVOTD';
 export * from './useHighlights';
 export * from './useCreateNote';
+export * from './useUpdateNote';
 export * from './useHighlightAuthActions';
 export * from './useLanguages';
 export * from './useLanguage';

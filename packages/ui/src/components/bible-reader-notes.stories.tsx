@@ -213,12 +213,26 @@ export const EditAndRetry: Story = {
   parameters: writableSession,
   play: withWritableSession(async ({ canvasElement }) => {
     const requests: NoteRequest[] = [];
+    const updates: Pick<NoteRequest, 'content' | 'status' | 'color'>[] = [];
+    let stored: NoteRequest | undefined;
     getWorker().use(
       http.post<never, NoteRequest>('*/v1/notes', async ({ request }) => {
         const body = await request.json();
         requests.push(body);
-        return requests.length === 1 ? HttpResponse.error() : noteResponse(body);
+        if (stored) return noteResponse(stored);
+        stored = body;
+        return HttpResponse.error();
       }),
+      http.patch<never, Pick<NoteRequest, 'content' | 'status' | 'color'>>(
+        '*/v1/notes/saved-note',
+        async ({ request }) => {
+          if (!stored) return new HttpResponse(null, { status: 404 });
+          const update = await request.json();
+          updates.push(update);
+          stored = { ...stored, ...update };
+          return updates.length === 1 ? HttpResponse.error() : noteResponse(stored);
+        },
+      ),
     );
     const root = await waitForShadowRoot(canvasElement);
     const settings = root.querySelector<HTMLButtonElement>('button[aria-label="Settings"]');
@@ -298,6 +312,28 @@ export const EditAndRetry: Story = {
     await expect(selected).toHaveAttribute('aria-pressed', 'true');
     await expect(composer.getByRole('radio', { name: 'Public' })).toBeChecked();
     await fillEditor(editor, 'Edited thought');
+    await userEvent.click(composer.getByRole('radio', { name: 'Private' }));
+    await userEvent.click(selected);
+    await userEvent.click(composer.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(updates).toEqual([{ content: 'Edited thought', status: 'private', color: null }]),
+    );
+    await waitFor(() => expect(composer.getByRole('alert')).toBeVisible());
+    await expect(editor).toHaveValue('Edited thought');
+    await expect(composer.getByRole('radio', { name: 'Private' })).toBeChecked();
+    await expect(selected).toHaveAttribute('aria-pressed', 'false');
+
+    // PATCH cannot clear already saved text. The empty draft remains editable.
+    await fillEditor(editor, '');
+    await userEvent.click(composer.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(composer.getByRole('alert')).toBeVisible());
+    await expect(editor).toHaveValue('');
+
+    // The lost update may have reached the server. Restoring the original fields
+    // still needs an update to that same note.
+    await fillEditor(editor, 'First thought');
+    await userEvent.click(composer.getByRole('radio', { name: 'Public' }));
+    await userEvent.click(selected);
     await userEvent.click(composer.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(overlays.queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(root.activeElement).toBe(settings));
@@ -310,9 +346,14 @@ export const EditAndRetry: Story = {
     };
     await expect(requests).toEqual([
       { ...common, content: 'First thought' },
-      { ...common, content: 'Edited thought' },
+      { ...common, content: 'First thought' },
     ]);
     await expect(requests[1]?.request_id).toBe(requests[0]?.request_id);
+    await expect(updates).toEqual([
+      { content: 'Edited thought', status: 'private', color: null },
+      { content: 'First thought', status: 'public', color: 'ffdca7' },
+    ]);
+    await expect(stored).toEqual(requests[0]);
   }),
 };
 
@@ -585,12 +626,25 @@ export const CancelRetainsDraftAcrossNavigation: Story = {
   tags: ['integration', 'shadow-dom', 'cross-browser'],
   play: withWritableSession(async ({ canvasElement, loaded }) => {
     const attempts: NoteRequest[] = [];
+    const updates: { status: NoteRequest['status']; color: NoteRequest['color'] }[] = [];
+    let stored: NoteRequest | undefined;
     getWorker().use(
       http.post<never, NoteRequest>('*/v1/notes', async ({ request }) => {
         const body = await request.json();
         attempts.push(body);
-        return attempts.length === 1 ? HttpResponse.error() : noteResponse(body);
+        if (stored) return noteResponse(stored);
+        stored = body;
+        return HttpResponse.error();
       }),
+      http.patch<never, { status: NoteRequest['status']; color: NoteRequest['color'] }>(
+        '*/v1/notes/saved-note',
+        async ({ request }) => {
+          if (!stored) return new HttpResponse(null, { status: 404 });
+          const update = await request.json();
+          updates.push(update);
+          return noteResponse({ ...stored, ...update });
+        },
+      ),
     );
     const root = await waitForShadowRoot(canvasElement);
     const navigation = storyNavigation.parse(loaded.hostNavigation);
@@ -611,6 +665,7 @@ export const CancelRetainsDraftAcrossNavigation: Story = {
     await selectVerses(root, [1, 4]);
     const { composer: reopened } = await openComposer(root, 'John 1:1,4');
     await expect(reopened.getByRole('textbox', { name: 'Add Note…' })).toHaveValue('');
+    await userEvent.click(reopened.getByRole('radio', { name: 'Public' }));
     await userEvent.click(reopened.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(overlays.queryByRole('dialog')).toBeNull());
     const request = {
@@ -621,6 +676,7 @@ export const CancelRetainsDraftAcrossNavigation: Story = {
     };
     await expect(attempts).toEqual([request, request]);
     await expect(attempts[1]?.request_id).toBe(attempts[0]?.request_id);
+    await expect(updates).toEqual([{ status: 'public', color: null }]);
   }),
 };
 
