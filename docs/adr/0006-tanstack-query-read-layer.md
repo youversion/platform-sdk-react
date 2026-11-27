@@ -29,9 +29,16 @@ stale cached entries still revalidate on mount. Keep the `combine` callback stab
 so TanStack Query memoizes it and the returned Map stays referentially stable.
 No TanStack Query type reaches the public surface.
 
-The cache is memory-only. `refetch` performs exact query invalidation. Writes stay
-outside this read layer, owned by the highlights machine, and refresh via
-`refetch` after the write.
+The cache is memory-only. `refetch` performs exact query invalidation. Highlight
+writes stay outside this read layer, owned by the highlights machine, and refresh
+via `refetch` after the write. Reader Notes saves also use `refetch` to refresh the
+displayed chapter's highlights.
+
+Highlight refetch also restarts an active initial read when it has no cached
+result. That read may have started before the write and could return outdated
+data; the restart fetches the post-write state. Settled cached data stays visible
+during revalidation. Other read hooks retain exact invalidation without this
+initial-read restart.
 
 ## Why
 

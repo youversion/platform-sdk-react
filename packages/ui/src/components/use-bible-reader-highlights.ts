@@ -226,6 +226,12 @@ export function useBibleReaderHighlights({
     { version_id: displayedVersionId, passage_id: displayedChapterUsfm },
     { enabled: live },
   );
+  // Warm the destination's existing account-scoped cache while the old passage
+  // remains on screen. The display observer shares this request on handoff.
+  const { refetch: refetchDestination } = useHighlights(
+    { version_id: versionId, passage_id: `${book}.${chapter}` },
+    { enabled: live && isDisplayingRetainedChapter },
+  );
 
   // Stable refs so controlled apply/remove close over the latest callbacks
   // without re-creating the functions every render.
@@ -241,8 +247,10 @@ export function useBibleReaderHighlights({
     createHighlight,
     deleteHighlight,
     refetch: () => {
-      // The destination's highlights load when the destination passage is displayed.
-      if (!isDisplayingRetainedChapter) refetch();
+      // Highlight writes target the requested scope; Notes refresh targets the
+      // displayed chapter separately through `refresh` below.
+      if (isDisplayingRetainedChapter) refetchDestination();
+      else refetch();
     },
     hasHighlightsPermission,
     invalidateHighlightsPermission,

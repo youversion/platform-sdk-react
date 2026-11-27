@@ -723,6 +723,8 @@ export const RefreshRetainedChapterWhileNavigationLoads: Story = {
     const releaseNote = deferred<void>();
     const chapterRequested = deferred<void>();
     const releaseChapter = deferred<void>();
+    const releaseDestinationRevalidation = deferred<void>();
+    let destinationReads = 0;
     const postSaveReads: string[] = [];
     let noteSaved = false;
     getWorker().use(
@@ -738,12 +740,15 @@ export const RefreshRetainedChapterWhileNavigationLoads: Story = {
         await releaseChapter.promise;
         return HttpResponse.json(mockPassages['JHN.3']);
       }),
-      http.get('*/v1/highlights', ({ request }) => {
+      http.get('*/v1/highlights', async ({ request }) => {
         const scope = new URL(request.url).searchParams.get('passage_id') ?? '';
         if (noteSaved) postSaveReads.push(scope);
-        return scope === 'JHN.1'
-          ? highlightPage(noteSaved ? green : yellow)
-          : HttpResponse.json({ data: [], next_page_token: null });
+        if (scope === 'JHN.3') {
+          destinationReads += 1;
+          if (destinationReads > 1) await releaseDestinationRevalidation.promise;
+          return highlightPage({ ...green, passage_id: 'JHN.3.16' });
+        }
+        return highlightPage(noteSaved ? green : yellow);
       }),
     );
     const retained = await readerVerse(root, 1);
@@ -755,6 +760,8 @@ export const RefreshRetainedChapterWhileNavigationLoads: Story = {
       storyNavigation.parse(loaded.hostNavigation).request({ versionId: 111, passageId: 'JHN.3' });
       await chapterRequested.promise;
       await expect(retained).toBeVisible();
+      await expect(getBackgroundColorChannels(retained)).toEqual([255, 236, 91, 255]);
+      await waitFor(() => expect(destinationReads).toBe(1));
       releaseNote.resolve();
       await waitFor(() => expect(overlays.queryByRole('dialog')).toBeNull());
       await waitFor(() =>
@@ -769,7 +776,14 @@ export const RefreshRetainedChapterWhileNavigationLoads: Story = {
       await expect(actions.queryAllByRole('button', { name: 'Apply highlight' })).toHaveLength(0);
       await expect(getBackgroundColorChannels(retained)).toEqual([180, 255, 193, 255]);
       releaseChapter.resolve();
-      await waitFor(async () => expect(await readerVerse(root, 16)).toBeVisible());
+      await waitFor(() =>
+        expect(root.querySelector('[data-slot="yv-bible-renderer"]')).toHaveTextContent(
+          'Nicodemus',
+        ),
+      );
+      const destination = await readerVerse(root, 16);
+      await expect(destination).toBeVisible();
+      await expect(getBackgroundColorChannels(destination)).toEqual([180, 255, 193, 255]);
       await waitFor(() => expect(postSaveReads).toEqual(['JHN.1', 'JHN.3']));
       await selectVerses(root, [16]);
       const currentActions = within(await overlays.findByRole('dialog', { name: 'Verse actions' }));
@@ -779,6 +793,7 @@ export const RefreshRetainedChapterWhileNavigationLoads: Story = {
     } finally {
       releaseNote.resolve();
       releaseChapter.resolve();
+      releaseDestinationRevalidation.resolve();
     }
   }),
 };
