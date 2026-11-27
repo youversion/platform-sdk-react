@@ -167,6 +167,8 @@ export function useBibleReaderNote({
 }): UseBibleReaderNoteResult {
   const auth = useContext(YouVersionAuthContext);
   const account = auth?.userInfo?.userId || null;
+  const accountRevision = auth?.accountRevision ?? 0;
+  const lastAccountRevision = useRef(accountRevision);
   const authLoading = auth?.isLoading ?? false;
   const oauthCallbackState = auth?.oauthCallbackState;
   const oauthCallbackSuperseded = auth?.oauthCallbackSuperseded;
@@ -207,23 +209,29 @@ export function useBibleReaderNote({
   }
 
   useLayoutEffect(() => {
-    if (authLoading) return;
-    const draft = currentFlow.current?.draft ?? retainedDraft.current;
+    const accountChanged = accountRevision !== lastAccountRevision.current;
+    lastAccountRevision.current = accountRevision;
+    if (authLoading && !accountChanged) return;
+    const active = currentFlow.current;
+    const draft = active?.draft ?? retainedDraft.current;
     if (
-      !draft?.ownerId ||
-      matchesDraftOwner(
-        draft.ownerId,
-        account,
-        draftAuthorizationState.current,
-        oauthFailedCallbackState,
-      )
-    )
+      draft?.ownerId &&
+      (accountChanged ||
+        !matchesDraftOwner(
+          draft.ownerId,
+          account,
+          draftAuthorizationState.current,
+          oauthFailedCallbackState,
+        ))
+    ) {
+      retainedDraft.current = null;
+      draftAuthorizationState.current = null;
+      show(null);
+      latest.current.onInvalidated(draft.selection);
       return;
-    retainedDraft.current = null;
-    draftAuthorizationState.current = null;
-    show(null);
-    latest.current.onInvalidated(draft.selection);
-  }, [account, authLoading, oauthFailedCallbackState]);
+    }
+    if (!canAuthorize && active?.phase === 'authorize') restoreAfterAuthorization(active);
+  }, [account, accountRevision, authLoading, canAuthorize, oauthFailedCallbackState]);
 
   useEffect(() => {
     if (authLoading || !canAuthorize || checkedHandoff.current || !reader.current) return;

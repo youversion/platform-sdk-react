@@ -28,6 +28,30 @@ const exchanges = new Map();
 const intermediateReturns = new Map();
 const notes = [];
 const page = await context.newPage();
+await page.addInitScript(() => {
+  let queuedStorageEvents;
+  window.addEventListener('storage', (event) => {
+    if (!queuedStorageEvents || !event.isTrusted) return;
+    event.stopImmediatePropagation();
+    const { key, oldValue, newValue, url, storageArea } = event;
+    queuedStorageEvents.push({ key, oldValue, newValue, url, storageArea });
+  });
+  window.delayStorageEvents = () => {
+    queuedStorageEvents = [];
+  };
+  window.deliverStorageEvents = () => {
+    const queued = queuedStorageEvents;
+    queuedStorageEvents = undefined;
+    for (const event of queued) window.dispatchEvent(new StorageEvent('storage', event));
+    return queued.some(
+      ({ key, oldValue, newValue, storageArea }) =>
+        storageArea === localStorage &&
+        key === 'userInfo' &&
+        newValue === null &&
+        JSON.parse(oldValue)?.id === 'bob',
+    );
+  };
+});
 
 await context.route('https://fonts.googleapis.com/**', (route) => route.fulfill({ body: '' }));
 await context.route(`${api}/**`, async (route) => {
@@ -85,8 +109,8 @@ await context.route(`${api}/**`, async (route) => {
         'base64url',
       );
       return json({
-        access_token: `token-${account.id}`,
-        refresh_token: `refresh-${account.id}`,
+        access_token: account.accessToken ?? `token-${account.id}`,
+        refresh_token: account.refreshToken ?? `refresh-${account.id}`,
         expires_in: 3600,
         id_token: `e30.${claims}.fixture`,
         token_type: 'Bearer',
@@ -246,8 +270,32 @@ try {
     passage: { bible_id: 3034, passage_id: 'JHN.1.2+JHN.1.4' },
   });
 
+  // A background tab can process Bob's sign-out only after Bob has signed in again.
   await selectVerses(page, [2]);
   await beginNote(page);
+  await editor(page).fill('Draft from the ended Bob session');
+  await page.evaluate(() => window.delayStorageEvents());
+  await other.locator('header').getByRole('button', { name: 'Sign out' }).click();
+  await selectVerses(other, [1]);
+  await beginNote(other);
+  const signedInAgain = prepareSignIn(other, {
+    ...writer,
+    accessToken: 'token-new-bob-session',
+    refreshToken: 'refresh-new-bob-session',
+  });
+  await other.getByRole('button', { name: 'Yes Please' }).click();
+  checkScopes(await signedInAgain, readerScopes);
+  await composer(other, 'John 1:1').waitFor();
+  await composer(other, 'John 1:1').getByRole('button', { name: 'Cancel' }).click();
+  assert.equal(await editor(page).inputValue(), 'Draft from the ended Bob session');
+  assert.ok(await page.evaluate(() => window.deliverStorageEvents()), 'Expected queued sign-out');
+  await editor(page).waitFor({ state: 'hidden' });
+  await signedInAs(page, 'Bob').waitFor();
+  assert.deepEqual(await selectedVerses(page), []);
+
+  await selectVerses(page, [2]);
+  await beginNote(page);
+  assert.equal(await editor(page).inputValue(), '');
   await editor(page).fill('Unsaved Bob draft');
   await other.locator('header').getByRole('button', { name: 'Sign out' }).click();
   await editor(page).waitFor({ state: 'hidden' });
@@ -255,7 +303,7 @@ try {
   assert.equal(notes.length, 1);
 
   console.log(
-    'Reader Notes smoke passed (decline, token-service recovery, two-step grant, exact create, stale callback, sign-out, navbar scopes, and narrow layout).',
+    'Reader Notes smoke passed (decline, token-service recovery, two-step grant, exact create, stale callback, same-account re-sign-in, sign-out, navbar scopes, and narrow layout).',
   );
 } finally {
   await browser.close();

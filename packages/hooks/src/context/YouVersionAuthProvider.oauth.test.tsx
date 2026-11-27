@@ -228,3 +228,89 @@ it('takes signed-in and signed-out state from the host across browser auth event
   rerender();
   expect(result.current.userInfo).toBeNull();
 });
+
+it('keeps the host profile after a mounted web provider switches to host ownership', async () => {
+  YouVersionAPIUsers.signOut();
+  onTestFinished(() => YouVersionAPIUsers.signOut());
+  config.saveAuthData('browser-access', 'browser-refresh', new Date('2100-01-01'), {
+    userId: 'browser-account',
+    scope: 'profile',
+  });
+  config.saveUserInfo({ id: 'browser-account' });
+  let hostUser: YouVersionUserInfoJSON | undefined;
+  function ReaderAuth({ children }: PropsWithChildren) {
+    return (
+      <YouVersionAuthProvider config={{ appKey: 'test-app-key' }} userInfo={hostUser}>
+        {children}
+      </YouVersionAuthProvider>
+    );
+  }
+
+  const { result, rerender } = renderHook(useYouVersionAuthContext, { wrapper: ReaderAuth });
+  await waitFor(() => expect(result.current.userInfo?.userId).toBe('browser-account'));
+  hostUser = { id: 'host-account' };
+  rerender();
+  expect(result.current.userInfo?.userId).toBe('host-account');
+
+  act(() => {
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: 'userInfo', storageArea: localStorage }),
+    );
+  });
+  expect(result.current.userInfo?.userId).toBe('host-account');
+});
+
+it.each([
+  { scenario: 'a sign-out', intermediate: null, revision: 1 },
+  { scenario: 'an account replacement', intermediate: { id: 'bob' }, revision: 2 },
+  {
+    scenario: 'only a profile update',
+    intermediate: { id: 'alice', name: 'Updated Alice' },
+    revision: 0,
+  },
+])(
+  'processes $scenario from queued events after Alice is current again',
+  async ({ intermediate, revision }) => {
+    YouVersionAPIUsers.signOut();
+    onTestFinished(() => YouVersionAPIUsers.signOut());
+    config.saveAuthData('first-access', 'first-refresh', new Date('2100-01-01'), {
+      scope: 'profile',
+      userId: 'alice',
+    });
+    config.saveUserInfo({ id: 'alice' });
+    const { result } = renderHook(useYouVersionAuthContext, { wrapper: AuthWrapper });
+    await waitFor(() => expect(result.current.userInfo?.userId).toBe('alice'));
+    const deletedProfile = localStorage.getItem('userInfo');
+    expect(deletedProfile).not.toBeNull();
+
+    act(() => {
+      if (intermediate) config.saveUserInfo(intermediate);
+      else YouVersionAPIUsers.signOut();
+      const intermediateProfile = localStorage.getItem('userInfo');
+      config.saveAuthData('next-access', 'next-refresh', new Date('2100-01-01'), {
+        scope: 'profile',
+        userId: 'alice',
+      });
+      config.saveUserInfo({ id: 'alice' });
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'userInfo',
+          oldValue: deletedProfile,
+          newValue: intermediateProfile,
+          storageArea: localStorage,
+        }),
+      );
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'userInfo',
+          oldValue: intermediateProfile,
+          newValue: localStorage.getItem('userInfo'),
+          storageArea: localStorage,
+        }),
+      );
+    });
+    expect(result.current.userInfo?.userId).toBe('alice');
+    expect(result.current.accessToken).toBe('next-access');
+    expect(result.current.accountRevision).toBe(revision);
+  },
+);

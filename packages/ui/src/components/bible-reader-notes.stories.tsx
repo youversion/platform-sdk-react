@@ -544,9 +544,21 @@ export const RefreshRetainedChapterWhileNavigationLoads: Story = {
         expect(getBackgroundColorChannels(retained)).toEqual([180, 255, 193, 255]),
       );
       await expect(postSaveReads).toEqual(['JHN.1']);
+      await userEvent.click(retained);
+      const actions = within(await overlays.findByRole('dialog', { name: 'Verse actions' }));
+      await waitFor(() => expect(actions.getByRole('button', { name: 'Copy' })).toBeVisible());
+      await expect(actions.getByRole('button', { name: 'Share' })).toBeVisible();
+      await expect(actions.queryByRole('button', { name: 'Clear highlight' })).toBeNull();
+      await expect(actions.queryAllByRole('button', { name: 'Apply highlight' })).toHaveLength(0);
+      await expect(getBackgroundColorChannels(retained)).toEqual([180, 255, 193, 255]);
       releaseChapter.resolve();
       await waitFor(async () => expect(await readerVerse(root, 16)).toBeVisible());
       await waitFor(() => expect(postSaveReads).toEqual(['JHN.1', 'JHN.3']));
+      await selectVerses(root, [16]);
+      const currentActions = within(await overlays.findByRole('dialog', { name: 'Verse actions' }));
+      await waitFor(() =>
+        expect(currentActions.getAllByRole('button', { name: 'Apply highlight' })).toHaveLength(6),
+      );
     } finally {
       releaseNote.resolve();
       releaseChapter.resolve();
@@ -967,6 +979,71 @@ export const HostControlledSignIn: Story = {
       await userEvent.click(firstColor);
       await userEvent.click(await overlays.findByRole('button', { name: 'Yes Please' }));
       await expect(signIn).toHaveBeenNthCalledWith(2, location.origin, ['profile'], ['highlights']);
+    } finally {
+      signIn.mockRestore();
+    }
+  },
+};
+
+export const HostTakesOverSignIn: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  render: function HostSignInReader() {
+    const [hostOwnsSignIn, setHostOwnsSignIn] = useState(false);
+    const [hostSignInRequested, setHostSignInRequested] = useState(false);
+    return (
+      <>
+        <button type="button" onClick={() => setHostOwnsSignIn(true)}>
+          Use host sign-in
+        </button>
+        {hostSignInRequested && <p role="status">Host sign-in requested</p>}
+        <div className="yv:h-screen">
+          <BibleReader.Root
+            defaultBook="JHN"
+            defaultChapter="1"
+            defaultVersionId={111}
+            onSignInPress={hostOwnsSignIn ? () => setHostSignInRequested(true) : undefined}
+          >
+            <BibleReader.Content />
+            <BibleReader.Toolbar />
+          </BibleReader.Root>
+        </div>
+      </>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const page = within(canvasElement);
+    const signIn = spyOn(YouVersionAPIUsers, 'signIn').mockResolvedValue(undefined);
+    try {
+      const root = await waitForShadowRoot(canvasElement);
+      const takeOver = await page.findByRole('button', { name: 'Use host sign-in' });
+      await selectVerses(root, [1, 4]);
+      const overlays = await readerOverlays(root);
+      const initialActions = within(await overlays.findByRole('dialog', { name: 'Verse actions' }));
+      await userEvent.click(initialActions.getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(overlays.getByRole('button', { name: 'Yes Please' })).toBeVisible(),
+      );
+
+      // A host can take ownership regardless of the open Reader modal.
+      takeOver.click();
+      await waitFor(() =>
+        expect(overlays.queryByRole('button', { name: 'Yes Please' })).toBeNull(),
+      );
+      const restoredActions = within(
+        await overlays.findByRole('dialog', { name: 'Verse actions' }),
+      );
+      await waitFor(() =>
+        expect(restoredActions.getByRole('button', { name: 'Copy' })).toBeVisible(),
+      );
+      await expect(restoredActions.queryByRole('button', { name: 'Save' })).toBeNull();
+      await expect(await readerVerse(root, 1)).toHaveClass('yv-v-selected');
+      await expect(await readerVerse(root, 4)).toHaveClass('yv-v-selected');
+      const toolbar = root.querySelector('button[aria-label="Sign In" i]');
+      if (!toolbar) throw new Error('Reader sign-in control is missing');
+      await userEvent.click(toolbar);
+      await userEvent.click(await overlays.findByRole('button', { name: /sign in/i }));
+      await expect(page.getByRole('status')).toHaveTextContent('Host sign-in requested');
+      await expect(signIn).not.toHaveBeenCalled();
     } finally {
       signIn.mockRestore();
     }

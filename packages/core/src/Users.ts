@@ -83,13 +83,15 @@ type PendingGrantedPermissionsStash = StatePermissionsStash;
 type RequestedPermissionsStash = StatePermissionsStash;
 
 type TokenRotation = {
-  result: SignInWithYouVersionResult;
-  previousSession: {
-    accessToken: string | null;
-    refreshToken: string;
-    userId: string | undefined;
+  readonly result: SignInWithYouVersionResult;
+  readonly previousSession: {
+    readonly accessToken: string | null;
+    readonly refreshToken: string;
+    readonly userId: string | undefined;
   };
 };
+
+const tokenRotationObservers = new Set<(rotation: TokenRotation) => void>();
 
 /**
  * Dedupe map for in-flight/settled code-for-token exchanges, keyed by the
@@ -678,6 +680,14 @@ export class YouVersionAPIUsers {
     return (await this.rotateTokens(false)).result;
   }
 
+  /** Observes successful token rotations in this SDK instance. Returns an unsubscribe function. */
+  static onTokenRotation(observer: (rotation: TokenRotation) => void): () => void {
+    tokenRotationObservers.add(observer);
+    return () => {
+      tokenRotationObservers.delete(observer);
+    };
+  }
+
   private static async rotateTokens(clearOnPersistenceFailure: boolean): Promise<TokenRotation> {
     const accessToken = YouVersionPlatformConfiguration.accessToken;
     const refreshToken = YouVersionPlatformConfiguration.refreshToken;
@@ -766,7 +776,15 @@ export class YouVersionAPIUsers {
         throw new Error('the rotated tokens could not be saved to browser storage');
       }
 
-      return { result, previousSession: { accessToken, refreshToken, userId } };
+      const rotation = { result, previousSession: { accessToken, refreshToken, userId } };
+      for (const observer of tokenRotationObservers) {
+        try {
+          observer(rotation);
+        } catch {
+          // An observer cannot turn an already persisted rotation into an authentication failure.
+        }
+      }
+      return rotation;
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Token refresh failed: ${error.message}`);

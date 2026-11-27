@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { StrictMode, type ReactNode } from 'react';
 import { expect, it, onTestFinished, vi } from 'vitest';
@@ -135,6 +135,21 @@ it('keeps an initial legacy token without adopting later unbound credentials', a
   expect(config.getOAuthAccessToken('legacy-alice', 'write_notes')).toBeNull();
 
   act(() => {
+    const previousProfile = localStorage.getItem('userInfo');
+    config.saveUserInfo({ id: 'legacy-alice', name: 'Updated Alice' });
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key: 'userInfo',
+        oldValue: previousProfile,
+        newValue: localStorage.getItem('userInfo'),
+        storageArea: localStorage,
+      }),
+    );
+  });
+  expect(result.current.userInfo?.name).toBe('Updated Alice');
+  expect(result.current.auth.accessToken).toBe('legacy-access');
+
+  act(() => {
     config.saveAuthData('new-access', 'new-refresh', expires);
     window.dispatchEvent(
       new StorageEvent('storage', { key: 'accessToken', storageArea: localStorage }),
@@ -162,6 +177,106 @@ it('keeps an initial legacy token without adopting later unbound credentials', a
     );
   });
   expect(result.current.auth.accessToken).toBe('bound-access');
+});
+
+it.each(['alice', null])(
+  'exposes an initial access-only token when the stored account is %s',
+  async (userId) => {
+    YouVersionAPIUsers.signOut();
+    onTestFinished(() => YouVersionAPIUsers.signOut());
+    const config = YouVersionPlatformConfiguration;
+    config.saveAuthData('access-only', null, new Date('2100-01-01'));
+    if (userId) config.saveUserInfo({ id: userId });
+    const { result } = renderHook(useYVAuth, { wrapper: WebAuthWrapper });
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+    expect(result.current.auth.accessToken).toBe('access-only');
+    expect(config.getOAuthAccessToken('alice', 'write_notes')).toBeNull();
+  },
+);
+
+it('exposes an unscoped token from a verified callback with no decoded account', async () => {
+  YouVersionAPIUsers.signOut();
+  onTestFinished(() => {
+    vi.unstubAllGlobals();
+    window.history.replaceState(null, '', '/');
+    YouVersionAPIUsers.signOut();
+  });
+  localStorage.setItem('youversion-auth-state', 'opaque-login');
+  localStorage.setItem('youversion-auth-code-verifier', 'test-verifier');
+  localStorage.setItem('youversion-auth-redirect-uri', 'https://example.com/callback');
+  window.history.replaceState(null, '', '?state=opaque-login&code=opaque-code');
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () =>
+      Response.json({
+        access_token: 'opaque-access',
+        refresh_token: 'opaque-refresh',
+        expires_in: 3600,
+        id_token: 'e30.e30.fixture',
+        scope: 'write_notes',
+        token_type: 'Bearer',
+      }),
+    ),
+  );
+
+  const { result } = renderHook(useYVAuth, { wrapper: WebAuthWrapper });
+  await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+  expect(result.current.userInfo).toBeNull();
+  expect(result.current.auth.accessToken).toBe('opaque-access');
+  expect(YouVersionPlatformConfiguration.getOAuthAccessToken(null, 'write_notes')).toBeNull();
+});
+
+it('exposes a verified direct rotation to a new consumer in the same Provider', async () => {
+  const config = YouVersionPlatformConfiguration;
+  YouVersionAPIUsers.signOut();
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () =>
+      Response.json({
+        access_token: 'after-direct-refresh',
+        refresh_token: 'after-direct-refresh-token',
+        expires_in: 3600,
+        scope: 'write_notes',
+        token_type: 'Bearer',
+      }),
+    ),
+  );
+  onTestFinished(() => {
+    vi.unstubAllGlobals();
+    YouVersionAPIUsers.signOut();
+  });
+  config.saveAuthData('before-direct-refresh', 'old-refresh', new Date('2100-01-01'));
+  config.saveUserInfo({ id: 'alice' });
+
+  function Token() {
+    const { auth } = useYVAuth();
+    return <output>{auth.isLoading ? 'loading' : (auth.accessToken ?? 'no token')}</output>;
+  }
+
+  const view = render(
+    <WebAuthWrapper>
+      <Token key="initial" />
+    </WebAuthWrapper>,
+  );
+  await view.findByText('before-direct-refresh');
+  await act(async () => {
+    await YouVersionAPIUsers.refreshTokens();
+  });
+  view.rerender(
+    <WebAuthWrapper>
+      <Token key="after-rotation" />
+    </WebAuthWrapper>,
+  );
+  await view.findByText('after-direct-refresh');
+  expect(config.getOAuthAccessToken('alice', 'write_notes')).toBeNull();
+
+  config.saveAuthData('unrelated-access', 'unrelated-refresh', new Date('2100-01-01'));
+  view.rerender(
+    <WebAuthWrapper>
+      <Token key="after-unbound-replacement" />
+    </WebAuthWrapper>,
+  );
+  await view.findByText('no token');
 });
 
 it.each([

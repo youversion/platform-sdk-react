@@ -1151,7 +1151,7 @@ function Content() {
                 activeHighlights={activeHighlights}
                 selectedVerses={selectedVerses}
                 highlightedVerses={highlightedVerses}
-                highlightsEnabled={highlightsEnabled}
+                highlightsEnabled={highlightsEnabled && selectionMatchesScope}
                 anchorElement={anchorElement}
                 scrollRoot={scrollContainerRef.current}
                 onHighlight={handleHighlight}

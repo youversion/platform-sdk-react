@@ -521,6 +521,10 @@ it('shares one refresh request and keeps the rotated session for simultaneous ca
 
   const firstRotation = vi.fn();
   const secondRotation = vi.fn();
+  const failingObserver = vi.fn(() => {
+    throw new Error('A rotation observer failed');
+  });
+  onTestFinished(YouVersionAPIUsers.onTokenRotation(failingObserver));
   const first = YouVersionAPIUsers.refreshTokenIfNeeded(firstRotation);
   const second = YouVersionAPIUsers.refreshTokenIfNeeded(secondRotation);
   finishRefresh(tokenResponse('openid profile'));
@@ -536,6 +540,7 @@ it('shares one refresh request and keeps the rotated session for simultaneous ca
   };
   expect(firstRotation).toHaveBeenCalledExactlyOnceWith(rotation);
   expect(secondRotation).toHaveBeenCalledExactlyOnceWith(rotation);
+  expect(failingObserver).toHaveBeenCalledExactlyOnceWith(rotation);
   expect(config.accessToken).toBe('signed-in-access');
   expect(config.refreshToken).toBe('refresh-token-456');
   expect(YouVersionAPIUsers.getStoredUserInfo()?.userId).toBe('alice');

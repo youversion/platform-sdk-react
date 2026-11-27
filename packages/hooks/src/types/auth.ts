@@ -15,6 +15,8 @@ export interface AuthContextValue {
   redirectUri?: string;
   /** Access token checked against the current account in the SDK-managed provider. */
   accessToken?: string | null;
+  /** Increments when browser storage records that an account was removed or replaced. */
+  accountRevision?: number;
   /** State of the verified OAuth callback handled by this provider. */
   oauthCallbackState?: string | null;
   /** State of a failed OAuth callback that matched the pending authorization attempt. */

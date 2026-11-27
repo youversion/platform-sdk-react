@@ -9,6 +9,23 @@ import type { AuthenticationScopes } from './types';
 import { versionFilterState } from './version-filter-state';
 import { getLocalStorage, removeStorageItem, setStorageItem } from './web-storage';
 
+type LegacyAuthSession = {
+  userId: string | null;
+  accessToken: string;
+  refreshToken: string | null;
+};
+
+function parseStoredUserInfo(raw: string | null | undefined): YouVersionUserInfoJSON | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    const result = YouVersionUserInfoJSONSchema.safeParse(parsed);
+    return result.success ? result.data : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Security Note: Tokens and the decoded user profile are stored in localStorage
  * for persistence. The ID token itself is never persisted — it is decoded once at
@@ -124,9 +141,9 @@ export class YouVersionPlatformConfiguration {
 
   /** Returns an account's current access token, verifying the scope or the unchanged legacy session. */
   public static getOAuthAccessToken(
-    userId: string,
+    userId: string | null,
     scope?: AuthenticationScopes,
-    legacySession?: Pick<StoredOAuthSession, 'userId' | 'accessToken' | 'refreshToken'>,
+    legacySession?: LegacyAuthSession,
   ): string | null {
     const session = this.readOAuthSession();
     if (session) {
@@ -286,18 +303,17 @@ export class YouVersionPlatformConfiguration {
    * Returns `null` when nothing is stored or the stored value is malformed.
    */
   public static get storedUserInfo(): YouVersionUserInfoJSON | null {
-    const raw = getLocalStorage()?.getItem('userInfo');
-    if (!raw) {
-      return null;
-    }
+    return parseStoredUserInfo(getLocalStorage()?.getItem('userInfo'));
+  }
 
-    try {
-      const parsed: unknown = JSON.parse(raw);
-      const result = YouVersionUserInfoJSONSchema.safeParse(parsed);
-      return result.success ? result.data : null;
-    } catch {
-      return null;
-    }
+  /** Whether a storage event records the loss or replacement of a signed-in profile. */
+  public static didStoredAccountChange(
+    event: Pick<StorageEvent, 'key' | 'oldValue' | 'newValue'>,
+  ): boolean {
+    if (event.key === null) return true;
+    if (event.key !== 'userInfo') return false;
+    const previousUserId = parseStoredUserInfo(event.oldValue)?.id;
+    return !!previousUserId && previousUserId !== parseStoredUserInfo(event.newValue)?.id;
   }
 
   public static get tokenExpiryDate(): Date | null {

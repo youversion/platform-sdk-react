@@ -7,7 +7,7 @@ import {
   getLocalStorage,
   type YouVersionUserInfoJSON,
 } from '@youversion/platform-core';
-import React, { useEffect, useState, type ReactNode } from 'react';
+import React, { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { AuthConfig, AuthContextValue } from '../types/auth';
 import { YouVersionAuthContext } from './YouVersionAuthContext';
 
@@ -42,10 +42,11 @@ export default function YouVersionAuthProvider({
   const [oauthCallbackState, setOAuthCallbackState] = useState<string | null>(null);
   const [oauthFailedCallbackState, setOAuthFailedCallbackState] = useState<string | null>(null);
   const [oauthCallbackSuperseded, setOAuthCallbackSuperseded] = useState(false);
-  const [legacySession, setLegacySession] = useState<{
-    userId: string;
+  const [accountRevision, setAccountRevision] = useState(0);
+  const legacySession = useRef<{
+    userId: string | null;
     accessToken: string;
-    refreshToken: string;
+    refreshToken: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -56,6 +57,8 @@ export default function YouVersionAuthProvider({
 
   useEffect(() => {
     if (isHostControlled) return;
+    setIsLoading(true);
+    legacySession.current = null;
     let mounted = true;
     let sessionChanged = false;
     const initAuth = async () => {
@@ -80,12 +83,20 @@ export default function YouVersionAuthProvider({
             if (result) {
               if (!mounted) return;
               const storedUser = YouVersionAPIUsers.getStoredUserInfo();
+              const refreshToken = result.refreshToken || null;
               const callbackMatchesSession =
                 storedUser?.userId === result.yvpUserId &&
-                result.accessToken === YouVersionPlatformConfiguration.accessToken;
+                result.accessToken === YouVersionPlatformConfiguration.accessToken &&
+                refreshToken === YouVersionPlatformConfiguration.refreshToken;
               if (!sessionChanged || callbackMatchesSession) setUserInfo(storedUser);
-              if (callbackMatchesSession) setOAuthCallbackState(state);
-              else if (sessionChanged) setOAuthCallbackSuperseded(true);
+              if (callbackMatchesSession && result.accessToken) {
+                legacySession.current = {
+                  userId: result.yvpUserId ?? null,
+                  accessToken: result.accessToken,
+                  refreshToken,
+                };
+                setOAuthCallbackState(state);
+              } else if (sessionChanged) setOAuthCallbackSuperseded(true);
             }
           } catch (err) {
             if (!mounted) return;
@@ -101,11 +112,10 @@ export default function YouVersionAuthProvider({
             }
           }
         } else {
-          // Check for existing token
+          const accessToken = YouVersionPlatformConfiguration.accessToken;
           const refreshToken = YouVersionPlatformConfiguration.refreshToken;
+          const userId = YouVersionPlatformConfiguration.storedUserInfo?.id ?? null;
           if (refreshToken) {
-            const accessToken = YouVersionPlatformConfiguration.accessToken;
-            const userId = YouVersionPlatformConfiguration.storedUserInfo?.id;
             let initializedAccessToken = accessToken;
             let initializedRefreshToken = refreshToken;
             try {
@@ -116,7 +126,7 @@ export default function YouVersionAuthProvider({
                   if (
                     previousSession.accessToken === accessToken &&
                     previousSession.refreshToken === refreshToken &&
-                    previousSession.userId === userId &&
+                    (previousSession.userId ?? null) === userId &&
                     result.accessToken &&
                     result.refreshToken
                   ) {
@@ -129,18 +139,25 @@ export default function YouVersionAuthProvider({
               if (!sessionChanged) {
                 const storedUser = refreshed ? YouVersionAPIUsers.getStoredUserInfo() : null;
                 setUserInfo(storedUser);
-                if (initializedAccessToken && userId && storedUser?.userId === userId) {
-                  setLegacySession({
+                if (
+                  refreshed &&
+                  initializedAccessToken &&
+                  (storedUser?.userId ?? null) === userId
+                ) {
+                  legacySession.current = {
                     userId,
                     accessToken: initializedAccessToken,
                     refreshToken: initializedRefreshToken,
-                  });
+                  };
                 }
               }
             } catch {
               if (!mounted) return;
               if (!sessionChanged) setUserInfo(null);
             }
+          } else {
+            setUserInfo(null);
+            if (accessToken) legacySession.current = { userId, accessToken, refreshToken };
           }
         }
       }
@@ -161,19 +178,54 @@ export default function YouVersionAuthProvider({
         return;
       }
       sessionChanged = true;
-      setLegacySession(null);
+      const accountChanged = YouVersionPlatformConfiguration.didStoredAccountChange(event);
+      const snapshot = legacySession.current;
+      if (
+        accountChanged ||
+        (snapshot &&
+          (YouVersionPlatformConfiguration.refreshToken !== snapshot.refreshToken ||
+            YouVersionPlatformConfiguration.getOAuthAccessToken(
+              snapshot.userId,
+              undefined,
+              snapshot,
+            ) !== snapshot.accessToken))
+      ) {
+        legacySession.current = null;
+      }
+      if (accountChanged) {
+        setAccountRevision((revision) => revision + 1);
+      }
       setOAuthCallbackState(null);
       setOAuthFailedCallbackState(null);
       setUserInfo(getCredentialedUserInfo());
     }
 
+    const unsubscribeRotation = YouVersionAPIUsers.onTokenRotation(
+      ({ result, previousSession }) => {
+        const current = legacySession.current;
+        if (
+          current &&
+          current.userId === (previousSession.userId ?? null) &&
+          current.accessToken === previousSession.accessToken &&
+          current.refreshToken === previousSession.refreshToken &&
+          result.accessToken
+        ) {
+          legacySession.current = {
+            userId: current.userId,
+            accessToken: result.accessToken,
+            refreshToken: result.refreshToken || null,
+          };
+        }
+      },
+    );
     globalThis.window?.addEventListener?.('storage', syncSession);
     void initAuth();
     return () => {
       mounted = false;
+      unsubscribeRotation();
       globalThis.window?.removeEventListener?.('storage', syncSession);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isHostControlled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const value: AuthContextValue = {
     userInfo,
@@ -181,14 +233,16 @@ export default function YouVersionAuthProvider({
     isLoading,
     error,
     redirectUri: config.redirectUri,
-    accessToken:
-      !isHostControlled && userInfo?.userId
-        ? YouVersionPlatformConfiguration.getOAuthAccessToken(
-            userInfo.userId,
-            undefined,
-            legacySession ?? undefined,
-          )
-        : null,
+    get accessToken() {
+      if (isHostControlled) return null;
+      const snapshot = legacySession.current;
+      return YouVersionPlatformConfiguration.getOAuthAccessToken(
+        userInfo?.userId ?? snapshot?.userId ?? null,
+        undefined,
+        snapshot ?? undefined,
+      );
+    },
+    accountRevision,
     oauthCallbackState,
     oauthFailedCallbackState,
     oauthCallbackSuperseded,
