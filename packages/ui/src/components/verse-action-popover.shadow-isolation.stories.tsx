@@ -310,6 +310,20 @@ export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
     await waitForClosed(topLayer);
     await waitForFocus(shadowRoot, priorControl);
 
+    await userEvent.click(firstVerse);
+    dialog = await waitForElement(
+      topLayer,
+      '[role="dialog"]',
+      'popover did not reopen for Escape after rejected outside close',
+    );
+    await userEvent.click(rejectedOutsideControl);
+    await expect(dialog).toHaveAttribute('data-state', 'open');
+    await expect(canvasElement.ownerDocument.activeElement).toBe(rejectedOutsideControl);
+    const browser = __YV_STORYBOOK_VITEST__ ? await import('vitest/browser') : undefined;
+    await (browser?.userEvent ?? userEvent).keyboard('{Escape}');
+    await waitForClosed(topLayer);
+    await waitForFocus(shadowRoot, priorControl);
+
     priorControl.focus();
     await userEvent.click(firstVerse);
     await waitForElement(topLayer, '[role="dialog"]', 'popover did not reopen for delayed close');

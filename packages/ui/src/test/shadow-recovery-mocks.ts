@@ -70,7 +70,7 @@ export function createBibleReaderRecovery(): BibleReaderRecovery {
         }
         return HttpResponse.json({
           id: usfm,
-          content: `<div class="p"><span class="verse">Passage text for ${usfm}.</span></div>`,
+          content: `<div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Passage text for ${usfm}.</div>`,
           reference: usfm,
         });
       }),

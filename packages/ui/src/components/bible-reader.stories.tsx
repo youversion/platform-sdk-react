@@ -21,7 +21,9 @@ import {
 } from './bible-reader';
 import { VerseActionPopover } from './verse-action-popover';
 import {
+  clickStoryElement,
   verifyNativeBrowserKey,
+  getBackgroundColorChannels,
   waitForShadowContent,
   waitForShadowRoot,
 } from '@/test/storybook-dom';
@@ -384,7 +386,9 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     await Promise.all(dialog.getAnimations().map((animation) => animation.finished));
     const firstDialogRect = dialog.getBoundingClientRect();
 
-    await userEvent.click(secondSelectedVerseLabel);
+    await expect(secondSelectedVerseLabel).toBeVisible();
+    await expect(secondSelectedVerseLabel).toHaveTextContent('10');
+    await clickStoryElement(secondSelectedVerseLabel);
     await expect(firstVerse).toHaveClass('yv-v-selected');
     await expect(secondSelectedVerse).toHaveClass('yv-v-selected');
     await expect(dialog).toBeInTheDocument();
@@ -394,6 +398,10 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
       const movedBlock = Math.abs(reanchoredRect.top - firstDialogRect.top) > 8;
       void expect(movedInline || movedBlock).toBe(true);
     });
+    await userEvent.click(secondSelectedVerseLabel);
+    await expect(firstVerse).toHaveClass('yv-v-selected');
+    await expect(secondSelectedVerse).not.toHaveClass('yv-v-selected');
+    await userEvent.click(secondSelectedVerseLabel);
 
     await userEvent.pointer({ keys: '[MouseLeft>]', target: outsideControl });
     await waitFor(() => expect(dialog).not.toBeInTheDocument(), { timeout: 10000 });
@@ -427,6 +435,209 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     await expect(firstVerse).not.toHaveClass('yv-v-selected');
     await expect(secondSelectedVerse).not.toHaveClass('yv-v-selected');
     await expect(ownerDocument.activeElement).toBe(outsideControl);
+  },
+};
+
+const LONG_VERSE_ACTION_LABEL =
+  'Add these selected verses to the collection of passages for tomorrow’s reading discussion';
+
+export const CustomVerseActions: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+    background: 'dark',
+    highlights: [{ version_id: 111, passage_id: 'JHN.1.1', color: 'ffec5b' }],
+    getVerseIndicator: ({ passageId }) =>
+      passageId === 'JHN.1.1'
+        ? { label: 'Open marker for John 1:1', style: { backgroundColor: 'rgb(222, 172, 255)' } }
+        : undefined,
+    onVerseIndicatorPress: fn(),
+    verseActionItems: [
+      'share',
+      {
+        id: 'mark',
+        label: 'Mark verses',
+        icon: (
+          <span aria-hidden="true" data-testid="mark-icon">
+            ★
+          </span>
+        ),
+        onSelect: fn(),
+      },
+      'copy',
+    ],
+  },
+  render: function ConfigurableActions(args) {
+    const [omittedAction, setOmittedAction] = useState<'copy' | 'share'>();
+    const [editingNote, setEditingNote] = useState(false);
+    const configuredItems: BibleReaderRootProps['verseActionItems'] = omittedAction
+      ? [
+          omittedAction === 'copy' ? 'share' : 'copy',
+          'highlights',
+          ...(args.verseActionItems?.slice(1, 2) ?? []),
+          { id: 'compare', label: 'Compare selected translations', icon: '⇄', onSelect: fn() },
+          { id: 'collect', label: LONG_VERSE_ACTION_LABEL, icon: '+', onSelect: fn() },
+        ]
+      : [
+          ...(args.verseActionItems ?? []),
+          { id: 'edit-note', label: 'Edit note', icon: '+', onSelect: () => setEditingNote(true) },
+        ];
+    return (
+      <div className="yv:flex yv:h-screen yv:flex-col">
+        <div>
+          <button type="button" onClick={() => setOmittedAction('copy')}>
+            Omit Copy
+          </button>
+          <button type="button" onClick={() => setOmittedAction('share')}>
+            Omit Share
+          </button>
+          {editingNote && (
+            <label>
+              Note
+              <input autoFocus />
+            </label>
+          )}
+        </div>
+        <div className="yv:min-h-0 yv:flex-1">
+          <BibleReader.Root {...args} verseActionItems={configuredItems}>
+            <BibleReader.Content />
+          </BibleReader.Root>
+        </div>
+      </div>
+    );
+  },
+  play: async ({ args, canvasElement }) => {
+    const root = await waitForShadowRoot(canvasElement);
+    const [first, third] = await waitFor(
+      () => {
+        const first = root.querySelector<HTMLElement>('.yv-v[v="1"]');
+        const third = root.querySelector<HTMLElement>('.yv-v[v="3"]');
+        if (!first || !third) throw new Error('Reader verses not rendered');
+        return [first, third];
+      },
+      { timeout: 10000 },
+    );
+    const thirdLabel = third.querySelector<HTMLElement>('.yv-vlbl');
+    if (!thirdLabel) throw new Error('Unmarked verse number not rendered');
+    await expect(thirdLabel).toBeVisible();
+    await expect(thirdLabel).toHaveTextContent('3');
+    await expect(within(thirdLabel).queryByRole('button')).toBeNull();
+    await clickStoryElement(thirdLabel);
+    await userEvent.click(first);
+    const overlay = await getReaderOverlay(root);
+    const dialog = await overlay.findByRole('dialog', { name: 'Verse actions' });
+    const indicator = within(first).getByRole('button', { name: 'Open marker for John 1:1' });
+    const visibleMark = indicator.querySelector('[data-slot="verse-indicator-mark"]');
+    if (!visibleMark) throw new Error('Verse number marker not rendered');
+    await expect(indicator.closest('[data-yv-theme="dark"]')).toBeInTheDocument();
+    await waitFor(() => expect(getBackgroundColorChannels(first)).toEqual([65, 62, 33, 255]));
+    await expect(visibleMark).toBeVisible();
+    await expect(getComputedStyle(visibleMark).backgroundColor).toBe('rgb(222, 172, 255)');
+    await userEvent.click(indicator);
+    await expect(args.onVerseIndicatorPress).toHaveBeenCalledTimes(1);
+    await expect(args.onVerseIndicatorPress).toHaveBeenCalledWith({
+      versionId: 111,
+      passageId: 'JHN.1.1',
+    });
+    await expect(first).toHaveClass('yv-v-selected');
+    await expect(third).toHaveClass('yv-v-selected');
+    await expect(dialog).toHaveAttribute('data-state', 'open');
+    const actions = within(dialog);
+    const mark = actions.getByRole('button', { name: 'Mark verses' });
+    await expect(actions.getAllByRole('button')).toEqual([
+      actions.getByRole('button', { name: 'Share' }),
+      mark,
+      actions.getByRole('button', { name: 'Copy' }),
+      actions.getByRole('button', { name: 'Edit note' }),
+    ]);
+    await expect(within(mark).getByTestId('mark-icon')).toBeVisible();
+    await Promise.all(dialog.getAnimations().map((animation) => animation.finished));
+    dialog.style.animationDuration = '1s';
+    if (__YV_STORYBOOK_VITEST__) {
+      const { userEvent: browserUserEvent } = await import('vitest/browser');
+      await browserUserEvent.dblClick(mark);
+    } else {
+      await userEvent.dblClick(mark);
+    }
+    await expect(dialog).toHaveAttribute('data-state', 'closed');
+    await expect(mark).toBeInTheDocument();
+    const item = args.verseActionItems?.[1];
+    if (!item || item === 'highlights' || item === 'copy' || item === 'share') {
+      throw new Error('Custom action fixture missing');
+    }
+    await expect(item.onSelect).toHaveBeenCalledTimes(1);
+    await expect(item.onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        versionId: 111,
+        verses: [1, 3],
+        passageIds: ['JHN.1.1', 'JHN.1.3'],
+      }),
+    );
+    await expect(first).not.toHaveClass('yv-v-selected');
+    await expect(third).not.toHaveClass('yv-v-selected');
+    await waitFor(() => expect(dialog).not.toBeInTheDocument(), { timeout: 5000 });
+
+    const browser = __YV_STORYBOOK_VITEST__ ? await import('vitest/browser') : undefined;
+    const host = within(canvasElement);
+    const prior = host.getByRole('button', { name: 'Omit Copy' });
+    prior.focus();
+    await userEvent.click(third);
+    const noteActions = await overlay.findByRole('dialog', { name: 'Verse actions' });
+    const editNote = within(noteActions).getByRole('button', { name: 'Edit note' });
+    editNote.focus();
+    await (browser?.userEvent ?? userEvent).keyboard('{Enter}');
+    const note = await host.findByRole('textbox', { name: 'Note' });
+    await waitFor(() => expect(noteActions).not.toBeInTheDocument());
+    await expect(third).not.toHaveClass('yv-v-selected');
+    await verifyNativeBrowserKey('Remember this', async () => {
+      await expect(note).toHaveFocus();
+      await expect(note).toHaveValue('Remember this');
+    });
+
+    const page = browser?.server.provider === 'playwright' ? browser.page : undefined;
+    const { innerWidth, innerHeight } = window;
+    await page?.viewport(320, 640);
+    try {
+      for (const [omitted, retained] of [
+        ['Copy', 'Share'],
+        ['Share', 'Copy'],
+      ] as const) {
+        await userEvent.click(
+          within(canvasElement).getByRole('button', { name: `Omit ${omitted}` }),
+        );
+        await userEvent.click(first);
+        const configured = await overlay.findByRole('dialog', { name: 'Verse actions' });
+        const queries = within(configured);
+        const firstAction = queries.getByRole('button', { name: retained });
+        const swatches = queries.getByRole('group', { name: 'Highlight colors' });
+        const lastAction = queries.getByRole('button', { name: LONG_VERSE_ACTION_LABEL });
+        await expect(queries.queryByRole('button', { name: omitted })).toBeNull();
+        await expect(queries.getAllByRole('button')).toEqual([
+          firstAction,
+          ...within(swatches).getAllByRole('button'),
+          queries.getByRole('button', { name: 'Mark verses' }),
+          queries.getByRole('button', { name: 'Compare selected translations' }),
+          lastAction,
+        ]);
+        if (page) {
+          await Promise.all(configured.getAnimations().map((animation) => animation.finished));
+          firstAction.focus();
+          await expect(lastAction.getBoundingClientRect().right).toBeGreaterThan(320);
+          await verifyNativeBrowserKey('{Shift>}{Tab}{/Shift}', async () => {
+            await waitFor(() => expect(root.activeElement).toBe(lastAction));
+            const bounds = lastAction.getBoundingClientRect();
+            await expect(bounds.left).toBeGreaterThanOrEqual(0);
+            await expect(bounds.right).toBeLessThanOrEqual(320);
+          });
+        }
+        await userEvent.keyboard('{Escape}');
+        await waitFor(() => expect(configured).not.toBeInTheDocument(), { timeout: 5000 });
+      }
+    } finally {
+      await page?.viewport(innerWidth, innerHeight);
+    }
   },
 };
 
@@ -999,6 +1210,7 @@ function EnterExitProbe() {
         activeHighlights={new Set()}
         selectedVerses={[]}
         highlightedVerses={{}}
+        highlightsEnabled={open}
         onHighlight={fn()}
         onClearHighlight={fn()}
         onCopy={fn()}
@@ -1013,6 +1225,7 @@ export const EnterAndExitMotion: Story = {
   render: () => <EnterExitProbe />,
   play: async () => {
     const dialog = await screen.findByRole('dialog');
+    await expect(within(dialog).getByRole('group')).toBeInTheDocument();
     const openStyle = getComputedStyle(dialog);
     await expect(openStyle.animationDuration).toBe('0.18s');
     await expect(openStyle.animationTimingFunction).toBe('cubic-bezier(0.16, 1, 0.3, 1)');
@@ -1022,6 +1235,7 @@ export const EnterAndExitMotion: Story = {
       const closed = screen.getByRole('dialog');
       const closedStyle = getComputedStyle(closed);
       await expect(closed).toHaveAttribute('data-state', 'closed');
+      await expect(closed.querySelector('[role="group"]')).toBeNull();
       await expect(closedStyle.animationDuration).toBe('0.15s');
       await expect(closedStyle.animationTimingFunction).toBe('ease');
     });
@@ -1846,6 +2060,7 @@ export const ChapterChangeLoadingOverlay: Story = {
     defaultVersionId: 111,
     defaultBook: 'JHN',
     defaultChapter: '1',
+    verseActionItems: [{ id: 'mark', label: 'Mark verse', icon: '★', onSelect: fn() }],
   },
   render: (args) => (
     <>
@@ -1858,8 +2073,12 @@ export const ChapterChangeLoadingOverlay: Story = {
       <button type="button">After reader</button>
     </>
   ),
-  play: async ({ canvasElement }) => {
+  play: async ({ args, canvasElement }) => {
     const { root, reader } = await getReaderStory(canvasElement);
+    const [mark] = args.verseActionItems ?? [];
+    if (!mark || mark === 'highlights' || mark === 'copy' || mark === 'share') {
+      throw new Error('Custom action fixture missing');
+    }
     await waitFor(
       async () => {
         const renderer = root.querySelector('[data-slot="yv-bible-renderer"]');
@@ -1899,6 +2118,13 @@ export const ChapterChangeLoadingOverlay: Story = {
         await expect(nextButton).toBeVisible();
       });
 
+      const retainedVerse = root.querySelector<HTMLElement>('.yv-v[v="1"]');
+      if (!retainedVerse) throw new Error('Retained verse not rendered');
+      await clickStoryElement(retainedVerse);
+      await expect(retainedVerse).not.toHaveClass('yv-v-selected');
+      await expect(root.querySelector('[data-slot="verse-action-popover"]')).toBeNull();
+      await expect(mark.onSelect).not.toHaveBeenCalled();
+
       const lastReaderControl = reader.getAllByRole('button').at(-1);
       if (!lastReaderControl) throw new Error('reader control not rendered');
       lastReaderControl.focus();
@@ -1924,6 +2150,21 @@ export const ChapterChangeLoadingOverlay: Story = {
 
     const scroller = root.querySelector('main');
     await expect(scroller?.scrollTop).toBe(0);
+    const nextVerse = root.querySelector<HTMLElement>('.yv-v[v="1"]');
+    if (!nextVerse) throw new Error('Destination verse not rendered');
+    await expect(nextVerse).not.toHaveClass('yv-v-selected');
+    await expect(root.querySelector('[data-slot="verse-action-popover"]')).toBeNull();
+    await userEvent.click(nextVerse);
+    const overlay = await getReaderOverlay(root);
+    await userEvent.click(await overlay.findByRole('button', { name: 'Mark verse' }));
+    await expect(mark.onSelect).toHaveBeenCalledTimes(1);
+    await expect(mark.onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        versionId: 111,
+        passageIds: ['JHN.2.1'],
+        shareData: expect.objectContaining({ verseText: 'Passage text for JHN.2.' }),
+      }),
+    );
   },
 };
 
@@ -1933,6 +2174,9 @@ export const ClipboardFailureAfterScrolling: Story = {
     defaultVersionId: 111,
     defaultBook: 'JHN',
     defaultChapter: '1',
+    getVerseIndicator: ({ passageId }) =>
+      passageId === 'JHN.1.3' ? { label: 'Open marker for John 1:3' } : undefined,
+    onVerseIndicatorPress: fn(),
   },
   render: (args) => (
     <div style={{ blockSize: 520, inlineSize: 390 }}>
@@ -1942,7 +2186,7 @@ export const ClipboardFailureAfterScrolling: Story = {
       </BibleReader.Root>
     </div>
   ),
-  play: async ({ canvasElement }) => {
+  play: async ({ args, canvasElement }) => {
     const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
     const shareDescriptor = Object.getOwnPropertyDescriptor(navigator, 'share');
     const writes: string[] = [];
@@ -1991,6 +2235,33 @@ export const ClipboardFailureAfterScrolling: Story = {
         await waitFor(expectWarningInView);
       }
       await expect(writes).toHaveLength(2);
+
+      const indicator = reader.getByRole('button', { name: 'Open marker for John 1:3' });
+      const mark = indicator.querySelector('[data-slot="verse-indicator-mark"]');
+      if (!mark) throw new Error('Verse number marker not rendered');
+      const warning = status.getBoundingClientRect();
+      const marker = mark.getBoundingClientRect();
+      scroller.scrollTop += marker.top + marker.height / 2 - (warning.top + warning.height / 2);
+
+      const bounds = status.getBoundingClientRect();
+      const overlap = mark.getBoundingClientRect();
+      const x = overlap.left + overlap.width / 2;
+      const y = overlap.top + overlap.height / 2;
+      await expect(x).toBeGreaterThan(bounds.left);
+      await expect(x).toBeLessThan(bounds.right);
+      await expect(y).toBeGreaterThan(bounds.top);
+      await expect(y).toBeLessThan(bounds.bottom);
+      await expect(root.elementFromPoint(x, y)).toBe(status);
+
+      if (__YV_STORYBOOK_VITEST__) {
+        const { server, userEvent: browserUserEvent } = await import('vitest/browser');
+        if (server.provider === 'playwright') {
+          await browserUserEvent.click(status, {
+            position: { x: x - bounds.left, y: y - bounds.top },
+          });
+          await expect(args.onVerseIndicatorPress).not.toHaveBeenCalled();
+        }
+      }
     } finally {
       if (clipboardDescriptor) Object.defineProperty(navigator, 'clipboard', clipboardDescriptor);
       else Reflect.deleteProperty(navigator, 'clipboard');

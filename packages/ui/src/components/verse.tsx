@@ -31,6 +31,7 @@ import {
   chapterScopeForHighlightPaint,
   clipUsfmForHighlightPaint,
 } from '@/lib/highlight-projection';
+import type { BibleReaderReference } from './bible-reader-navigation';
 import { useHighlightsControlledLatch, warnOnce } from '@/lib/use-highlights-controlled-latch';
 import { highlightFillColorMix, highlightMixP } from '@/lib/highlight-colors';
 import { useScriptureHighlightPaint } from '@/lib/use-scripture-highlight-paint';
@@ -59,6 +60,28 @@ export type FootnoteData = {
   notes: string[];
   verseHtml: string;
   reference?: string;
+};
+
+/** A visual mark displayed with a verse number. */
+export type VerseIndicator = {
+  /** Accessible name of the indicator button, localized by the host. */
+  label: string;
+  /** Inline styles for the visible mark, inside the indicator's hit target. */
+  style?: CSSProperties;
+};
+
+export type VerseIndicatorProps = {
+  /**
+   * Return a mark for a displayed verse, or undefined to leave its number
+   * unchanged. The reader shows the mark when verse numbers are visible.
+   */
+  getVerseIndicator?: (reference: BibleReaderReference) => VerseIndicator | undefined;
+  /** Handle indicator activation. When omitted, marks are decorative. */
+  onVerseIndicatorPress?: (reference: BibleReaderReference) => void;
+};
+
+type VerseHtmlIndicatorProps = VerseIndicatorProps & {
+  indicatorChapter?: BibleReaderReference;
 };
 
 /**
@@ -323,6 +346,41 @@ function VerseUnavailableMessage({ message }: { message: string }): React.ReactE
   );
 }
 
+function VerseNumberIndicator({
+  indicator,
+  onPress,
+}: {
+  indicator: VerseIndicator;
+  onPress?: () => void;
+}) {
+  const targetClassName =
+    'yv:absolute yv:z-10 yv:start-[calc(50%-12px)] yv:[inset-block-start:50%] yv:-translate-y-1/2 yv:size-[24px] yv:rounded-full';
+  const mark = (
+    <span
+      aria-hidden="true"
+      data-slot="verse-indicator-mark"
+      className="yv:pointer-events-none yv:absolute yv:left-1/2 yv:-translate-x-1/2 yv:[inset-block-end:0] yv:size-1.5 yv:rounded-full yv:bg-primary"
+      style={indicator.style}
+    />
+  );
+  if (!onPress) {
+    return <span className={cn(targetClassName, 'yv:pointer-events-none')}>{mark}</span>;
+  }
+  return (
+    <button
+      type="button"
+      aria-label={indicator.label}
+      className={cn(
+        targetClassName,
+        'yv:cursor-pointer yv:focus-visible:outline-2 yv:focus-visible:outline-ring',
+      )}
+      onClick={onPress}
+    >
+      {mark}
+    </button>
+  );
+}
+
 function BibleTextHtml({
   html,
   reference,
@@ -332,9 +390,12 @@ function BibleTextHtml({
   onVerseSelect,
   highlightedVerses = {},
   onFootnotePress,
+  indicatorChapter,
+  getVerseIndicator,
+  onVerseIndicatorPress,
   direction,
   directionOverride,
-}: {
+}: VerseHtmlIndicatorProps & {
   html: string;
   reference?: string;
   fontSize?: number;
@@ -349,8 +410,17 @@ function BibleTextHtml({
   const contentRef = useRef<HTMLDivElement>(null);
   const passageRootDirectionsRef = useRef(new Map<Element, string | null>());
   const [footnoteData, setFootnoteData] = useState<VerseFootnoteData[]>([]);
+  const [indicatorTargets, setIndicatorTargets] = useState<{
+    html: string;
+    scope: string;
+    labels: Map<number, Element>;
+  } | null>(null);
   const providerTheme = useTheme();
   const currentTheme = theme || providerTheme;
+  const indicatorScope =
+    indicatorChapter && getVerseIndicator
+      ? `${indicatorChapter.versionId}:${indicatorChapter.passageId}`
+      : null;
 
   // Set innerHTML and extract footnote data from the DOM.
   // Portals need stable element references, so we set innerHTML manually.
@@ -362,6 +432,21 @@ function BibleTextHtml({
       Array.from(contentRef.current.children, (root) => [root, root.getAttribute('dir')]),
     );
   }, [html]);
+
+  useLayoutEffect(() => {
+    if (indicatorScope === null || !contentRef.current) {
+      setIndicatorTargets(null);
+      return;
+    }
+    const labels = new Map<number, Element>();
+    for (const verse of contentRef.current.querySelectorAll('.yv-v[v]')) {
+      const verseNum = parseInt(verse.getAttribute('v') ?? '', 10);
+      if (!verseNum || labels.has(verseNum)) continue;
+      const label = verse.querySelector('.yv-vlbl') ?? verse.querySelector('.va');
+      if (label) labels.set(verseNum, label);
+    }
+    setIndicatorTargets({ html, scope: indicatorScope, labels });
+  }, [html, indicatorScope]);
 
   // An explicit consumer override owns each passage root while preserving
   // intentional nested bidi islands. Restore API-provided root directions when
@@ -491,6 +576,26 @@ function BibleTextHtml({
           `${verseNum}-${index}`,
         ),
       )}
+      {indicatorChapter &&
+        getVerseIndicator &&
+        indicatorTargets?.html === html &&
+        indicatorTargets.scope === indicatorScope &&
+        Array.from(indicatorTargets.labels, ([verse, label]) => {
+          const reference = {
+            versionId: indicatorChapter.versionId,
+            passageId: `${indicatorChapter.passageId}.${verse}`,
+          };
+          const indicator = getVerseIndicator(reference);
+          if (!indicator) return null;
+          return createPortal(
+            <VerseNumberIndicator
+              indicator={indicator}
+              onPress={onVerseIndicatorPress && (() => onVerseIndicatorPress(reference))}
+            />,
+            label,
+            verse,
+          );
+        })}
     </>
   );
 }
@@ -513,7 +618,7 @@ type VerseProps = {
   size?: 'default' | 'lg';
 };
 
-type VerseHtmlProps = {
+type VerseHtmlProps = VerseHtmlIndicatorProps & {
   html: string;
   fontFamily?: FontFamily;
   fontSize?: number;
@@ -583,6 +688,9 @@ export const Verse = {
         onVerseSelect,
         highlightedVerses,
         onFootnotePress,
+        indicatorChapter,
+        getVerseIndicator,
+        onVerseIndicatorPress,
         scriptureDirection,
       }: VerseHtmlProps,
       ref,
@@ -631,6 +739,9 @@ export const Verse = {
             onVerseSelect={onVerseSelect}
             highlightedVerses={highlightedVerses}
             onFootnotePress={onFootnotePress}
+            indicatorChapter={showVerseNumbers ? indicatorChapter : undefined}
+            getVerseIndicator={getVerseIndicator}
+            onVerseIndicatorPress={onVerseIndicatorPress}
             direction={direction}
             directionOverride={scriptureDirection}
           />
@@ -640,7 +751,7 @@ export const Verse = {
   ),
 };
 
-export type BibleTextViewProps = {
+export type BibleTextViewProps = VerseIndicatorProps & {
   reference: string;
   fontFamily?: FontFamily;
   fontSize?: number;
@@ -696,6 +807,8 @@ const BibleTextViewImplementation = forwardRef<HTMLDivElement, BibleTextViewImpl
       highlights,
       passageState,
       onFootnotePress,
+      getVerseIndicator,
+      onVerseIndicatorPress,
       scriptureDirection,
       isHighlightsControlled,
     },
@@ -763,6 +876,10 @@ const BibleTextViewImplementation = forwardRef<HTMLDivElement, BibleTextViewImpl
       chapterScope,
       displayPassageId,
     });
+    const indicatorChapter =
+      !currentLoading && currentPassage && chapterScope
+        ? { versionId, passageId: `${chapterScope.book}.${chapterScope.chapter}` }
+        : undefined;
 
     if (currentLoading && !currentPassage) {
       return (
@@ -825,6 +942,9 @@ const BibleTextViewImplementation = forwardRef<HTMLDivElement, BibleTextViewImpl
             onVerseSelect={onVerseSelect}
             highlightedVerses={paintedVerses}
             onFootnotePress={onFootnotePress}
+            indicatorChapter={indicatorChapter}
+            getVerseIndicator={getVerseIndicator}
+            onVerseIndicatorPress={onVerseIndicatorPress}
             scriptureDirection={scriptureDirection}
           />
         </div>

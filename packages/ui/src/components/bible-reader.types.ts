@@ -1,4 +1,20 @@
 import type { FontFamily } from '@/lib/verse-html-utils';
+import type { ReactNode } from 'react';
+import type { BuiltInVerseAction } from './verse-action-popover';
+
+/** A built-in action or a host action in the verse action popover. */
+export type BibleReaderVerseActionItem =
+  | BuiltInVerseAction
+  | {
+      /** Stable ID unique among the custom actions. */
+      id: string;
+      /** Visible and accessible label, localized by the host. */
+      label: string;
+      /** Decorative icon for the action button. */
+      icon: ReactNode;
+      /** Receives a snapshot before the reader clears the selection. */
+      onSelect: (selection: BibleReaderVerseSelection) => void | Promise<void>;
+    };
 
 /** Reader typography props shared by the public root and its settings hook. */
 export type BibleReaderSettingsProps = {

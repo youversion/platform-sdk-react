@@ -35,7 +35,12 @@ import { VerseActionPopover } from './verse-action-popover';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 import { HighlightPermissionDialog } from './highlight-permission-dialog';
 import { SignInDialog } from './sign-in-dialog';
-import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
+import {
+  BibleTextView,
+  getCleanVerseText,
+  type FootnoteData,
+  type VerseIndicatorProps,
+} from './verse';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 import { isHighlightsLive } from '@/lib/feature-flags';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
@@ -57,6 +62,7 @@ import type {
   BibleReaderHighlightIntent,
   BibleReaderSettingsProps,
   BibleReaderShareData,
+  BibleReaderVerseActionItem,
   BibleReaderVerseSelection,
 } from './bible-reader.types';
 
@@ -82,6 +88,7 @@ export {
 export type {
   BibleReaderHighlightIntent,
   BibleReaderShareData,
+  BibleReaderVerseActionItem,
   BibleReaderVerseSelection,
 } from './bible-reader.types';
 
@@ -207,6 +214,15 @@ export type RootProps = BibleReaderSettingsProps & {
    */
   verseActions?: 'popover' | 'none';
   /**
+   * Items in the existing popover, in display order. Defaults to highlights,
+   * copy and share. Omit an item to hide it. Each built-in may appear once.
+   * Respects highlight availability and is ignored when `verseActions="none"`.
+   *
+   * An empty list hides the popover while keeping verse selection enabled.
+   * The host can clear the selection through {@link clearSelectionSignal}.
+   */
+  verseActionItems?: readonly BibleReaderVerseActionItem[];
+  /**
    * Clears the current verse selection from outside the reader. Any change to
    * this value runs the reader's own "close and clear" path, emitting
    * {@link onVerseSelect} with `verses: []`. The value at mount is the
@@ -220,7 +236,7 @@ export type RootProps = BibleReaderSettingsProps & {
   clearSelectionSignal?: number;
   scriptureDirection?: TextDirection;
   children?: ReactNode;
-};
+} & VerseIndicatorProps;
 
 // Non-scrolling focus requests apply only to the chapter/version already displayed.
 function canApplyNavigationRequest(
@@ -274,6 +290,9 @@ function Root({
   onHighlightApply,
   onHighlightRemove,
   verseActions = 'popover',
+  verseActionItems,
+  getVerseIndicator,
+  onVerseIndicatorPress,
   clearSelectionSignal,
   scriptureDirection,
   children,
@@ -432,6 +451,9 @@ function Root({
     onHighlightApply,
     onHighlightRemove,
     verseActions,
+    verseActionItems,
+    getVerseIndicator,
+    onVerseIndicatorPress,
     clearSelectionSignal,
     navigation,
     verseFocus,
@@ -476,6 +498,9 @@ function Content() {
     onHighlightApply,
     onHighlightRemove,
     verseActions,
+    verseActionItems,
+    getVerseIndicator,
+    onVerseIndicatorPress,
     clearSelectionSignal,
     verseFocus,
     scriptureDirection,
@@ -547,6 +572,16 @@ function Content() {
   // popover and supplies clean verse text for Copy / Share.
   const readerRef = useRef<HTMLDivElement>(null);
   const renderedReference = !passageLoading && !passageError && passage ? usfmReference : '';
+  const renderedVerseScope = renderedReference ? `${versionId}:${renderedReference}` : null;
+  const selectionScopeRef = useRef<string | null>(null);
+  const hasCustomVerseActions =
+    verseActions === 'popover' &&
+    verseActionItems?.some((item) => item !== 'highlights' && item !== 'copy' && item !== 'share');
+  // Retained HTML can still be tapped by callers using the built-in actions.
+  // Its selection cannot become the input to a custom action for the next passage.
+  const selectionMatchesScope =
+    renderedVerseScope !== null && selectionScopeRef.current === renderedVerseScope;
+  const canShowSelection = !hasCustomVerseActions || selectionMatchesScope;
   useTransientVerseFocus({
     request: activeNavigation,
     renderedReference,
@@ -620,6 +655,7 @@ function Content() {
     setSelectedVerses([]);
     setPopoverOpen(false);
     setAnchorElement(null);
+    selectionScopeRef.current = null;
     if (lastSelectionRef.current.length > 0) {
       lastSelectionRef.current = [];
       onVerseSelectRef.current?.({
@@ -649,6 +685,7 @@ function Content() {
     setPopoverOpen(false);
     setSelectedVerses([]);
     setAnchorElement(null);
+    selectionScopeRef.current = null;
     // The deselect-tap path emits its own `[]` via handleVerseSelect. Read via
     // ref: async callers (navigator.share().then) capture this closure, and a
     // host-swapped callback must not go stale on that path.
@@ -749,7 +786,10 @@ function Content() {
   }, [bookTitle, versionAbbreviation]);
 
   function handleVerseSelect(verses: number[]) {
-    const added = verses.find((verse) => !lastSelectionRef.current.includes(verse));
+    if (hasCustomVerseActions && renderedVerseScope === null) return;
+    const previous = canShowSelection ? lastSelectionRef.current : [];
+    const added = verses.find((verse) => !previous.includes(verse));
+    selectionScopeRef.current = verses.length > 0 ? renderedVerseScope : null;
     lastSelectionRef.current = verses;
     setSelectedVerses(verses);
     onVerseSelect?.(buildVerseSelection(verses));
@@ -837,9 +877,9 @@ function Content() {
     };
   }
 
-  async function runHostVerseAction(
-    action: (data: BibleReaderShareData) => void | Promise<void>,
-    data: BibleReaderShareData,
+  async function runHostVerseAction<Data>(
+    action: (data: Data) => void | Promise<void>,
+    data: Data,
   ): Promise<void> {
     try {
       await action(data);
@@ -983,7 +1023,7 @@ function Content() {
       <div
         role="status"
         aria-live="polite"
-        className="yv:sticky yv:[inset-block-start:0] yv:z-10 yv:rounded-md yv:bg-background yv:px-4 yv:py-2 yv:empty:sr-only yv:text-center yv:text-destructive"
+        className="yv:sticky yv:[inset-block-start:0] yv:z-20 yv:rounded-md yv:bg-background yv:px-4 yv:py-2 yv:empty:sr-only yv:text-center yv:text-destructive"
       >
         {clipboardFailed ? t('unableToShare') : null}
       </div>
@@ -1013,8 +1053,10 @@ function Content() {
                 theme={background}
                 onFootnotePress={onFootnotePress}
                 scriptureDirection={scriptureDirection}
-                selectedVerses={selectedVerses}
+                selectedVerses={canShowSelection ? selectedVerses : undefined}
                 onVerseSelect={handleVerseSelect}
+                getVerseIndicator={isRefetching ? undefined : getVerseIndicator}
+                onVerseIndicatorPress={onVerseIndicatorPress}
                 highlightedVerses={highlightedVerses}
                 passageState={{
                   passage,
@@ -1032,7 +1074,12 @@ function Content() {
           {verseActions !== 'none' && (
             <VerseActionPopoverFocusRestoreProvider takeTarget={takeVerseFocusRestoreTarget}>
               <VerseActionPopover
-                open={popoverOpen && selectedVerses.length > 0 && !highlightPromptOpen}
+                open={
+                  popoverOpen &&
+                  canShowSelection &&
+                  selectedVerses.length > 0 &&
+                  !highlightPromptOpen
+                }
                 onOpenChange={handlePopoverOpenChange}
                 activeHighlights={activeHighlights}
                 selectedVerses={selectedVerses}
@@ -1044,6 +1091,25 @@ function Content() {
                 onClearHighlight={handleClearHighlight}
                 onCopy={handleCopy}
                 onShare={handleShare}
+                actionItems={verseActionItems?.map((item) =>
+                  item === 'highlights' || item === 'copy' || item === 'share'
+                    ? item
+                    : {
+                        ...item,
+                        onSelect: () => {
+                          if (
+                            renderedVerseScope === null ||
+                            selectionScopeRef.current !== renderedVerseScope ||
+                            lastSelectionRef.current !== selectedVerses
+                          ) {
+                            return;
+                          }
+                          const selection = buildVerseSelection(selectedVerses);
+                          void runHostVerseAction(item.onSelect, selection);
+                          closeAndClearSelection();
+                        },
+                      },
+                )}
                 theme={background}
               />
             </VerseActionPopoverFocusRestoreProvider>

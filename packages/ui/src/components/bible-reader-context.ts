@@ -7,15 +7,16 @@ import type { VerseFocusRequest } from '@/lib/use-transient-verse-focus';
 import type { BibleChapterPickerPressData } from './bible-chapter-picker';
 import type { BibleVersionPickerPressData } from './bible-version-picker';
 import type { BibleReaderSearchPressData } from './bible-reader-search';
-import type { FootnoteData } from './verse';
+import type { FootnoteData, VerseIndicatorProps } from './verse';
 import type { BibleReaderNavigation } from './bible-reader-navigation';
 import type {
   BibleReaderHighlightIntent,
   BibleReaderShareData,
+  BibleReaderVerseActionItem,
   BibleReaderVerseSelection,
 } from './bible-reader.types';
 
-export type BibleReaderContextType = {
+export type BibleReaderContextType = VerseIndicatorProps & {
   book: string;
   chapter: string;
   versionId: number;
@@ -49,6 +50,7 @@ export type BibleReaderContextType = {
   onHighlightApply?: (intent: BibleReaderHighlightIntent) => void;
   onHighlightRemove?: (intent: BibleReaderHighlightIntent) => void;
   verseActions: 'popover' | 'none';
+  verseActionItems?: readonly BibleReaderVerseActionItem[];
   clearSelectionSignal?: number;
   navigation: BibleReaderNavigation;
   verseFocus: VerseFocusRequest | null;

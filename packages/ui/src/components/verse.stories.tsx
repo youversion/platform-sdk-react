@@ -13,10 +13,18 @@ import {
   getCleanVerseText,
 } from './verse';
 import { VerseActionPopover } from './verse-action-popover';
+import type { BibleReaderReference } from './bible-reader-navigation';
 import { buildVerseShareText } from '@/lib/verse-share';
 import { Button } from './ui/button';
 import { XIcon } from '@/components/icons/x';
-import { waitForElement, waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
+import {
+  clickStoryElement,
+  getBackgroundColorChannels,
+  verifyNativeBrowserKey,
+  waitForElement,
+  waitForShadowContent,
+  waitForShadowRoot,
+} from '@/test/storybook-dom';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
 import { YvReaderStyles } from '@/lib/yv-styles-reader';
 import { ShadowRootHost } from '@/lib/shadow-root-host';
@@ -291,12 +299,33 @@ export const RealAPI: Story = {
   },
 };
 
+const NEXT_INDICATOR_PASSAGE = {
+  id: 'JHN.2.1',
+  reference: 'John 2:1',
+  content:
+    '<div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>On the third day a wedding took place at Cana in Galilee.</div>',
+};
+
 export const FootnoteInteraction: Story = {
   args: {
     reference: 'JHN.1.51',
     versionId: 111,
     renderNotes: true,
     showVerseNumbers: true,
+    highlightedVerses: { 51: 'ffec5b' },
+    getVerseIndicator: fn(({ passageId, versionId }: BibleReaderReference) => {
+      if (versionId !== 111) return undefined;
+      if (passageId === 'JHN.1.51') {
+        return {
+          label: 'Open marker for John 1:51',
+          style: { backgroundColor: 'rgb(118, 45, 175)' },
+        };
+      }
+      if (passageId === 'JHN.2.1') return { label: 'Open marker for John 2:1' };
+      return undefined;
+    }),
+    onVerseIndicatorPress: fn(),
+    onVerseSelect: fn(),
     passageState: {
       passage: mockPassages['JHN.1.51'],
       loading: false,
@@ -304,15 +333,102 @@ export const FootnoteInteraction: Story = {
     },
   },
   tags: ['integration', 'shadow-dom', 'cross-browser'],
-  play: async ({ canvasElement }) => {
+  render: function IndicatorPassage(args) {
+    const [showNext, setShowNext] = React.useState(false);
+    return (
+      <div style={{ inlineSize: 235 }}>
+        <button type="button" onClick={() => setShowNext(true)}>
+          Show John 2:1
+        </button>
+        <BibleTextView
+          {...args}
+          reference={showNext ? NEXT_INDICATOR_PASSAGE.id : args.reference}
+          passageState={showNext ? { passage: NEXT_INDICATOR_PASSAGE } : args.passageState}
+        />
+      </div>
+    );
+  },
+  play: async ({ args, canvasElement }) => {
     const root = await waitForShadowRoot(canvasElement);
+    const content = await waitForShadowContent(root);
+    const indicator = await within(content).findByRole('button', {
+      name: 'Open marker for John 1:51',
+    });
+    const mark = indicator.querySelector('[data-slot="verse-indicator-mark"]');
+    const verse = indicator.closest<HTMLElement>('.yv-v[v="51"]');
+    if (!mark || !verse) throw new Error('Verse number marker not rendered');
+    await document.fonts.ready;
+    await expect(verse.getClientRects().length).toBeGreaterThan(1);
+    await expect(indicator.closest('[data-yv-theme="light"]')).toBeInTheDocument();
+    await waitFor(() => expect(getBackgroundColorChannels(verse)).toEqual([255, 236, 91, 255]));
+    await expect(mark).toBeVisible();
+    await expect(getComputedStyle(mark).backgroundColor).toBe('rgb(118, 45, 175)');
+    const visible = await waitFor(async () => {
+      const bounds = mark.getBoundingClientRect();
+      const x = bounds.left + bounds.width / 2;
+      const y = bounds.top + bounds.height / 2;
+      await expect(
+        Array.from(verse.getClientRects()).some(
+          (line) => x > line.left && x < line.right && y > line.top && y < line.bottom,
+        ),
+      ).toBe(true);
+      return bounds;
+    });
+    const hit = indicator.getBoundingClientRect();
+    await expect(hit.width).toBeGreaterThan(visible.width);
+    await expect(hit.height).toBeGreaterThan(visible.height);
+    let indicatorPresses = 0;
+    if (__YV_STORYBOOK_VITEST__) {
+      const { server, userEvent: browserUserEvent } = await import('vitest/browser');
+      if (server.provider === 'playwright') {
+        const centerX = visible.left + visible.width / 2;
+        const centerY = visible.top + visible.height / 2;
+        await browserUserEvent.click(indicator, {
+          timeout: 5000,
+          position: {
+            x: centerX - hit.left,
+            y: centerY - hit.top,
+          },
+        });
+        await expect(args.onVerseIndicatorPress).toHaveBeenCalledTimes(1);
+        const position = { x: hit.width - 2, y: hit.height / 2 };
+        const x = hit.left + position.x;
+        const y = hit.top + position.y;
+        await expect(x).toBeGreaterThan(visible.right);
+        await expect(
+          Array.from(verse.getClientRects()).some(
+            (line) => x > line.left && x < line.right && y > line.top && y < line.bottom,
+          ),
+        ).toBe(true);
+        await browserUserEvent.click(indicator, { position });
+        indicatorPresses = 2;
+        await expect(args.onVerseIndicatorPress).toHaveBeenCalledTimes(indicatorPresses);
+        await expect(args.onVerseIndicatorPress).toHaveBeenCalledWith({
+          versionId: 111,
+          passageId: 'JHN.1.51',
+        });
+        await expect(args.onVerseSelect).not.toHaveBeenCalled();
+      }
+    }
+    indicator.focus();
+    await expect(root.activeElement).toBe(indicator);
+    await verifyNativeBrowserKey('{Enter}', async () => {
+      indicatorPresses += 1;
+      await expect(args.onVerseIndicatorPress).toHaveBeenCalledTimes(indicatorPresses);
+      await expect(args.onVerseIndicatorPress).toHaveBeenLastCalledWith({
+        versionId: 111,
+        passageId: 'JHN.1.51',
+      });
+      await expect(args.onVerseSelect).not.toHaveBeenCalled();
+    });
+
     const footnoteButton = await waitForElement<HTMLButtonElement>(
       root,
       '[data-verse-footnote] button',
       'footnote button not rendered',
     );
 
-    await userEvent.click(footnoteButton);
+    await clickStoryElement(footnoteButton);
     const overlay = await waitForElement<HTMLElement>(
       root,
       '[data-yv-shadow-local-overlay]',
@@ -329,6 +445,27 @@ export const FootnoteInteraction: Story = {
     );
     await expect(overlay).toContainElement(noteItem);
     await expect(root.querySelector('[data-yv-shadow-host]')).toBeNull();
+    await expect(args.onVerseIndicatorPress).toHaveBeenCalledTimes(indicatorPresses);
+    await expect(args.onVerseSelect).not.toHaveBeenCalled();
+
+    await clickStoryElement(within(canvasElement).getByRole('button', { name: 'Show John 2:1' }));
+    const nextIndicator = await within(content).findByRole('button', {
+      name: 'Open marker for John 2:1',
+    });
+    await expect(args.getVerseIndicator).not.toHaveBeenCalledWith({
+      versionId: 111,
+      passageId: 'JHN.2.51',
+    });
+    await expect(args.getVerseIndicator).toHaveBeenCalledWith({
+      versionId: 111,
+      passageId: 'JHN.2.1',
+    });
+    await clickStoryElement(nextIndicator);
+    await expect(args.onVerseIndicatorPress).toHaveBeenCalledTimes(indicatorPresses + 1);
+    await expect(args.onVerseIndicatorPress).toHaveBeenLastCalledWith({
+      versionId: 111,
+      passageId: 'JHN.2.1',
+    });
   },
 };
 

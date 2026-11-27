@@ -49,6 +49,23 @@ Optional `locale` sets bundled UI copy (Verse of the Day heading, buttons, etc.)
 </YouVersionProvider>
 ```
 
+### Customize verse actions and indicators
+
+Pass `verseActionItems` to `BibleReader.Root` to choose the order of
+`'highlights'`, `'copy'`, `'share'`, and custom actions. The default order is
+highlights, copy, then share. Each custom item supplies an `id`, a localized
+`label`, a decorative `icon`, and an `onSelect` callback. Its callback receives
+the current `BibleReaderVerseSelection` before the reader clears the selection.
+`passageIds` lists each selected verse separately, including when the selection
+has gaps.
+
+Both `BibleReader.Root` and `BibleTextView` accept `getVerseIndicator`. Return a
+`VerseIndicator` with a localized `label` and optional `style` to mark a verse
+number, or return `undefined` to leave it unchanged. Use
+`onVerseIndicatorPress` to handle activation by pointer or keyboard. Both hooks
+receive a `BibleReaderReference` with the Bible version ID and verse passage ID.
+Without the press callback, the indicator is decorative.
+
 ### Limit which Bible versions the SDK uses
 
 By default the version picker offers Bible versions in every available language. Limit that with `permittedLanguageTags`, `permittedVersionIds`, and `excludedVersionIds` on `YouVersionProvider`. A version must satisfy every list that is set. Exclusion wins if an id is in both permit and exclude lists. Unset means no restriction; an empty permit list permits nothing.
