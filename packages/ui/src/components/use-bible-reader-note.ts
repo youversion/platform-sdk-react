@@ -534,6 +534,8 @@ export function useBibleReaderNote({
         const status = getHttpStatus(error);
         const deniedToken = status === 401 || status === 403 ? (patchToken ?? token) : undefined;
         const rejected = status !== undefined && NOTE_REJECTION_STATUSES.includes(status);
+        // A 413 on create permits corrected fields under the same request ID.
+        const keepSubmission = !rejected || (recovery !== undefined && status !== 413);
         // A lost update may already have changed the note. Retry the desired
         // fields against this ID, even if the user restored the create values.
         if (savedNote && patchToken && text && !rejected) {
@@ -543,7 +545,7 @@ export function useBibleReaderNote({
           phase: 'compose',
           draft: {
             ...draft,
-            recovery: savedNote || recovery || !rejected ? { submitted, savedNote } : undefined,
+            recovery: savedNote || keepSubmission ? { submitted, savedNote } : undefined,
           },
           failed: true,
           deniedToken,

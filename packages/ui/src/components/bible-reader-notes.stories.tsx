@@ -219,7 +219,11 @@ export const EditAndRetry: Story = {
       http.post<never, NoteRequest>('*/v1/notes', async ({ request }) => {
         const body = await request.json();
         requests.push(body);
-        if (body.content === 'Rejected thought') return new HttpResponse(null, { status: 413 });
+        if (body.content === 'Rejected thought') {
+          return requests.length === 1
+            ? HttpResponse.error()
+            : new HttpResponse(null, { status: 413 });
+        }
         if (stored) return noteResponse(stored);
         stored = body;
         return HttpResponse.error();
@@ -313,7 +317,20 @@ export const EditAndRetry: Story = {
     await fillEditor(editor, 'First thought');
     await userEvent.click(composer.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
-      expect(requests.map(({ content }) => content)).toEqual(['Rejected thought', 'First thought']),
+      expect(requests.map(({ content }) => content)).toEqual([
+        'Rejected thought',
+        'Rejected thought',
+      ]),
+    );
+    await expect(await composer.findByRole('alert')).toBeVisible();
+
+    await userEvent.click(composer.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(requests.map(({ content }) => content)).toEqual([
+        'Rejected thought',
+        'Rejected thought',
+        'First thought',
+      ]),
     );
     await expect(await composer.findByRole('alert')).toBeVisible();
     await expect(editor).toHaveValue('First thought');
@@ -354,16 +371,16 @@ export const EditAndRetry: Story = {
     };
     await expect(requests).toEqual([
       { ...common, content: 'Rejected thought' },
+      { ...common, content: 'Rejected thought' },
       { ...common, content: 'First thought' },
       { ...common, content: 'First thought' },
     ]);
-    await expect(requests[1]?.request_id).toBe(requests[0]?.request_id);
-    await expect(requests[2]?.request_id).toBe(requests[0]?.request_id);
+    await expect(new Set(requests.map(({ request_id }) => request_id)).size).toBe(1);
     await expect(updates).toEqual([
       { content: 'Edited thought', status: 'private', color: null },
       { content: 'First thought', status: 'public', color: 'ffdca7' },
     ]);
-    await expect(stored).toEqual(requests[1]);
+    await expect(stored).toEqual(requests[2]);
   }),
 };
 
