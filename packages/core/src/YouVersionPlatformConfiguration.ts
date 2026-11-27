@@ -122,11 +122,24 @@ export class YouVersionPlatformConfiguration {
     removeStorageItem(getLocalStorage(), 'youversion-auth-state');
   }
 
-  /** Returns an access token only for the specified account and granted OAuth scope. */
-  public static getOAuthAccessToken(userId: string, scope: AuthenticationScopes): string | null {
+  /** Returns an account's current access token, verifying the scope or the unchanged legacy session. */
+  public static getOAuthAccessToken(
+    userId: string,
+    scope?: AuthenticationScopes,
+    legacySession?: Pick<StoredOAuthSession, 'userId' | 'accessToken' | 'refreshToken'>,
+  ): string | null {
     const session = this.readOAuthSession();
-    return session?.userId === userId && parsePermissionList(session.scope).includes(scope)
-      ? session.accessToken
+    if (session) {
+      return session.userId === userId &&
+        (scope === undefined || parsePermissionList(session.scope).includes(scope))
+        ? session.accessToken
+        : null;
+    }
+    if (session === null || scope !== undefined || legacySession?.userId !== userId) return null;
+    return this.currentUserId === userId &&
+      this.accessToken === legacySession.accessToken &&
+      this.refreshToken === legacySession.refreshToken
+      ? legacySession.accessToken
       : null;
   }
 
@@ -134,7 +147,7 @@ export class YouVersionPlatformConfiguration {
   public static readOAuthSession(): StoredOAuthSession | null | undefined {
     const storage = getLocalStorage();
     const raw = storage?.getItem('youversion-auth-scope');
-    if (!raw) return undefined;
+    if (raw === null || raw === undefined) return undefined;
     try {
       const session = StoredOAuthSessionSchema.parse(JSON.parse(raw));
       // A different tab may be partway through replacing the token or profile.

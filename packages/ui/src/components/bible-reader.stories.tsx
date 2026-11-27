@@ -1507,7 +1507,11 @@ export const SignInFlow: Story = {
     const signInButton = overlays.getByRole('button', { name: /sign in/i });
     await userEvent.click(signInButton);
 
-    await expect(signInMock).toHaveBeenCalled();
+    await expect(signInMock).toHaveBeenCalledWith(
+      expect.any(String),
+      ['profile', 'read_notes', 'write_notes'],
+      undefined,
+    );
   },
 };
 

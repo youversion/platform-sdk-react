@@ -39,6 +39,10 @@ export type UseBibleReaderHighlightsOptions = {
   versionId: number;
   book: string;
   chapter: string;
+  /** The chapter still painted during passage navigation. */
+  retainedScope?: HighlightScope | null;
+  /** Retains legacy scopes when a host owns Reader sign-in. */
+  hostOwnsSignIn?: boolean;
   /** Presence selects controlled mode (latched by the caller at first mount). */
   controlled?: ControlledHighlightsInput;
   /** Fires when the sign-in or permission redirect promise fulfills. */
@@ -169,6 +173,8 @@ export function useBibleReaderHighlights({
   versionId,
   book,
   chapter,
+  retainedScope,
+  hostOwnsSignIn,
   controlled,
   onAuthRedirectStarted,
   onAuthRedirectFailed,
@@ -206,9 +212,16 @@ export function useBibleReaderHighlights({
     startDataExchangeForHighlights,
   } = useHighlightAuthActions();
 
-  const chapterUsfm = `${book}.${chapter}`;
+  const scope: HighlightScope = useMemo(
+    () => ({ versionId, book, chapter }),
+    [versionId, book, chapter],
+  );
+  const displayScope = retainedScope ?? scope;
+  const isDisplayingRetainedChapter = !scopesEqual(scope, displayScope);
+  const displayedVersionId = displayScope.versionId;
+  const displayedChapterUsfm = `${displayScope.book}.${displayScope.chapter}`;
   const { highlights, createHighlight, deleteHighlight, refetch } = useHighlights(
-    { version_id: versionId, passage_id: chapterUsfm },
+    { version_id: displayedVersionId, passage_id: displayedChapterUsfm },
     { enabled: live },
   );
 
@@ -225,22 +238,24 @@ export function useBibleReaderHighlights({
   const services: HighlightServices = {
     createHighlight,
     deleteHighlight,
-    refetch,
+    refetch: () => {
+      // The destination's highlights load when the destination passage is displayed.
+      if (!isDisplayingRetainedChapter) refetch();
+    },
     hasHighlightsPermission,
     invalidateHighlightsPermission,
     consumeDataExchangeReturn,
-    startSignInForHighlights: () => startSignInForHighlights(undefined, READER_SIGN_IN_SCOPES),
+    startSignInForHighlights: () =>
+      startSignInForHighlights(
+        undefined,
+        !hostOwnsSignIn && !authContext?.isHostControlled ? READER_SIGN_IN_SCOPES : undefined,
+      ),
     startDataExchangeForHighlights,
     onAuthRedirectStarted,
     onAuthRedirectFailed,
   };
   const servicesRef = useRef(services);
   servicesRef.current = services;
-
-  const scope: HighlightScope = useMemo(
-    () => ({ versionId, book, chapter }),
-    [versionId, book, chapter],
-  );
 
   const actorRef = useActorRef(bibleReaderHighlightsMachine, {
     input: {
@@ -264,8 +279,8 @@ export function useBibleReaderHighlights({
 
   // Keep the same paint and machine input when a refresh returns equivalent verse colors.
   const latestServerColors = useMemo(
-    () => parseServerColors(highlights, versionId, chapterUsfm),
-    [highlights, versionId, chapterUsfm],
+    () => parseServerColors(highlights, displayedVersionId, displayedChapterUsfm),
+    [highlights, displayedVersionId, displayedChapterUsfm],
   );
   const paintedServerColorsRef = useRef(latestServerColors);
   if (!serverColorsEqual(paintedServerColorsRef.current, latestServerColors)) {
@@ -274,8 +289,11 @@ export function useBibleReaderHighlights({
   const serverColors = paintedServerColorsRef.current;
 
   useEffect(() => {
-    actorRef.send({ type: 'HIGHLIGHTS_UPDATED', serverColors });
-  }, [actorRef, serverColors]);
+    actorRef.send({
+      type: 'HIGHLIGHTS_UPDATED',
+      serverColors: isDisplayingRetainedChapter ? {} : serverColors,
+    });
+  }, [actorRef, isDisplayingRetainedChapter, serverColors]);
 
   // ── Rendered verse map ──────────────────────────────────────────────────────
   const overlay = useSelector(actorRef, (state) => state.context.overlay);
@@ -295,7 +313,9 @@ export function useBibleReaderHighlights({
     // machine scope still points at the old chapter, so the overlay is skipped
     // and the new chapter renders from server truth alone — verse numbers
     // collide across chapters.
-    if (!scopesEqual(machineScope, scope)) return { ...serverColors };
+    if (isDisplayingRetainedChapter || !scopesEqual(machineScope, scope)) {
+      return { ...serverColors };
+    }
     // Same window for an account swap: until the AUTH_CHANGED effect runs, the
     // machine still holds the previous account's overlay. Skip it, so the new
     // account never sees those entries, not even for one paint.
@@ -303,6 +323,7 @@ export function useBibleReaderHighlights({
     return selectHighlightedVerses(serverColors, overlay);
   }, [
     isControlled,
+    isDisplayingRetainedChapter,
     controlled?.highlights,
     live,
     serverColors,

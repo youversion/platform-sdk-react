@@ -119,18 +119,24 @@ export interface UseYVAuthReturn {
  */
 export function useYVAuth(): UseYVAuthReturn {
   // Get auth state from provider context
-  const { userInfo, setUserInfo, isLoading, error, redirectUri } = useYouVersionAuthContext();
+  const {
+    userInfo,
+    setUserInfo,
+    isLoading,
+    error,
+    redirectUri,
+    isHostControlled,
+    accessToken: managedAccessToken,
+  } = useYouVersionAuthContext();
 
   // Derive authentication state
   const isAuthenticated = !!userInfo;
 
-  // Get current tokens for actions
-  const authTokens = useMemo(
-    () => ({
-      accessToken: YouVersionPlatformConfiguration.accessToken,
-    }),
-    [],
+  const rawAccessToken = useMemo(
+    () => (isHostControlled === false ? null : YouVersionPlatformConfiguration.accessToken),
+    [isHostControlled],
   );
+  const accessToken = isHostControlled === false ? (managedAccessToken ?? null) : rawAccessToken;
 
   // Sign in function
   const signIn = useCallback(
@@ -158,11 +164,11 @@ export function useYVAuth(): UseYVAuthReturn {
     () => ({
       isAuthenticated,
       isLoading,
-      accessToken: authTokens.accessToken,
+      accessToken,
       result: null,
       error,
     }),
-    [isAuthenticated, isLoading, authTokens.accessToken, error],
+    [isAuthenticated, isLoading, accessToken, error],
   );
 
   // Sign out function

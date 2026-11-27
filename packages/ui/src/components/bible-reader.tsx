@@ -608,6 +608,17 @@ function Content() {
     onStarted: () => undefined,
     onFailed: () => undefined,
   });
+  const displayedHighlightScope = useRef<{
+    versionId: number;
+    book: string;
+    chapter: string;
+  } | null>(null);
+  useLayoutEffect(() => {
+    if (renderedReference) displayedHighlightScope.current = { versionId, book, chapter };
+  }, [renderedReference, versionId, book, chapter]);
+  // While the old passage stays on screen, its highlight read and paint stay with it.
+  const retainedHighlightScope =
+    isRefetching && !isHighlightsControlled ? displayedHighlightScope.current : null;
 
   const {
     highlightedVerses,
@@ -626,6 +637,8 @@ function Content() {
     versionId,
     book,
     chapter,
+    retainedScope: retainedHighlightScope,
+    hostOwnsSignIn: !!onSignInPress,
     controlled: isHighlightsControlled
       ? {
           highlights: highlights ?? [],
@@ -857,8 +870,10 @@ function Content() {
     clearRestoredSelection();
   }, [restoredNoteSelection, clearRestoredSelection, renderedReference, versionId, book, chapter]);
 
-  function handleSaveNote() {
+  const noteRestoreFocusTargetRef = useRef<HTMLElement | null>(null);
+  function handleSaveNote(restoreFocusTarget: HTMLElement | null) {
     if (renderedVerseScope && selectionScopeRef.current === renderedVerseScope) {
+      noteRestoreFocusTargetRef.current = restoreFocusTarget;
       notes.open(buildVerseSelection(lastSelectionRef.current));
     }
   }
@@ -1210,6 +1225,7 @@ function Content() {
               onSave={() => void notes.save()}
               onDismiss={notes.dismiss}
               theme={background}
+              restoreFocusTarget={noteRestoreFocusTargetRef.current}
             />
           )}
 

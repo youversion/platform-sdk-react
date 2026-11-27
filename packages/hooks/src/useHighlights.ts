@@ -65,6 +65,7 @@ export function useHighlights(
       // key change would show one account's highlights to another during an
       // account switch, so this hook always drops to `null` instead.
       keepPreviousData: false,
+      restartInitialFetchOnRefetch: true,
     },
   );
 

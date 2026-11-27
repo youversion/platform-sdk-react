@@ -47,9 +47,9 @@ type UseApiDataResult<TData> = {
 export function useApiData<TData>(
   queryKey: readonly unknown[],
   fetchFn: () => Promise<TData>,
-  options: UseApiDataOptions = {},
+  options: UseApiDataOptions & { restartInitialFetchOnRefetch?: boolean } = {},
 ): UseApiDataResult<TData> {
-  const { enabled = true, keepPreviousData = true } = options;
+  const { enabled = true, keepPreviousData = true, restartInitialFetchOnRefetch } = options;
   const queryClient = useInternalQueryClient();
 
   // The client goes to `useQuery` as an explicit argument, so this hook never
@@ -79,8 +79,19 @@ export function useApiData<TData>(
   // When a component remounts, invalidation still updates the cache.
   // `query.refetch()` calls an observer that is no longer active.
   const refetch = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: queryKeyRef.current, exact: true });
-  }, [queryClient]);
+    const filters = { queryKey: queryKeyRef.current, exact: true };
+    const state = restartInitialFetchOnRefetch
+      ? queryClient.getQueryState(filters.queryKey)
+      : undefined;
+    if (state?.fetchStatus === 'fetching' && state.data === undefined) {
+      // Invalidation alone reuses an in-flight first fetch, which may predate the write.
+      void queryClient
+        .cancelQueries({ ...filters, type: 'active' })
+        .then(() => queryClient.invalidateQueries(filters));
+      return;
+    }
+    void queryClient.invalidateQueries(filters);
+  }, [queryClient, restartInitialFetchOnRefetch]);
 
   // If `enabled` is false, `data` and `error` are `null`.
   // The cache can still hold a value.

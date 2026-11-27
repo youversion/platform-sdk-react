@@ -8,5 +8,11 @@ import { useApiClient } from './internal/useApiClient';
 export function useCreateNote(): (note: CreateNote, accessToken: string) => Promise<Note> {
   const apiClient = useApiClient();
   const client = useMemo(() => new NotesClient(apiClient), [apiClient]);
-  return useCallback((note, accessToken) => client.createNote(note, accessToken), [client]);
+  return useCallback(
+    async (note, accessToken) => {
+      if (!accessToken?.trim()) throw new Error('An access token is required to create a note');
+      return client.createNote(note, accessToken);
+    },
+    [client],
+  );
 }

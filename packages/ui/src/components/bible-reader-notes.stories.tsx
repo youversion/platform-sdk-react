@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { expect, spyOn, userEvent, waitFor, within } from 'storybook/test';
 import * as z from 'zod/mini';
 import { globalHandlers } from '@/test/mocks/handlers';
+import mockPassages from '@/test/mock-data/passages.json';
 import {
   getBackgroundColorChannels,
   verifyNativeBrowserKey,
@@ -197,9 +198,13 @@ export const EditAndRetry: Story = {
       }),
     );
     const root = await waitForShadowRoot(canvasElement);
+    const settings = root.querySelector<HTMLButtonElement>('button[aria-label="Settings"]');
+    if (!settings) throw new Error('Reader settings control is missing');
+    settings.focus();
     await selectVerses(root, [2]);
     const { overlays, composer } = await openComposer(root, 'John 1:2');
     const editor = composer.getByRole<HTMLTextAreaElement>('textbox', { name: 'Add Note…' });
+    await waitFor(() => expect(root.activeElement).toBe(editor));
     const colors = within(composer.getByRole('group', { name: 'Highlight colors' }));
     const palette = ['ffec5b', 'b4ffc1', 'bbf4ff', 'ffdca7', 'ffcff8', 'dfdcff'];
     const colorName = (color: string) => `Apply highlight #${color}`;
@@ -265,6 +270,7 @@ export const EditAndRetry: Story = {
     await fillEditor(editor, 'Edited thought');
     await userEvent.click(composer.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(overlays.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(root.activeElement).toBe(settings));
 
     const common = {
       request_id: expect.stringMatching(/^[\da-f-]{36}$/i),
@@ -369,7 +375,8 @@ const storyNavigation = z.instanceof(BibleReaderNavigation);
 
 export const BuiltInActionsDuringNavigation: Story = {
   tags: ['integration', 'shadow-dom', 'cross-browser'],
-  loaders: [async () => ({ hostNavigation: new BibleReaderNavigation() })],
+  loaders: [prepareCallback, async () => ({ hostNavigation: new BibleReaderNavigation() })],
+  parameters: writableSession,
   render: (_args, { loaded }) => (
     <div className="yv:h-screen">
       <BibleReader.Root
@@ -383,7 +390,7 @@ export const BuiltInActionsDuringNavigation: Story = {
       </BibleReader.Root>
     </div>
   ),
-  play: async ({ canvasElement, loaded }) => {
+  play: withWritableSession(async ({ canvasElement, loaded }) => {
     const chapterRequested = deferred<void>();
     const returnChapter = deferred<void>();
     getWorker().use(
@@ -395,11 +402,14 @@ export const BuiltInActionsDuringNavigation: Story = {
     );
     const root = await waitForShadowRoot(canvasElement);
     const retainedVerse = await readerVerse(root, 1);
+    await userEvent.click(retainedVerse);
+    const overlays = await readerOverlays(root);
+    const activeActions = within(await overlays.findByRole('dialog', { name: 'Verse actions' }));
+    await waitFor(() => expect(activeActions.getByRole('button', { name: 'Save' })).toBeVisible());
     storyNavigation.parse(loaded.hostNavigation).request({ versionId: 111, passageId: 'JHN.3' });
     await chapterRequested.promise;
     try {
       await userEvent.click(retainedVerse);
-      const overlays = await readerOverlays(root);
       const actions = within(await overlays.findByRole('dialog', { name: 'Verse actions' }));
       await waitFor(() => expect(actions.getByRole('button', { name: 'Copy' })).toBeVisible());
       await expect(actions.getByRole('button', { name: 'Share' })).toBeVisible();
@@ -407,7 +417,7 @@ export const BuiltInActionsDuringNavigation: Story = {
     } finally {
       returnChapter.resolve();
     }
-  },
+  }),
 };
 
 export const RefreshDisplayedChapterAfterNavigation: Story = {
@@ -430,6 +440,7 @@ export const RefreshDisplayedChapterAfterNavigation: Story = {
     const root = await waitForShadowRoot(canvasElement);
     const noteSent = deferred<NoteRequest>();
     const releaseNote = deferred<void>();
+    const releaseFirstRead = deferred<void>();
     const chapterReads: string[] = [];
     getWorker().use(
       http.post<never, NoteRequest>('*/v1/notes', async ({ request }) => {
@@ -438,9 +449,16 @@ export const RefreshDisplayedChapterAfterNavigation: Story = {
         await releaseNote.promise;
         return noteResponse(note);
       }),
-      http.get('*/v1/highlights', ({ request }) => {
+      http.get('*/v1/highlights', async ({ request }) => {
         const { searchParams } = new URL(request.url);
-        chapterReads.push(`${searchParams.get('bible_id')}:${searchParams.get('passage_id')}`);
+        const scope = `${searchParams.get('bible_id')}:${searchParams.get('passage_id')}`;
+        if (scope === '111:JHN.3') {
+          chapterReads.push(scope);
+          if (chapterReads.length > 1) {
+            return highlightPage({ ...green, passage_id: 'JHN.3.16' });
+          }
+          await releaseFirstRead.promise;
+        }
         return HttpResponse.json({ data: [], next_page_token: null });
       }),
     );
@@ -452,13 +470,81 @@ export const RefreshDisplayedChapterAfterNavigation: Story = {
       passage_id: 'JHN.1.2',
     });
 
-    storyNavigation.parse(loaded.hostNavigation).request({ versionId: 111, passageId: 'JHN.3' });
-    await waitFor(() => expect(chapterReads).toContain('111:JHN.3'));
-    await expect(overlays.getByRole('dialog', { name: 'John 1:2' })).toBeVisible();
-    chapterReads.length = 0;
-    releaseNote.resolve();
-    await waitFor(() => expect(chapterReads).toEqual(['111:JHN.3']));
-    await waitFor(() => expect(overlays.queryByRole('dialog')).toBeNull());
+    try {
+      storyNavigation.parse(loaded.hostNavigation).request({ versionId: 111, passageId: 'JHN.3' });
+      await readerVerse(root, 16);
+      await waitFor(() => expect(chapterReads).toEqual(['111:JHN.3']));
+      await expect(overlays.getByRole('dialog', { name: 'John 1:2' })).toBeVisible();
+      releaseNote.resolve();
+      await waitFor(() => expect(overlays.queryByRole('dialog')).toBeNull());
+      releaseFirstRead.resolve();
+      await waitFor(() => expect(chapterReads).toEqual(['111:JHN.3', '111:JHN.3']));
+      await waitFor(async () =>
+        expect(getBackgroundColorChannels(await readerVerse(root, 16))).toEqual([
+          180, 255, 193, 255,
+        ]),
+      );
+    } finally {
+      releaseNote.resolve();
+      releaseFirstRead.resolve();
+    }
+  }),
+};
+
+export const RefreshRetainedChapterWhileNavigationLoads: Story = {
+  ...RefreshDisplayedChapterAfterNavigation,
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  play: withWritableSession(async ({ canvasElement, loaded }) => {
+    const root = await waitForShadowRoot(canvasElement);
+    const noteSent = deferred<void>();
+    const releaseNote = deferred<void>();
+    const chapterRequested = deferred<void>();
+    const releaseChapter = deferred<void>();
+    const postSaveReads: string[] = [];
+    let noteSaved = false;
+    getWorker().use(
+      http.post<never, NoteRequest>('*/v1/notes', async ({ request }) => {
+        const body = await request.json();
+        noteSent.resolve();
+        await releaseNote.promise;
+        noteSaved = true;
+        return noteResponse(body);
+      }),
+      http.get('*/v1/bibles/111/passages/JHN.3', async () => {
+        chapterRequested.resolve();
+        await releaseChapter.promise;
+        return HttpResponse.json(mockPassages['JHN.3']);
+      }),
+      http.get('*/v1/highlights', ({ request }) => {
+        const scope = new URL(request.url).searchParams.get('passage_id') ?? '';
+        if (noteSaved) postSaveReads.push(scope);
+        return scope === 'JHN.1'
+          ? highlightPage(noteSaved ? green : yellow)
+          : HttpResponse.json({ data: [], next_page_token: null });
+      }),
+    );
+    const retained = await readerVerse(root, 1);
+    await selectVerses(root, [2]);
+    const { overlays, composer } = await openComposer(root, 'John 1:2');
+    try {
+      await userEvent.click(composer.getByRole('button', { name: 'Save' }));
+      await noteSent.promise;
+      storyNavigation.parse(loaded.hostNavigation).request({ versionId: 111, passageId: 'JHN.3' });
+      await chapterRequested.promise;
+      await expect(retained).toBeVisible();
+      releaseNote.resolve();
+      await waitFor(() => expect(overlays.queryByRole('dialog')).toBeNull());
+      await waitFor(() =>
+        expect(getBackgroundColorChannels(retained)).toEqual([180, 255, 193, 255]),
+      );
+      await expect(postSaveReads).toEqual(['JHN.1']);
+      releaseChapter.resolve();
+      await waitFor(async () => expect(await readerVerse(root, 16)).toBeVisible());
+      await waitFor(() => expect(postSaveReads).toEqual(['JHN.1', 'JHN.3']));
+    } finally {
+      releaseNote.resolve();
+      releaseChapter.resolve();
+    }
   }),
 };
 
@@ -487,9 +573,9 @@ export const WritePermissionChangesWhileEditing: Story = {
     await expect(await overlays.findByRole('button', { name: 'Yes Please' })).toBeInTheDocument();
     await expect(creates).toBe(0);
     await userEvent.click(overlays.getByRole('button', { name: 'No Thanks' }));
-    await expect(await overlays.findByRole('textbox', { name: 'Add Note…' })).toHaveValue(
-      'Retained thought',
-    );
+    const editor = await overlays.findByRole('textbox', { name: 'Add Note…' });
+    await expect(editor).toHaveValue('Retained thought');
+    await waitFor(() => expect(root.activeElement).toBe(editor));
 
     const signIn = stayOnAuthorizationHandoff();
     try {
@@ -524,6 +610,149 @@ export const WritePermissionChangesWhileEditing: Story = {
       const { composer: newDraft } = await openComposer(root, 'John 1:2');
       await expect(newDraft.getByRole('textbox', { name: 'Add Note…' })).toHaveValue('');
       await expect(creates).toBe(0);
+    } finally {
+      signIn.mockRestore();
+    }
+  }),
+};
+
+function ReloadableReader({ withCallback = false }: { withCallback?: boolean }) {
+  const [pageVersion, setPageVersion] = useState(0);
+  return (
+    <>
+      <button type="button" onClick={() => setPageVersion((version) => version + 1)}>
+        Reload Reader
+      </button>
+      {withCallback && (
+        <button
+          type="button"
+          onClick={() => {
+            const state = localStorage.getItem('youversion-auth-state');
+            if (!state) throw new Error('Reader did not start an OAuth handoff');
+            stageCallback(state);
+            setPageVersion((version) => version + 1);
+          }}
+        >
+          Return from sign-in
+        </button>
+      )}
+      <YouVersionProvider
+        key={pageVersion}
+        appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || 'storybook-notes'}
+        apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
+        authRedirectUrl={location.origin}
+        locale="en"
+        includeAuth
+      >
+        <div className="yv:h-screen">
+          <BibleReader.Root defaultBook="JHN" defaultChapter="1" defaultVersionId={111}>
+            <BibleReader.Content />
+          </BibleReader.Root>
+        </div>
+      </YouVersionProvider>
+    </>
+  );
+}
+
+export const RemountDropsDraftFromReplacedSession: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  loaders: [prepareCallback],
+  parameters: { ...writableSession, includeAuth: false },
+  render: () => <ReloadableReader />,
+  play: withWritableSession(async ({ canvasElement }) => {
+    const root = await waitForShadowRoot(canvasElement);
+    await selectVerses(root, [1, 4]);
+    const { overlays, composer } = await openComposer(root, 'John 1:1,4');
+    await fillEditor(
+      composer.getByRole<HTMLTextAreaElement>('textbox', { name: 'Add Note…' }),
+      'A draft from the original session',
+    );
+    getWorker().use(http.post('*/auth/token', () => tokenResponse('profile read_notes')));
+    await YouVersionAPIUsers.refreshTokens();
+    const signIn = stayOnAuthorizationHandoff();
+    try {
+      await userEvent.click(composer.getByRole('button', { name: 'Save' }));
+      await userEvent.click(await overlays.findByRole('button', { name: 'Yes Please' }));
+      await waitFor(() => expect(overlays.queryByRole('dialog')).toBeNull());
+      const profile = YouVersionPlatformConfiguration.storedUserInfo;
+      if (!profile?.id) throw new Error('Missing initial Reader account');
+      YouVersionAPIUsers.signOut();
+      YouVersionPlatformConfiguration.saveAuthData(
+        'new-access',
+        'new-refresh',
+        new Date(Date.now() + 3_600_000),
+        { userId: profile.id, scope: 'profile read_notes write_notes' },
+      );
+      YouVersionPlatformConfiguration.saveUserInfo(profile);
+
+      await userEvent.click(within(canvasElement).getByRole('button', { name: 'Reload Reader' }));
+      const remounted = await waitForShadowRoot(canvasElement);
+      await expect(remounted).not.toBe(root);
+      await expect(await readerVerse(remounted, 1)).not.toHaveClass('yv-v-selected');
+      await expect(await readerVerse(remounted, 4)).not.toHaveClass('yv-v-selected');
+      await selectVerses(remounted, [1, 4]);
+      const { composer: fresh } = await openComposer(remounted, 'John 1:1,4');
+      await expect(fresh.getByRole('textbox', { name: 'Add Note…' })).toHaveValue('');
+    } finally {
+      signIn.mockRestore();
+    }
+  }),
+};
+
+export const RemountRecoversDraftDuringFailedRefresh: Story = {
+  ...RemountDropsDraftFromReplacedSession,
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  render: () => <ReloadableReader withCallback />,
+  play: withWritableSession(async ({ canvasElement }) => {
+    const page = within(canvasElement);
+    const root = await waitForShadowRoot(canvasElement);
+    await selectVerses(root, [1, 4]);
+    const { overlays, composer } = await openComposer(root, 'John 1:1,4');
+    const draftText = 'A draft held while the session refreshes';
+    await fillEditor(
+      composer.getByRole<HTMLTextAreaElement>('textbox', { name: 'Add Note…' }),
+      draftText,
+    );
+    getWorker().use(http.post('*/auth/token', () => tokenResponse('profile read_notes')));
+    await YouVersionAPIUsers.refreshTokens();
+    const signIn = stayOnAuthorizationHandoff();
+    try {
+      await userEvent.click(composer.getByRole('button', { name: 'Save' }));
+      await userEvent.click(await overlays.findByRole('button', { name: 'Yes Please' }));
+      await waitFor(() => expect(overlays.queryByRole('dialog')).toBeNull());
+      const profile = YouVersionPlatformConfiguration.storedUserInfo;
+      if (!profile?.id) throw new Error('Missing initial Reader account');
+      YouVersionPlatformConfiguration.saveAuthData(
+        'notes-story-token',
+        'notes-story-refresh',
+        new Date(0),
+        {
+          userId: profile.id,
+          scope: 'profile read_notes',
+        },
+      );
+      getWorker().use(http.post('*/auth/token', () => new HttpResponse(null, { status: 503 })));
+      await userEvent.click(page.getByRole('button', { name: 'Reload Reader' }));
+      const remounted = await waitForShadowRoot(canvasElement);
+      await expect(remounted).not.toBe(root);
+      const returnedOverlays = await readerOverlays(remounted);
+      const actions = within(
+        await returnedOverlays.findByRole('dialog', { name: 'Verse actions' }),
+      );
+      await expect(await readerVerse(remounted, 1)).toHaveClass('yv-v-selected');
+      await expect(await readerVerse(remounted, 4)).toHaveClass('yv-v-selected');
+      await userEvent.click(actions.getByRole('button', { name: 'Save' }));
+      await userEvent.click(await returnedOverlays.findByRole('button', { name: 'Yes Please' }));
+      await waitFor(() => expect(returnedOverlays.queryByRole('dialog')).toBeNull());
+
+      getWorker().use(
+        http.post('*/auth/token', () => tokenResponse('profile read_notes write_notes')),
+      );
+      await userEvent.click(page.getByRole('button', { name: 'Return from sign-in' }));
+      const finalRoot = await waitForShadowRoot(canvasElement);
+      const finalOverlays = await readerOverlays(finalRoot);
+      const returned = within(await finalOverlays.findByRole('dialog', { name: 'John 1:1,4' }));
+      await expect(returned.getByRole('textbox', { name: 'Add Note…' })).toHaveValue(draftText);
     } finally {
       signIn.mockRestore();
     }
@@ -664,6 +893,51 @@ export const NoBuiltInAuth: Story = {
     await waitFor(() => expect(actions.getByRole('button', { name: 'Copy' })).toBeVisible());
     await expect(actions.queryByRole('button', { name: 'Save' })).toBeNull();
     await expect(overlays.queryByRole('button', { name: 'Yes Please' })).toBeNull();
+  },
+};
+
+export const HostControlledSignIn: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  parameters: { includeAuth: false },
+  render: () => (
+    <YouVersionProvider
+      appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || 'storybook-notes'}
+      apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
+      authRedirectUrl={location.origin}
+      userInfo={null}
+      locale="en"
+      includeAuth
+    >
+      <div className="yv:h-screen">
+        <BibleReader.Root defaultBook="JHN" defaultChapter="1" defaultVersionId={111}>
+          <BibleReader.Content />
+          <BibleReader.Toolbar />
+        </BibleReader.Root>
+      </div>
+    </YouVersionProvider>
+  ),
+  play: async ({ canvasElement }) => {
+    const signIn = spyOn(YouVersionAPIUsers, 'signIn').mockResolvedValue(undefined);
+    try {
+      const root = await waitForShadowRoot(canvasElement);
+      const toolbar = root.querySelector('button[aria-label="Sign In" i]');
+      if (!toolbar) throw new Error('Reader sign-in control is missing');
+      await userEvent.click(toolbar);
+      const overlays = await readerOverlays(root);
+      await userEvent.click(await overlays.findByRole('button', { name: /sign in/i }));
+      await expect(signIn).toHaveBeenNthCalledWith(1, location.origin, undefined, undefined);
+
+      await selectVerses(root, [1]);
+      const actions = within(await overlays.findByRole('dialog', { name: 'Verse actions' }));
+      await expect(actions.queryByRole('button', { name: 'Save' })).toBeNull();
+      const [firstColor] = actions.getAllByRole('button', { name: 'Apply highlight' });
+      if (!firstColor) throw new Error('Reader highlight swatches are missing');
+      await userEvent.click(firstColor);
+      await userEvent.click(await overlays.findByRole('button', { name: 'Yes Please' }));
+      await expect(signIn).toHaveBeenNthCalledWith(2, location.origin, ['profile'], ['highlights']);
+    } finally {
+      signIn.mockRestore();
+    }
   },
 };
 

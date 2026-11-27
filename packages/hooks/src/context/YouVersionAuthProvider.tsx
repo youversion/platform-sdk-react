@@ -24,6 +24,12 @@ interface YouVersionAuthProviderProps {
   children: ReactNode;
 }
 
+function getCredentialedUserInfo() {
+  return YouVersionPlatformConfiguration.accessToken || YouVersionPlatformConfiguration.refreshToken
+    ? YouVersionAPIUsers.getStoredUserInfo()
+    : null;
+}
+
 export default function YouVersionAuthProvider({
   config,
   userInfo: controlledUserInfo,
@@ -34,7 +40,13 @@ export default function YouVersionAuthProvider({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [oauthCallbackState, setOAuthCallbackState] = useState<string | null>(null);
+  const [oauthFailedCallbackState, setOAuthFailedCallbackState] = useState<string | null>(null);
   const [oauthCallbackSuperseded, setOAuthCallbackSuperseded] = useState(false);
+  const [legacySession, setLegacySession] = useState<{
+    userId: string;
+    accessToken: string;
+    refreshToken: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!isHostControlled) return;
@@ -54,18 +66,15 @@ export default function YouVersionAuthProvider({
       if (globalThis.window) {
         // Check for OAuth callback
         const urlParams = new URLSearchParams(globalThis.window.location.search);
+        const state = urlParams.get('state');
         const isOAuthCallback = urlParams.has('state') || urlParams.has('error');
 
         if (isOAuthCallback) {
+          const pendingState = state && YouVersionAPIUsers.isSignInPending(state) ? state : null;
           try {
             const result = await YouVersionAPIUsers.handleAuthCallback();
             // A verified state-only callback has already navigated to obtain the code.
-            if (
-              !result &&
-              urlParams.get('state') &&
-              !urlParams.get('code') &&
-              !urlParams.has('error')
-            ) {
+            if (!result && state && !urlParams.get('code') && !urlParams.get('error')) {
               return;
             }
             if (result) {
@@ -75,7 +84,7 @@ export default function YouVersionAuthProvider({
                 storedUser?.userId === result.yvpUserId &&
                 result.accessToken === YouVersionPlatformConfiguration.accessToken;
               if (!sessionChanged || callbackMatchesSession) setUserInfo(storedUser);
-              if (callbackMatchesSession) setOAuthCallbackState(urlParams.get('state'));
+              if (callbackMatchesSession) setOAuthCallbackState(state);
               else if (sessionChanged) setOAuthCallbackSuperseded(true);
             }
           } catch (err) {
@@ -85,22 +94,29 @@ export default function YouVersionAuthProvider({
               console.error('Auth callback failed:', error);
             }
             if (error.name === 'OAuthCallbackSupersededError') setOAuthCallbackSuperseded(true);
+            else setOAuthFailedCallbackState(pendingState);
             if (!sessionChanged) {
               setError(error);
-              setUserInfo(YouVersionAPIUsers.getStoredUserInfo());
+              setUserInfo(getCredentialedUserInfo());
             }
           }
         } else {
           // Check for existing token
           const refreshToken = YouVersionPlatformConfiguration.refreshToken;
           if (refreshToken) {
+            const accessToken = YouVersionPlatformConfiguration.accessToken;
+            const userId = YouVersionPlatformConfiguration.storedUserInfo?.id;
             try {
               // refreshTokenIfNeeded clears tokens (and the stored profile)
               // when the session has expired and cannot be refreshed.
               const refreshed = await YouVersionAPIUsers.refreshTokenIfNeeded();
               if (!mounted) return;
               if (!sessionChanged) {
-                setUserInfo(refreshed ? YouVersionAPIUsers.getStoredUserInfo() : null);
+                const storedUser = refreshed ? YouVersionAPIUsers.getStoredUserInfo() : null;
+                setUserInfo(storedUser);
+                if (accessToken && userId && storedUser?.userId === userId) {
+                  setLegacySession({ userId, accessToken, refreshToken });
+                }
               }
             } catch {
               if (!mounted) return;
@@ -126,8 +142,10 @@ export default function YouVersionAuthProvider({
         return;
       }
       sessionChanged = true;
+      setLegacySession(null);
       setOAuthCallbackState(null);
-      setUserInfo(YouVersionAPIUsers.getStoredUserInfo());
+      setOAuthFailedCallbackState(null);
+      setUserInfo(getCredentialedUserInfo());
     }
 
     globalThis.window?.addEventListener?.('storage', syncSession);
@@ -144,7 +162,16 @@ export default function YouVersionAuthProvider({
     isLoading,
     error,
     redirectUri: config.redirectUri,
+    accessToken:
+      !isHostControlled && userInfo?.userId
+        ? YouVersionPlatformConfiguration.getOAuthAccessToken(
+            userInfo.userId,
+            undefined,
+            legacySession ?? undefined,
+          )
+        : null,
     oauthCallbackState,
+    oauthFailedCallbackState,
     oauthCallbackSuperseded,
     isHostControlled,
   };

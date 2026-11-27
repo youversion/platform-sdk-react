@@ -105,20 +105,56 @@ it('ignores a successful callback after another account has already replaced its
 });
 
 it.each([
-  { name: 'OAuthCallbackSupersededError', superseded: true },
-  { name: 'TypeError', superseded: false },
-])('reports whether a failed callback is obsolete after $name', async ({ name, superseded }) => {
-  const error = Object.assign(new Error('Authorization failed'), { name });
-  openCallback('?state=older-grant&code=older-code', () => Promise.reject(error));
-  config.saveAuthData('active-access', 'active-refresh', null);
-  config.saveUserInfo({ id: 'alice' });
+  {
+    scenario: 'a matched exchange fails',
+    name: 'TypeError',
+    pendingAtStart: true,
+    superseded: false,
+    recover: true,
+  },
+  {
+    scenario: 'a matched hosted denial returns',
+    name: 'Error',
+    pendingAtStart: true,
+    superseded: false,
+    recover: true,
+  },
+  {
+    scenario: 'the attempt is replaced during exchange',
+    name: 'OAuthCallbackSupersededError',
+    pendingAtStart: true,
+    superseded: true,
+    recover: false,
+  },
+  {
+    scenario: 'the attempt is already absent',
+    name: 'Error',
+    pendingAtStart: false,
+    superseded: false,
+    recover: false,
+  },
+])(
+  'only identifies recoverable failures when $scenario',
+  async ({ name, pendingAtStart, superseded, recover }) => {
+    const error = Object.assign(new Error('Authorization failed'), { name });
+    const pending = vi.spyOn(YouVersionAPIUsers, 'isSignInPending').mockReturnValue(pendingAtStart);
+    onTestFinished(() => pending.mockRestore());
+    const query = name === 'Error' ? 'error=access_denied' : 'code=grant-code';
+    openCallback(`?state=older-grant&${query}`, () => {
+      pending.mockReturnValue(false);
+      return Promise.reject(error);
+    });
+    config.saveAuthData('active-access', 'active-refresh', null);
+    config.saveUserInfo({ id: 'alice' });
 
-  const { result } = renderHook(useYouVersionAuthContext, { wrapper: AuthWrapper });
-  await waitFor(() => expect(result.current.isLoading).toBe(false));
-  expect(result.current.userInfo?.userId).toBe('alice');
-  expect(result.current.oauthCallbackState).toBeNull();
-  expect(result.current.oauthCallbackSuperseded).toBe(superseded);
-});
+    const { result } = renderHook(useYouVersionAuthContext, { wrapper: AuthWrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.userInfo?.userId).toBe('alice');
+    expect(result.current.oauthCallbackState).toBeNull();
+    expect(result.current.oauthCallbackSuperseded).toBe(superseded);
+    expect(result.current.oauthFailedCallbackState).toBe(recover ? 'older-grant' : null);
+  },
+);
 
 it('keeps the account synced from another tab when the previous account refresh fails', async () => {
   config.saveAuthData('old-access-token', 'old-refresh-token', new Date(0));

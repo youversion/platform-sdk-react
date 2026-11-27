@@ -2,7 +2,11 @@
 
 import { useContext, useLayoutEffect, useRef, type JSX } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useYVAuth, YouVersionContext } from '@youversion/platform-react-hooks';
+import {
+  useYVAuth,
+  YouVersionAuthContext,
+  YouVersionContext,
+} from '@youversion/platform-react-hooks';
 import { getAdjacentChapter } from '@youversion/platform-core';
 import i18n from '@/i18n';
 import { useInterfaceDirection } from '@/lib/direction';
@@ -37,6 +41,7 @@ function UserMenu() {
   const { t } = useTranslation(undefined, { i18n });
   const { auth, signIn, signOut, userInfo } = useYVAuth();
   const yvContext = useContext(YouVersionContext);
+  const authContext = useContext(YouVersionAuthContext);
   const { onSignInPress, onSignOutPress } = useBibleReaderContext();
 
   // Prefer host-supplied native actions (e.g. the Expo DOM wrapper bridges these to
@@ -45,7 +50,7 @@ function UserMenu() {
     if (onSignInPress) {
       onSignInPress();
     } else {
-      void signIn({ scopes: READER_SIGN_IN_SCOPES });
+      void signIn(authContext?.isHostControlled ? undefined : { scopes: READER_SIGN_IN_SCOPES });
     }
   };
   const handleSignOut = () => {

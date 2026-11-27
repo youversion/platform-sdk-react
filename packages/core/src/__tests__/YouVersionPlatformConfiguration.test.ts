@@ -106,6 +106,24 @@ describe('YouVersionPlatformConfiguration storage contracts', () => {
     expect(YouVersionPlatformConfiguration.storedUserInfo).toBeNull();
   });
 
+  it('accepts an unchanged legacy session only without a scope or OAuth record', () => {
+    const storage = getLocalStorage();
+    clearStorage(storage);
+    const config = YouVersionPlatformConfiguration;
+    const legacySession = { userId: 'legacy-user', accessToken: 'access', refreshToken: 'refresh' };
+    config.saveAuthData(legacySession.accessToken, legacySession.refreshToken, null);
+    config.saveUserInfo({ id: legacySession.userId });
+    expect(config.getOAuthAccessToken(legacySession.userId, undefined, legacySession)).toBe(
+      'access',
+    );
+    expect(
+      config.getOAuthAccessToken(legacySession.userId, 'write_notes', legacySession),
+    ).toBeNull();
+
+    expect(setStorageItem(storage, 'youversion-auth-scope', '')).toBe(true);
+    expect(config.getOAuthAccessToken(legacySession.userId, undefined, legacySession)).toBeNull();
+  });
+
   it('reports rejected storage writes and degrades safely when storage is unavailable', () => {
     try {
       vi.stubGlobal('localStorage', {

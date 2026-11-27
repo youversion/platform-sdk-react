@@ -1,14 +1,16 @@
 import { expect, it, onTestFinished, vi } from 'vitest';
+import { http, HttpResponse } from 'msw';
 import { YouVersionAPIUsers } from '../Users';
 import { YouVersionPlatformConfiguration as config } from '../YouVersionPlatformConfiguration';
 import { setupBrowserMocks, cleanupBrowserMocks } from './mocks/browser';
+import { server } from './setup';
 
 const redirect = 'https://example.com/callback';
 
-function createOAuthBrowser() {
+function createOAuthBrowser(transport: 'deferred' | 'msw' = 'deferred') {
   const browser = setupBrowserMocks();
   const fetch = vi.fn<(request: Request) => Promise<Response>>();
-  vi.stubGlobal('fetch', fetch);
+  if (transport === 'deferred') vi.stubGlobal('fetch', fetch);
   const previousAppKey = config.appKey;
   const previousHost = config.apiHost;
   config.appKey = 'test-app-key';
@@ -76,23 +78,29 @@ function tokenResponse(scope: string) {
   return Response.json({ ...makeTokens(scope), access_token: 'signed-in-access' });
 }
 
-it('keeps the account and newer authorization available when its older refresh fails', async () => {
+it.each([
+  { timing: 'before', signInFirst: true },
+  { timing: 'after', signInFirst: false },
+])('keeps an authorization that started $timing its failed refresh', async ({ signInFirst }) => {
   const { browser, fetch, holdTokenResponse, arriveWithCode } = createOAuthBrowser();
   config.saveAuthData('expired-access', 'old-refresh', new Date(0), {
     scope: 'profile',
     userId: 'alice',
   });
   config.saveUserInfo({ id: 'alice' });
+  if (signInFirst) await YouVersionAPIUsers.signIn(redirect, ['write_notes']);
   const finishRefresh = holdTokenResponse();
   const refresh = YouVersionAPIUsers.refreshTokenIfNeeded();
   expect(fetch).toHaveBeenCalled();
 
-  await YouVersionAPIUsers.signIn(redirect, ['write_notes']);
+  if (!signInFirst) await YouVersionAPIUsers.signIn(redirect, ['write_notes']);
   finishRefresh(new Response(null, { status: 401 }));
   await expect(refresh).resolves.toBe(false);
   expect(YouVersionAPIUsers.getStoredUserInfo()?.userId).toBe('alice');
+  expect(config.accessToken).toBeNull();
+  expect(config.refreshToken).toBeNull();
 
-  arriveWithCode('grant-after-prior-refresh');
+  arriveWithCode(`grant-after-failed-refresh-${signInFirst}`);
   browser.atob.mockReturnValue(JSON.stringify({ sub: 'alice' }));
   fetch.mockResolvedValueOnce(tokenResponse('write_notes'));
   await YouVersionAPIUsers.handleAuthCallback();
@@ -185,7 +193,7 @@ it.each([
 );
 
 it('requests note scopes at authorize and reads the grants from the exchanged token', async () => {
-  const { browser, fetch, arriveWithCode } = createOAuthBrowser();
+  const { browser, fetch, values, arriveWithCode } = createOAuthBrowser();
   const beforeRedirect = vi.fn(() => {
     expect(browser.window.location.href).toBe('');
   });
@@ -209,6 +217,20 @@ it('requests note scopes at authorize and reads the grants from the exchanged to
   expect(beforeRedirect).toHaveBeenCalledWith(authorize.searchParams.get('state'));
   expect(config.getOAuthAccessToken('1234567890', 'write_notes')).toBeNull();
 
+  const firstHop = new URL(redirect);
+  firstHop.searchParams.set('state', authorize.searchParams.get('state') ?? '');
+  firstHop.searchParams.set('granted_permissions', 'bibles');
+  browser.window.location = { href: firstHop.href, search: firstHop.search };
+  await expect(YouVersionAPIUsers.handleAuthCallback()).resolves.toBeNull();
+  expect(new URL(browser.window.location.href).pathname).toBe('/auth/callback');
+  const handoffKeys = [
+    'youversion-auth-code-verifier',
+    'youversion-auth-redirect-uri',
+    'youversion-auth-state',
+    'youversion-auth-pending-granted-permissions',
+  ];
+  for (const key of handoffKeys) expect(values.has(key)).toBe(true);
+
   arriveWithCode('notes-code');
   fetch.mockResolvedValueOnce(Response.json(makeTokens('openid profile read_notes write_notes')));
   const result = await YouVersionAPIUsers.handleAuthCallback();
@@ -228,10 +250,11 @@ it('requests note scopes at authorize and reads the grants from the exchanged to
   });
   expect(browser.localStorage.getItem('idToken')).toBeNull();
   expect(browser.window.history.replaceState).toHaveBeenCalledWith({}, '', redirect);
+  for (const key of handoffKeys) expect(values.has(key)).toBe(false);
 
   expect(config.getOAuthAccessToken('1234567890', 'read_notes')).toBe('access-token-123');
   expect(config.getOAuthAccessToken('1234567890', 'write_notes')).toBe('access-token-123');
-  expect(config.grantedPermissions).toEqual(['highlights']);
+  expect(config.grantedPermissions).toEqual(['bibles', 'highlights']);
 });
 
 it('retains note scopes when rotation omits scope and replaces them when the response narrows it', async () => {
@@ -423,54 +446,49 @@ it('clears a partially written refresh session when storage rejects the rotated 
 });
 
 it('rotates legacy tokens without assigning the returned scope to a stored profile', async () => {
-  const { fetch } = createOAuthBrowser();
+  createOAuthBrowser('msw');
   const originalAccessToken = 'old-access-token';
   const originalRefreshToken = 'old-refresh-token';
   config.saveAuthData(originalAccessToken, originalRefreshToken, null);
   config.saveUserInfo({ id: 'legacy-user' });
 
-  const mockRefreshResponse = {
-    access_token: 'new-access-token',
-    expires_in: 3600,
-    refresh_token: 'new-refresh-token',
-    scope: 'openid write_notes',
-    token_type: 'Bearer',
-  };
-
-  const mockResponse = Response.json(mockRefreshResponse);
-
-  fetch.mockResolvedValue(mockResponse);
-
-  const result = await YouVersionAPIUsers.refreshTokens();
-
-  expect(result).toBeTruthy();
-
-  // Assert that access_token and refresh_token are new (different from original)
-  expect(result?.accessToken).toBe('new-access-token');
-  expect(result?.accessToken).not.toBe(originalAccessToken);
-  expect(result?.refreshToken).toBe('new-refresh-token');
-  expect(result?.refreshToken).not.toBe(originalRefreshToken);
-
-  // Verify the refresh token request was made correctly
-  expect(fetch).toHaveBeenCalledTimes(1);
-  expect(fetch).toHaveBeenCalledWith(
-    expect.objectContaining({
-      method: 'POST',
-      url: 'https://api.youversion.com/auth/token',
+  const requests: Request[] = [];
+  if (process.env.INTEGRATION_TESTS) {
+    server.listen();
+    onTestFinished(() => {
+      server.resetHandlers();
+      server.close();
+    });
+  }
+  server.use(
+    http.all('*', ({ request }) => {
+      requests.push(request);
+      return HttpResponse.json({
+        access_token: 'new-access-token',
+        expires_in: 3600,
+        refresh_token: 'new-refresh-token',
+        scope: 'openid write_notes',
+        token_type: 'Bearer',
+      });
     }),
   );
 
-  const calledRequest = fetch.mock.calls[0]?.[0];
-  expect(calledRequest).toBeInstanceOf(Request);
-  if (!(calledRequest instanceof Request)) {
-    throw new Error('expected fetch to be called with a Request');
-  }
-  expect(calledRequest.method).toBe('POST');
-  expect(calledRequest.url).toBe('https://api.youversion.com/auth/token');
-  expect(calledRequest.headers.get('content-type')).toBe('application/x-www-form-urlencoded');
-  const bodyText = await calledRequest.clone().text();
-  const body = new URLSearchParams(bodyText);
-  expect(body.get('grant_type')).toBe('refresh_token');
+  const result = await YouVersionAPIUsers.refreshTokens();
+
+  expect(result?.accessToken).toBe('new-access-token');
+  expect(result?.refreshToken).toBe('new-refresh-token');
+
+  expect(requests).toHaveLength(1);
+  const [request] = requests;
+  if (!request) throw new Error('Expected the token request');
+  expect(request.method).toBe('POST');
+  expect(request.url).toBe('https://api.youversion.com/auth/token');
+  expect(request.headers.get('content-type')).toBe('application/x-www-form-urlencoded');
+  expect(Object.fromEntries(new URLSearchParams(await request.text()))).toEqual({
+    grant_type: 'refresh_token',
+    refresh_token: originalRefreshToken,
+    client_id: 'test-app-key',
+  });
 
   expect(config.accessToken).toBe('new-access-token');
   expect(config.refreshToken).toBe('new-refresh-token');

@@ -72,7 +72,7 @@ await context.route(`${api}/**`, async (route) => {
       const state = url.searchParams.get('state');
       const destination = intermediateReturns.get(state);
       assert.ok(destination, 'Expected the state-only OAuth hop');
-      intermediateReturns.delete(state);
+      // Strict Mode can initiate this navigation again before the browser leaves.
       return navigate(destination);
     }
     case '/auth/token': {
@@ -152,7 +152,7 @@ const readerScopes = ['openid', 'profile', 'read_notes', 'write_notes'];
 const navbarScopes = ['openid', 'profile', 'email'];
 
 try {
-  await page.goto(app);
+  await page.goto(app, { waitUntil: 'domcontentloaded' });
   await selectVerses(page, [4, 1]);
   await beginNote(page);
   await page
@@ -200,7 +200,7 @@ try {
 
   // Alice's old authorization comes back after Bob replaces her session in another tab.
   const other = await context.newPage();
-  await other.goto(app);
+  await other.goto(app, { waitUntil: 'domcontentloaded' });
   await signedInAs(other, 'Alice').waitFor();
   await beginNote(page);
   const releaseOld = Promise.withResolvers();

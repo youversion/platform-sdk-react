@@ -132,10 +132,9 @@ const clearOAuthHandoff = (storage: Storage | null): void => {
   removeStorageItem(storage, REQUESTED_PERMISSIONS_KEY);
 };
 
-function clearFailedRefreshSession(initialState: string | null) {
-  const currentState = getLocalStorage()?.getItem(AUTH_STATE_KEY) ?? null;
-  if (currentState && currentState !== initialState) {
-    // A newer sign-in needs its PKCE handoff and the initiating profile.
+function clearFailedRefreshSession() {
+  if (getLocalStorage()?.getItem(AUTH_STATE_KEY)) {
+    // A pending sign-in needs its PKCE handoff and the initiating profile.
     YouVersionPlatformConfiguration.saveAuthData(null, null, null);
   } else {
     YouVersionPlatformConfiguration.clearAuthTokens();
@@ -677,7 +676,6 @@ export class YouVersionAPIUsers {
     const userId = YouVersionPlatformConfiguration.storedUserInfo?.id;
     const oauthSession = YouVersionPlatformConfiguration.readOAuthSession();
     const appKey = YouVersionPlatformConfiguration.appKey;
-    const authState = getLocalStorage()?.getItem(AUTH_STATE_KEY) ?? null;
 
     if (!refreshToken) {
       throw new Error('No refresh token available');
@@ -755,7 +753,7 @@ export class YouVersionAPIUsers {
           [accessToken, rotatedAccessToken].includes(config.accessToken) &&
           [refreshToken, rotatedRefreshToken].includes(config.refreshToken)
         ) {
-          clearFailedRefreshSession(authState);
+          clearFailedRefreshSession();
         }
         throw new Error('the rotated tokens could not be saved to browser storage');
       }
@@ -827,7 +825,6 @@ export class YouVersionAPIUsers {
     const accessToken = YouVersionPlatformConfiguration.accessToken;
     const refreshToken = YouVersionPlatformConfiguration.refreshToken;
     const userId = YouVersionPlatformConfiguration.storedUserInfo?.id;
-    const authState = getLocalStorage()?.getItem(AUTH_STATE_KEY) ?? null;
     if (YouVersionPlatformConfiguration.readOAuthSession() === null) return false;
     try {
       const result = await this.rotateTokens(true);
@@ -840,7 +837,7 @@ export class YouVersionAPIUsers {
         YouVersionPlatformConfiguration.storedUserInfo?.id === userId &&
         YouVersionPlatformConfiguration.readOAuthSession() !== null
       ) {
-        clearFailedRefreshSession(authState);
+        clearFailedRefreshSession();
       }
       return false;
     }

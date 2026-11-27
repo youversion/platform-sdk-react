@@ -9,7 +9,7 @@ selection, including gaps, and saves a passage with optional text, privacy, and
 highlight color. Reader sign-in requests Notes scopes. The reader refreshes
 chapter highlights after a successful save.
 
-`'save'` is now a built-in action ID. TypeScript consumers that enumerate built-in
-actions should handle `'save'` alongside `'highlights'`, `'copy'`, and `'share'`.
+The configurable verse actions include the built-in IDs `'highlights'`, `'save'`,
+`'copy'`, and `'share'`. Include `'save'` in a custom action order to offer Notes.
 
 `NotesClient` supports creating a passage-only note with empty `content`.

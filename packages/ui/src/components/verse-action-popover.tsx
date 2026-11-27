@@ -162,7 +162,7 @@ type VerseActionPopoverProps = {
   onHighlight: (color: string) => void;
   onClearHighlight: (color: string) => void;
   /** Enables the Save action. The Reader opens its Notes composer here. */
-  onSave?: () => void;
+  onSave?: (restoreFocusTarget: HTMLElement | null) => void;
   onCopy: () => void;
   onShare: () => void;
   theme?: 'light' | 'dark';
@@ -588,7 +588,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                         key={item}
                         icon={<BookOpenIcon className="yv:size-5" />}
                         label={t('notesSave')}
-                        onClick={() => onSave?.()}
+                        onClick={() => onSave?.(focusRestoreTargetRef.current)}
                         onClickCapture={markOverlayAction}
                       />
                     );

@@ -19,6 +19,7 @@ type NotesComposerProps = {
   onSave: () => void;
   onDismiss: () => void;
   theme: 'light' | 'dark';
+  restoreFocusTarget: HTMLElement | null;
 };
 
 export function BibleReaderNotesComposer({
@@ -29,11 +30,13 @@ export function BibleReaderNotesComposer({
   onSave,
   onDismiss,
   theme,
+  restoreFocusTarget,
 }: NotesComposerProps): ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   const visibilityName = useId();
   const discardDescriptionId = useId();
   const formRef = useRef<HTMLFormElement>(null);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
   const stayButtonRef = useRef<HTMLButtonElement>(null);
   const focusBeforeDiscard = useRef<HTMLElement | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -76,7 +79,12 @@ export function BibleReaderNotesComposer({
     >
       <DialogContent
         theme={theme}
+        restoreFocusTarget={restoreFocusTarget}
         aria-describedby={confirmDiscard ? discardDescriptionId : undefined}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          editorRef.current?.focus({ preventScroll: true });
+        }}
         className="yv:box-border yv:max-h-[calc(100dvh-2rem)] yv:max-w-md yv:overflow-y-auto"
       >
         <DialogTitle className="yv:[margin-block-end:1rem] yv:text-lg yv:font-semibold">
@@ -96,6 +104,7 @@ export function BibleReaderNotesComposer({
           }}
         >
           <Textarea
+            ref={editorRef}
             aria-label={t('notesPlaceholder')}
             placeholder={t('notesPlaceholder')}
             value={draft.text}
