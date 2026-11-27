@@ -178,6 +178,15 @@ export class YouVersionPlatformConfiguration {
       : null;
   }
 
+  /**
+   * Whether a persisted OAuth binding is invalid or disagrees with the stored credentials or profile.
+   * An absent legacy binding does not block profile display. Managed account requests still need
+   * a validated token from `getOAuthAccessToken`.
+   */
+  public static get hasMismatchedOAuthSession(): boolean {
+    return this.readOAuthSession() === null;
+  }
+
   /** @internal Reads the OAuth session for token rotation, or `null` for a mismatched record. */
   public static readOAuthSession(): StoredOAuthSession | null | undefined {
     const storage = getLocalStorage();

@@ -7,7 +7,7 @@ import {
   getLocalStorage,
   type YouVersionUserInfoJSON,
 } from '@youversion/platform-core';
-import React, { useEffect, useRef, useState, type ReactNode } from 'react';
+import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { AuthConfig, AuthContextValue } from '../types/auth';
 import { YouVersionAuthContext } from './YouVersionAuthContext';
 
@@ -24,10 +24,19 @@ interface YouVersionAuthProviderProps {
   children: ReactNode;
 }
 
-function getCredentialedUserInfo() {
-  return YouVersionPlatformConfiguration.accessToken || YouVersionPlatformConfiguration.refreshToken
-    ? YouVersionAPIUsers.getStoredUserInfo()
-    : null;
+function getCredentialedUserInfo(currentUser: YouVersionUserInfo | null = null) {
+  if (
+    !YouVersionPlatformConfiguration.accessToken &&
+    !YouVersionPlatformConfiguration.refreshToken
+  ) {
+    return null;
+  }
+  const storedUser = YouVersionAPIUsers.getStoredUserInfo();
+  if (!YouVersionPlatformConfiguration.hasMismatchedOAuthSession) {
+    return storedUser;
+  }
+  // A storage event can arrive midway through another tab's account replacement.
+  return currentUser && currentUser.userId === storedUser?.userId ? storedUser : null;
 }
 
 export default function YouVersionAuthProvider({
@@ -48,6 +57,11 @@ export default function YouVersionAuthProvider({
     accessToken: string;
     refreshToken: string | null;
   } | null>(null);
+
+  const publishUserInfo = useCallback<AuthContextValue['setUserInfo']>((nextUser) => {
+    if (nextUser === null) setAccountRevision((revision) => revision + 1);
+    setUserInfo(nextUser);
+  }, []);
 
   useEffect(() => {
     if (!isHostControlled) return;
@@ -207,7 +221,7 @@ export default function YouVersionAuthProvider({
       }
       setOAuthCallbackState(null);
       setOAuthFailedCallbackState(null);
-      setUserInfo(getCredentialedUserInfo());
+      setUserInfo(getCredentialedUserInfo);
     }
 
     const unsubscribeRotation = YouVersionAPIUsers.onTokenRotation(
@@ -239,7 +253,7 @@ export default function YouVersionAuthProvider({
 
   const value: AuthContextValue = {
     userInfo,
-    setUserInfo,
+    setUserInfo: publishUserInfo,
     isLoading,
     error,
     redirectUri: config.redirectUri,

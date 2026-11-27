@@ -4,9 +4,10 @@ import {
   YouVersionPlatformConfiguration,
   type CreateNote,
 } from '@youversion/platform-core';
+import { useYVAuth } from '@youversion/platform-react-hooks';
 import { http, HttpResponse } from 'msw';
 import { getWorker } from 'msw-storybook-addon';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { expect, spyOn, userEvent, waitFor, within } from 'storybook/test';
 import * as z from 'zod/mini';
 import { globalHandlers } from '@/test/mocks/handlers';
@@ -776,6 +777,15 @@ function waitForReaderPage(container: HTMLElement, version: number) {
   );
 }
 
+function PendingSessionSignOut() {
+  const { auth, signOut } = useYVAuth();
+  return (
+    <button type="button" disabled={auth.isAuthenticated || auth.isLoading} onClick={signOut}>
+      Sign out the pending session
+    </button>
+  );
+}
+
 function ReloadableReader({ withCallback = false }: { withCallback?: boolean }) {
   const [pageVersion, setPageVersion] = useState(0);
   return (
@@ -805,6 +815,7 @@ function ReloadableReader({ withCallback = false }: { withCallback?: boolean }) 
         includeAuth
       >
         <ReaderPage version={pageVersion} />
+        {withCallback && <PendingSessionSignOut />}
         <div className="yv:h-screen">
           <BibleReader.Root defaultBook="JHN" defaultChapter="1" defaultVersionId={111}>
             <BibleReader.Content />
@@ -860,11 +871,16 @@ export const RemountDropsDraftFromReplacedSession: Story = {
   }),
 };
 
-export const RemountRecoversDraftDuringFailedRefresh: Story = {
-  ...RemountDropsDraftFromReplacedSession,
-  tags: ['integration', 'shadow-dom', 'cross-browser'],
-  render: () => <ReloadableReader withCallback />,
-  play: withWritableSession(async ({ canvasElement }) => {
+function playFailedRefreshDraft(
+  afterFailure: (result: {
+    canvasElement: HTMLElement;
+    root: ShadowRoot;
+    overlays: ReturnType<typeof within>;
+    draftText: string;
+    ownerId: string;
+  }) => Promise<void>,
+): Play {
+  return withWritableSession(async ({ canvasElement }) => {
     const page = within(canvasElement);
     const root = await waitForShadowRoot(canvasElement);
     await selectVerses(root, [1, 4]);
@@ -925,21 +941,91 @@ export const RemountRecoversDraftDuringFailedRefresh: Story = {
       const failedActions = within(
         await failedOverlays.findByRole('dialog', { name: 'Verse actions' }),
       );
-      await userEvent.click(failedActions.getByRole('button', { name: 'Save' }));
-      await userEvent.click(await failedOverlays.findByRole('button', { name: 'Yes Please' }));
-      await waitFor(() => expect(failedOverlays.queryByRole('dialog')).toBeNull());
-
-      getWorker().use(
-        http.post('*/auth/token', () => tokenResponse('profile read_notes write_notes')),
-      );
-      await userEvent.click(page.getByRole('button', { name: 'Return from sign-in' }));
-      await waitForReaderPage(canvasElement, 3);
-      const finalRoot = await waitForShadowRoot(canvasElement);
-      const finalOverlays = await readerOverlays(finalRoot);
-      const returned = within(await finalOverlays.findByRole('dialog', { name: 'John 1:1,4' }));
-      await expect(returned.getByRole('textbox', { name: 'Add Note…' })).toHaveValue(draftText);
+      await expect(failedActions.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+      await afterFailure({
+        canvasElement,
+        root: failedRoot,
+        overlays: failedOverlays,
+        draftText,
+        ownerId: profile.id,
+      });
     } finally {
       signIn.mockRestore();
+    }
+  });
+}
+
+export const RemountRecoversDraftDuringFailedRefresh: Story = {
+  ...RemountDropsDraftFromReplacedSession,
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  render: () => <ReloadableReader withCallback />,
+  play: playFailedRefreshDraft(async ({ canvasElement, overlays, draftText }) => {
+    const actions = within(await overlays.findByRole('dialog', { name: 'Verse actions' }));
+    await userEvent.click(actions.getByRole('button', { name: 'Save' }));
+    await userEvent.click(await overlays.findByRole('button', { name: 'Yes Please' }));
+    await waitFor(() => expect(overlays.queryByRole('dialog')).toBeNull());
+    getWorker().use(
+      http.post('*/auth/token', () => tokenResponse('profile read_notes write_notes')),
+    );
+    await userEvent.click(
+      within(canvasElement).getByRole('button', { name: 'Return from sign-in' }),
+    );
+    await waitForReaderPage(canvasElement, 3);
+    const finalRoot = await waitForShadowRoot(canvasElement);
+    const finalOverlays = await readerOverlays(finalRoot);
+    const returned = within(await finalOverlays.findByRole('dialog', { name: 'John 1:1,4' }));
+    await expect(returned.getByRole('textbox', { name: 'Add Note…' })).toHaveValue(draftText);
+  }),
+};
+
+export const ExplicitSignOutClearsTheRecoveredDraft: Story = {
+  ...RemountRecoversDraftDuringFailedRefresh,
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  play: playFailedRefreshDraft(async ({ canvasElement, root, overlays, ownerId }) => {
+    const saved = deferred<NoteRequest>();
+    getWorker().use(
+      http.post<never, NoteRequest>('*/v1/notes', async ({ request }) => {
+        const body = await request.json();
+        saved.resolve(body);
+        return noteResponse(body);
+      }),
+    );
+    const signOut = within(canvasElement).getByRole('button', {
+      name: 'Sign out the pending session',
+    });
+    await waitFor(() => expect(signOut).toBeEnabled());
+    await userEvent.click(signOut);
+
+    const frame = canvasElement.ownerDocument.createElement('iframe');
+    frame.hidden = true;
+    canvasElement.append(frame);
+    try {
+      const storage = frame.contentWindow?.localStorage;
+      if (!storage) throw new Error('Same-origin account writer did not mount');
+      YouVersionPlatformConfiguration.saveAuthData(
+        'returning-reader-token',
+        'returning-reader-refresh',
+        new Date('2100-01-01'),
+        { userId: ownerId, scope: 'profile read_notes write_notes' },
+      );
+      storage.setItem('userInfo', JSON.stringify({ id: ownerId, name: 'Reader' }));
+      await waitFor(() => expect(signOut).toBeDisabled());
+      for (const verseNumber of [1, 4]) {
+        const verse = await readerVerse(root, verseNumber);
+        if (!verse.classList.contains('yv-v-selected')) await userEvent.click(verse);
+      }
+      const { composer } = await openComposer(root, 'John 1:1,4');
+      await expect(composer.getByRole('textbox', { name: 'Add Note…' })).toHaveValue('');
+      await userEvent.click(composer.getByRole('button', { name: 'Save' }));
+      await expect(await saved.promise).toEqual({
+        request_id: expect.stringMatching(/^[\da-f-]{36}$/i),
+        content: '',
+        status: 'private',
+        passage: { bible_id: 111, passage_id: 'JHN.1.1+JHN.1.4' },
+      });
+      await waitFor(() => expect(overlays.queryByRole('dialog')).toBeNull());
+    } finally {
+      frame.remove();
     }
   }),
 };
@@ -1118,6 +1204,126 @@ export const HostControlledSignIn: Story = {
       await userEvent.click(firstColor);
       await userEvent.click(await overlays.findByRole('button', { name: 'Yes Please' }));
       await expect(signIn).toHaveBeenNthCalledWith(2, location.origin, ['profile'], ['highlights']);
+    } finally {
+      signIn.mockRestore();
+    }
+  },
+};
+
+function ReaderAccountStatus() {
+  const { auth, userInfo } = useYVAuth();
+  const [lastEvent, setLastEvent] = useState('ready');
+  useEffect(() => {
+    const observe = (event: StorageEvent) => {
+      if (event.storageArea === localStorage && event.key && event.isTrusted)
+        setLastEvent(event.key);
+    };
+    window.addEventListener('storage', observe);
+    return () => window.removeEventListener('storage', observe);
+  }, []);
+  return (
+    <output aria-label="Reader account">
+      {auth.isLoading ? 'Loading' : (userInfo?.name ?? 'Signed out')} / {lastEvent}
+    </output>
+  );
+}
+
+export const HighlightsWaitForTheStagedAccount: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  parameters: { includeAuth: false },
+  loaders: [
+    async () => {
+      YouVersionPlatformConfiguration.clearAuthTokens();
+      YouVersionPlatformConfiguration.saveUserInfo({ id: 'alice', name: 'Alice' });
+      return {};
+    },
+  ],
+  render: () => (
+    <YouVersionProvider
+      appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || 'storybook-notes'}
+      apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
+      authRedirectUrl={location.origin}
+      locale="en"
+      includeAuth
+    >
+      <ReaderAccountStatus />
+      <div className="yv:h-screen">
+        <BibleReader.Root defaultBook="JHN" defaultChapter="1" defaultVersionId={111}>
+          <BibleReader.Content />
+        </BibleReader.Root>
+      </div>
+    </YouVersionProvider>
+  ),
+  play: async ({ canvasElement }) => {
+    const requests: (string | null)[] = [];
+    getWorker().use(
+      http.get('*/v1/highlights', ({ request }) => {
+        requests.push(request.headers.get('authorization'));
+        return highlightPage(yellow);
+      }),
+    );
+    const status = () => within(canvasElement).getByLabelText('Reader account');
+    const frame = canvasElement.ownerDocument.createElement('iframe');
+    frame.hidden = true;
+    canvasElement.append(frame);
+    try {
+      const storage = frame.contentWindow?.localStorage;
+      if (!storage) throw new Error('Same-origin account writer did not mount');
+      const root = await waitForShadowRoot(canvasElement);
+      const verse = await readerVerse(root, 1);
+      await waitFor(() => expect(status()).toHaveTextContent('Signed out / ready'));
+      YouVersionPlatformConfiguration.saveAuthData(
+        'bob-access',
+        'bob-refresh',
+        new Date('2100-01-01'),
+        {
+          userId: 'bob',
+          scope: 'profile read_notes',
+        },
+      );
+      // Stage the bound token in another document while the old profile remains visible in storage.
+      localStorage.removeItem('accessToken');
+      storage.setItem('accessToken', 'bob-access');
+      await waitFor(() => expect(status()).toHaveTextContent('Signed out / accessToken'));
+      await expect(requests).toEqual([]);
+
+      storage.setItem('userInfo', JSON.stringify({ id: 'bob', name: 'Bob' }));
+      await waitFor(() => expect(status()).toHaveTextContent('Bob / userInfo'));
+      await waitFor(() => expect(getBackgroundColorChannels(verse)).toEqual([255, 236, 91, 255]));
+      await expect(requests).toEqual(['Bearer bob-access']);
+    } finally {
+      frame.remove();
+      YouVersionPlatformConfiguration.clearAuthTokens();
+    }
+  },
+};
+
+export const SignInFlow: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  loaders: [
+    async () => {
+      YouVersionPlatformConfiguration.clearAuthTokens();
+      return {};
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    const signIn = spyOn(YouVersionAPIUsers, 'signIn').mockResolvedValue(undefined);
+    try {
+      const root = await waitForShadowRoot(canvasElement);
+      const trigger = await waitFor(() => {
+        const button = root.querySelector('[data-testid="user-menu-trigger"]');
+        if (!button) throw new Error('Reader sign-in trigger is missing');
+        return button;
+      });
+      await expect(trigger.querySelector('img')).not.toBeInTheDocument();
+      await userEvent.click(trigger);
+      const overlays = await readerOverlays(root);
+      await userEvent.click(await overlays.findByRole('button', { name: /sign in/i }));
+      await expect(signIn).toHaveBeenCalledWith(
+        expect.any(String),
+        ['profile', 'read_notes', 'write_notes'],
+        undefined,
+      );
     } finally {
       signIn.mockRestore();
     }

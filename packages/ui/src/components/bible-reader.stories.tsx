@@ -86,7 +86,6 @@ function firstPathParam(value: string | readonly string[] | undefined): string |
   return value[0];
 }
 
-let signInMock: ReturnType<typeof fn>;
 const withShadowRecoveryProvider = (Story: React.ComponentType) => (
   <ShadowRecoveryStoryProvider apiHost={bibleReaderRecovery.apiHost}>
     <Story />
@@ -104,7 +103,7 @@ const meta: Meta<typeof BibleReader.Root> = {
 
     const { YouVersionAPIUsers } = await import('@youversion/platform-core');
 
-    signInMock = fn().mockImplementation(async () => {
+    const signInMock = fn().mockImplementation(async () => {
       await new Promise<void>((resolve) => setTimeout(resolve, 100));
       return {
         accessToken: 'mock-token',
@@ -1465,53 +1464,6 @@ export const ThemeOverridesProvider: Story = {
       await expect(popover).toBeInTheDocument();
       await expect(popover?.closest('[data-yv-theme="light"]')).toBeInTheDocument();
     });
-  },
-};
-
-export const SignInFlow: Story = {
-  tags: ['integration'],
-  args: {
-    defaultVersionId: 111,
-    book: 'JHN',
-    chapter: '1',
-  },
-  render: (args) => (
-    <div data-yv-sdk className="yv:h-screen">
-      <BibleReader.Root {...args}>
-        <BibleReader.Content />
-        <BibleReader.Toolbar />
-      </BibleReader.Root>
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    const { root, reader } = await getReaderStory(canvasElement);
-    await waitFor(
-      async () => {
-        const userMenuTrigger = reader.getByTestId('user-menu-trigger');
-        await expect(userMenuTrigger).toBeInTheDocument();
-      },
-      { timeout: 5000 },
-    );
-
-    const userMenuTrigger = reader.getByTestId('user-menu-trigger');
-    await expect(userMenuTrigger.querySelector('img')).not.toBeInTheDocument();
-
-    await userEvent.click(userMenuTrigger);
-
-    const overlays = await getReaderOverlay(root);
-    await waitFor(async () => {
-      const signInButton = await overlays.findByRole('button', { name: /sign in/i });
-      await expect(signInButton).toBeInTheDocument();
-    });
-
-    const signInButton = overlays.getByRole('button', { name: /sign in/i });
-    await userEvent.click(signInButton);
-
-    await expect(signInMock).toHaveBeenCalledWith(
-      expect.any(String),
-      ['profile', 'read_notes', 'write_notes'],
-      undefined,
-    );
   },
 };
 

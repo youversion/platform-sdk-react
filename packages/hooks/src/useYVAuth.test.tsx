@@ -442,6 +442,35 @@ it('keeps a pending authorization profile signed out on remount and storage upda
   expect(result.current.auth.accessToken).toBeNull();
 });
 
+it('publishes explicit sign-out after a failed reauthorization left the profile signed out', async () => {
+  YouVersionAPIUsers.signOut();
+  const previousUrl = window.location.href;
+  onTestFinished(() => {
+    window.history.replaceState(null, '', previousUrl);
+    YouVersionAPIUsers.signOut();
+  });
+  YouVersionPlatformConfiguration.saveUserInfo({ id: 'alice' });
+  localStorage.setItem('youversion-auth-state', 'note-authorization');
+  localStorage.setItem('youversion-auth-code-verifier', 'test-verifier');
+  window.history.replaceState(null, '', '?state=note-authorization&error=access_denied');
+
+  const { result } = renderHook(
+    () => ({ session: useYVAuth(), context: useYouVersionAuthContext() }),
+    { wrapper: WebAuthWrapper },
+  );
+  await waitFor(() => expect(result.current.session.auth.isLoading).toBe(false));
+  expect(result.current.context.oauthFailedCallbackState).toBe('note-authorization');
+  expect(result.current.session.userInfo).toBeNull();
+  expect(YouVersionAPIUsers.getStoredUserInfo()?.userId).toBe('alice');
+  expect(result.current.context.accountRevision).toBe(0);
+
+  act(() => result.current.session.signOut());
+
+  expect(YouVersionAPIUsers.getStoredUserInfo()).toBeNull();
+  expect(result.current.session.userInfo).toBeNull();
+  expect(result.current.context.accountRevision).toBe(1);
+});
+
 it('reads the raw token for a host-controlled provider without a profile', async () => {
   YouVersionAPIUsers.signOut();
   onTestFinished(() => YouVersionAPIUsers.signOut());

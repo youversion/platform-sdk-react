@@ -637,6 +637,7 @@ function Content() {
     signInDialogOpen,
     confirmSignInDialog,
     cancelSignInDialog,
+    discardPendingAuthorization: discardHighlightAuthorization,
   } = useBibleReaderHighlights({
     versionId,
     book,
@@ -675,6 +676,7 @@ function Content() {
       refreshHighlights();
     },
     onInvalidated: clearNoteSelection,
+    onAuthorizationCommitted: discardHighlightAuthorization,
   });
 
   // Color row: controlled mode always shows it (YPE-3705 bypasses HIGHLIGHTS_LIVE).

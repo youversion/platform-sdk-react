@@ -7,6 +7,7 @@ import passages from '../src/test/mock-data/passages.json' with { type: 'json' }
 import { mockBooks } from '../src/test/mock-data/books.ts';
 
 const app = process.argv[2] ?? 'http://127.0.0.1:5176';
+const callbackPath = process.argv[3] ?? '/callback';
 const api = 'https://notes-smoke.example.test';
 const browser = await chromium.launch();
 const context = await browser.newContext({
@@ -27,6 +28,7 @@ const responses = new Map();
 const exchanges = new Map();
 const intermediateReturns = new Map();
 const notes = [];
+const highlightWrites = [];
 const page = await context.newPage();
 await page.addInitScript(() => {
   let queuedStorageEvents;
@@ -77,6 +79,7 @@ await context.route(`${api}/**`, async (route) => {
 
       const destination = new URL(url.searchParams.get('redirect_uri'));
       assert.equal(destination.origin, new URL(app).origin, 'Expected the local app callback');
+      assert.equal(destination.pathname, callbackPath, 'Expected the configured callback path');
       const state = url.searchParams.get('state');
       destination.searchParams.set('state', state);
       if (response.account) {
@@ -128,6 +131,11 @@ await context.route(`${api}/**`, async (route) => {
     case '/v1/bibles/3034/passages/JHN.1':
       return json({ ...passages['JHN.1'], bible_id: 3034 });
     case '/v1/highlights':
+      if (request.method() === 'POST') {
+        const highlight = request.postDataJSON();
+        highlightWrites.push(highlight);
+        return json(highlight, 201);
+      }
       return json({ data: [] });
     case '/v1/notes': {
       const body = request.postDataJSON();
@@ -192,9 +200,47 @@ try {
   await page.getByRole('button', { name: 'Yes Please' }).click();
   checkScopes(await declined, readerScopes);
   await page.waitForURL(/error=access_denied/);
+  assert.equal(new URL(page.url()).pathname, callbackPath);
   await menu(page).waitFor();
   assert.deepEqual(await selectedVerses(page), [1, 4]);
   assert.equal(await editor(page).count(), 0);
+
+  // A declined highlight attempt must not resume when a new Note is authorized.
+  const competing = await context.newPage();
+  await competing.goto(app, { waitUntil: 'domcontentloaded' });
+  await selectVerses(competing, [1]);
+  await menu(competing).getByRole('button', { name: 'Apply highlight' }).first().click();
+  const highlightDeclined = prepareSignIn(competing, null);
+  await competing.getByRole('button', { name: 'Yes Please' }).click();
+  const highlightParams = await highlightDeclined;
+  checkScopes(highlightParams, readerScopes);
+  assert.equal(highlightParams.get('requested_permissions'), 'highlights');
+  await competing.waitForURL(/error=access_denied/);
+  await hostedButton(competing).and(competing.locator('button:enabled')).waitFor();
+  await competing.goto(app, { waitUntil: 'domcontentloaded' });
+  await hostedButton(competing).waitFor();
+  await selectVerses(competing, [4, 2]);
+  await beginNote(competing);
+  const noteAuthorized = prepareSignIn(competing, writer);
+  const highlightsRead = competing.waitForResponse(
+    (response) => response.url().startsWith(`${api}/v1/highlights?`) && response.ok(),
+  );
+  await competing.getByRole('button', { name: 'Yes Please' }).click();
+  const noteParams = await noteAuthorized;
+  checkScopes(noteParams, readerScopes);
+  assert.equal(noteParams.get('requested_permissions'), null);
+  await highlightsRead;
+  await composer(competing, 'John 1:2,4').waitFor();
+  assert.equal(new URL(competing.url()).pathname, callbackPath);
+  assert.equal(
+    await competing.getByRole('button', { name: 'Continue', includeHidden: true }).count(),
+    0,
+  );
+  assert.deepEqual(highlightWrites, []);
+  await composer(competing, 'John 1:2,4').getByRole('button', { name: 'Cancel' }).click();
+  await competing.locator('header').getByRole('button', { name: 'Sign out' }).click();
+  await hostedButton(competing).waitFor();
+  await competing.close();
 
   const navbar = prepareSignIn(page, alice);
   await hostedButton(page).click();
@@ -303,7 +349,7 @@ try {
   assert.equal(notes.length, 1);
 
   console.log(
-    'Reader Notes smoke passed (decline, token-service recovery, two-step grant, exact create, stale callback, same-account re-sign-in, sign-out, navbar scopes, and narrow layout).',
+    'Reader Notes smoke passed (configured callback route, decline, competing highlight intent, token-service recovery, exact create, stale callback, same-account re-sign-in, sign-out, navbar scopes, and narrow layout).',
   );
 } finally {
   await browser.close();

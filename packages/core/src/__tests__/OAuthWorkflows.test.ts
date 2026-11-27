@@ -235,7 +235,16 @@ it('rejects an earlier callback once another account has staged its scoped crede
 it.each(['network', 'server'] as const)(
   'retains the current account and token when reauthorization encounters a %s failure',
   async (failure) => {
-    const { fetch, arriveWithCode } = createOAuthBrowser();
+    const { arriveWithCode } = createOAuthBrowser('msw');
+    let tokenRequests = 0;
+    server.use(
+      http.post('https://api.youversion.com/auth/token', () => {
+        tokenRequests++;
+        return failure === 'network'
+          ? HttpResponse.error()
+          : new HttpResponse(null, { status: 503 });
+      }),
+    );
     config.saveAuthData('current-access', 'current-refresh', new Date('2100-01-01'), {
       scope: 'read_notes',
       userId: 'alice',
@@ -244,8 +253,6 @@ it.each(['network', 'server'] as const)(
     await YouVersionAPIUsers.signIn(redirect, ['read_notes', 'write_notes']);
     arriveWithCode(`reauthorize-${failure}-failure`);
 
-    if (failure === 'network') fetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
-    else fetch.mockResolvedValueOnce(new Response(null, { status: 503 }));
     await expect(YouVersionAPIUsers.handleAuthCallback()).rejects.toMatchObject({
       name: failure === 'network' ? 'TypeError' : 'Error',
     });
@@ -256,7 +263,7 @@ it.each(['network', 'server'] as const)(
     await expect(YouVersionAPIUsers.handleAuthCallback()).rejects.toThrow(
       'Invalid state parameter',
     );
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(tokenRequests).toBe(1);
   },
 );
 
@@ -300,7 +307,12 @@ it.each([
 );
 
 it('requests note scopes at authorize and reads the grants from the exchanged token', async () => {
-  const { browser, fetch, values, arriveWithCode } = createOAuthBrowser();
+  const { browser, values, arriveWithCode } = createOAuthBrowser('msw');
+  server.use(
+    http.post('https://api.youversion.com/auth/token', () =>
+      HttpResponse.json(makeTokens('openid profile read_notes write_notes')),
+    ),
+  );
   const beforeRedirect = vi.fn(() => {
     expect(browser.window.location.href).toBe('');
   });
@@ -339,7 +351,6 @@ it('requests note scopes at authorize and reads the grants from the exchanged to
   for (const key of handoffKeys) expect(values.has(key)).toBe(true);
 
   arriveWithCode('notes-code');
-  fetch.mockResolvedValueOnce(Response.json(makeTokens('openid profile read_notes write_notes')));
   const result = await YouVersionAPIUsers.handleAuthCallback();
   expect(result).toMatchObject({
     accessToken: 'access-token-123',
@@ -365,29 +376,34 @@ it('requests note scopes at authorize and reads the grants from the exchanged to
 });
 
 it('retains note scopes when rotation omits scope and replaces them when the response narrows it', async () => {
-  const { fetch } = createOAuthBrowser();
+  createOAuthBrowser('msw');
   config.saveAuthData('initial-access-token', 'initial-refresh-token', new Date(0), {
     scope: 'openid read_notes write_notes',
     userId: 'notes-account',
   });
   config.saveUserInfo({ id: 'notes-account' });
   const rotation = { expires_in: 3600, token_type: 'Bearer' };
-  fetch
-    .mockResolvedValueOnce(
-      Response.json({
-        ...rotation,
-        access_token: 'rotated-access',
-        refresh_token: 'rotated-refresh',
-      }),
-    )
-    .mockResolvedValueOnce(
-      Response.json({
-        ...rotation,
-        access_token: 'reduced-access',
-        refresh_token: 'reduced-refresh',
-        scope: 'openid read_notes',
-      }),
-    );
+  server.use(
+    http.post('https://api.youversion.com/auth/token', async ({ request }) => {
+      const body = new URLSearchParams(await request.text());
+      if (body.get('refresh_token') === 'initial-refresh-token') {
+        return HttpResponse.json({
+          ...rotation,
+          access_token: 'rotated-access',
+          refresh_token: 'rotated-refresh',
+        });
+      }
+      if (body.get('refresh_token') === 'rotated-refresh') {
+        return HttpResponse.json({
+          ...rotation,
+          access_token: 'reduced-access',
+          refresh_token: 'reduced-refresh',
+          scope: 'openid read_notes',
+        });
+      }
+      return HttpResponse.json({ error: 'invalid_grant' }, { status: 401 });
+    }),
+  );
 
   await YouVersionAPIUsers.refreshTokens();
   expect(config.getOAuthAccessToken('notes-account', 'read_notes')).toBe('rotated-access');
@@ -412,6 +428,7 @@ it('waits for a matching profile instead of refreshing a staged account token', 
   });
   fetch.mockResolvedValueOnce(Response.json(makeTokens('openid write_notes')));
 
+  expect(config.hasMismatchedOAuthSession).toBe(true);
   await expect(YouVersionAPIUsers.refreshTokens()).rejects.toThrow();
   const refreshed = await YouVersionAPIUsers.refreshTokenIfNeeded();
 
@@ -420,6 +437,7 @@ it('waits for a matching profile instead of refreshing a staged account token', 
   expect(refreshed).toBe(false);
   expect(fetch).not.toHaveBeenCalled();
   config.saveUserInfo({ id: 'new-account' });
+  expect(config.hasMismatchedOAuthSession).toBe(false);
   expect(config.getOAuthAccessToken('new-account', 'write_notes')).toBe('new-access');
 });
 
@@ -601,6 +619,7 @@ it('rotates legacy tokens without assigning the returned scope to a stored profi
   expect(config.tokenExpiryDate).toEqual(result?.expiryDate);
   expect(config.tokenExpiryDate?.getTime()).toBeGreaterThan(Date.now());
   expect(config.storedUserInfo).toEqual(originalProfile);
+  expect(config.hasMismatchedOAuthSession).toBe(false);
   expect(config.getOAuthAccessToken('legacy-user', 'write_notes')).toBeNull();
 });
 

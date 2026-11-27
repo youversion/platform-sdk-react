@@ -25,13 +25,11 @@ import { YouVersionAuthContext } from '../context/YouVersionAuthContext';
  * - an access token is set while no user identity is known (with or without
  *   an auth context mounted).
  *
- * The third state guards the `'anon'` scope. This hook reads identity from
- * the auth context. The request layer reads its token from
- * `YouVersionPlatformConfiguration.accessToken`. When the two disagree, a
- * fetch caches the account data for that token under the shared `'anon'` key.
- * The token read occurs at render time and is not reactive. That is enough:
- * each path that changes the token also changes the auth context, and the
- * context change re-renders this hook.
+ * The third state guards the `'anon'` scope. When auth is unmanaged, the
+ * client can fall back to `YouVersionPlatformConfiguration.accessToken`.
+ * Without an identified user, that could cache private account data under
+ * the shared `'anon'` key. Managed requests also verify the credential for
+ * the identified user before fetching.
  *
  * This hook reads `YouVersionAuthContext` directly. It does not call
  * `useYouVersionAuthContext()`, because that call throws when auth is off,

@@ -97,6 +97,8 @@ export type UseBibleReaderHighlightsReturn = {
   confirmSignInDialog: () => void;
   /** User declined/dismissed the sign-in dialog → discard the pending highlight. */
   cancelSignInDialog: () => void;
+  /** A new Reader authorization replaces the pending highlight auth intent. */
+  discardPendingAuthorization: () => void;
 };
 
 /**
@@ -358,6 +360,7 @@ export function useBibleReaderHighlights({
       | 'cancelPermissionDialog'
       | 'confirmSignInDialog'
       | 'cancelSignInDialog'
+      | 'discardPendingAuthorization'
     >
   >(
     () => ({
@@ -407,6 +410,7 @@ export function useBibleReaderHighlights({
       cancelPermissionDialog: () => actorRef.send({ type: 'CANCEL_PERMISSION' }),
       confirmSignInDialog: () => actorRef.send({ type: 'CONFIRM_SIGN_IN' }),
       cancelSignInDialog: () => actorRef.send({ type: 'DECLINE_SIGN_IN' }),
+      discardPendingAuthorization: () => actorRef.send({ type: 'DISCARD_AUTHORIZATION' }),
     }),
     [actorRef, scope],
   );

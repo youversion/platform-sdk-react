@@ -44,6 +44,7 @@ const draftSchema = z.object({
 const handoffSchema = z.object({
   draft: draftSchema,
   readerKey: z.string(),
+  callbackReaderKey: z.optional(z.string()),
   state: z.string(),
   expiresAt: z.number(),
 });
@@ -78,7 +79,10 @@ type UseBibleReaderNoteResult = {
 
 // An OAuth return remounts the page. The Reader's placement distinguishes
 // multiple instances even when they display the same passage.
-function readerPosition(reader: HTMLElement): string {
+function readerPosition(
+  reader: HTMLElement,
+  pathname = reader.ownerDocument.location?.pathname,
+): string {
   const path: string[] = [];
   for (
     let node: Element | null = reader;
@@ -94,10 +98,14 @@ function readerPosition(reader: HTMLElement): string {
     );
     path.unshift(`${node.localName}:${siblings.indexOf(node)}`);
   }
-  return JSON.stringify([reader.ownerDocument.location?.pathname, ...path]);
+  return JSON.stringify([pathname, ...path]);
 }
 
-function consumeNoteHandoff(readerKey: string, match?: { state: string; requestId: string }) {
+function consumeNoteHandoff(
+  readerKey: string,
+  match?: { state: string; requestId: string },
+  callbackState?: string | null,
+) {
   const storage = getSessionStorage();
   const raw = storage?.getItem(HANDOFF_KEY);
   if (!raw) return null;
@@ -105,7 +113,11 @@ function consumeNoteHandoff(readerKey: string, match?: { state: string; requestI
     const parsed = handoffSchema.safeParse(JSON.parse(raw));
     if (!parsed.success) return null;
     const handoff = parsed.data;
-    if (handoff.readerKey !== readerKey) return null;
+    if (
+      handoff.readerKey !== readerKey &&
+      (handoff.callbackReaderKey !== readerKey || handoff.state !== callbackState)
+    )
+      return null;
     if (match && (handoff.state !== match.state || handoff.draft.requestId !== match.requestId))
       return null;
     removeStorageItem(storage, HANDOFF_KEY);
@@ -158,12 +170,14 @@ export function useBibleReaderNote({
   hostOwnsSignIn,
   onSaved,
   onInvalidated,
+  onAuthorizationCommitted,
 }: {
   reader: RefObject<HTMLElement | null>;
   enabled: boolean;
   hostOwnsSignIn: boolean;
   onSaved: (selection: NoteSelection) => void;
   onInvalidated: (selection: NoteSelection) => void;
+  onAuthorizationCommitted: () => void;
 }): UseBibleReaderNoteResult {
   const auth = useContext(YouVersionAuthContext);
   const account = auth?.userInfo?.userId || null;
@@ -190,8 +204,16 @@ export function useBibleReaderNote({
     oauthFailedCallbackState,
     onSaved,
     onInvalidated,
+    onAuthorizationCommitted,
   });
-  latest.current = { account, canAuthorize, oauthFailedCallbackState, onSaved, onInvalidated };
+  latest.current = {
+    account,
+    canAuthorize,
+    oauthFailedCallbackState,
+    onSaved,
+    onInvalidated,
+    onAuthorizationCommitted,
+  };
 
   function show(next: Flow | null) {
     currentFlow.current = next;
@@ -236,8 +258,12 @@ export function useBibleReaderNote({
   useEffect(() => {
     if (authLoading || !canAuthorize || checkedHandoff.current || !reader.current) return;
     checkedHandoff.current = true;
-    const handoff = consumeNoteHandoff(readerPosition(reader.current));
     const returnedState = oauthCallbackState ?? oauthFailedCallbackState;
+    const handoff = consumeNoteHandoff(
+      readerPosition(reader.current),
+      undefined,
+      oauthCallbackSuperseded ? null : returnedState,
+    );
     if (
       !handoff ||
       oauthCallbackSuperseded ||
@@ -335,45 +361,53 @@ export function useBibleReaderNote({
 
   async function authorize() {
     const active = currentFlow.current;
-    if (active?.phase !== 'authorize' || !canAuthorize || !reader.current) return;
-    const readerKey = readerPosition(reader.current);
+    const readerElement = reader.current;
+    if (active?.phase !== 'authorize' || !canAuthorize || !readerElement) return;
+    const readerKey = readerPosition(readerElement);
     const redirect = { ...active, phase: 'redirect' } as const;
     const previousState = draftAuthorizationState.current;
     show(redirect);
     try {
-      await YouVersionAPIUsers.signIn(
-        auth?.redirectUri ?? window.location.href,
-        READER_SIGN_IN_SCOPES,
-        undefined,
-        (state) => {
-          if (
-            currentFlow.current !== redirect ||
-            !matchesDraftOwner(
-              redirect.draft.ownerId,
-              latest.current.account,
-              previousState,
-              latest.current.oauthFailedCallbackState,
-            ) ||
-            !latest.current.canAuthorize ||
-            (config.storedUserInfo?.id || null) !== redirect.draft.ownerId
-          ) {
-            throw new Error('The Reader account changed before authorization');
-          }
-          const stored = setStorageItem(
-            getSessionStorage(),
-            HANDOFF_KEY,
-            JSON.stringify({
-              draft: redirect.draft,
-              readerKey,
-              state,
-              expiresAt: Date.now() + HANDOFF_LIFETIME,
-            }),
-          );
-          if (!stored) throw new Error('The pending note could not be saved for authorization');
-          handoffState.current = state;
-          draftAuthorizationState.current = state;
-        },
+      const redirectUri = auth?.redirectUri ?? window.location.href;
+      const callbackHref = new URL(redirectUri).href;
+      // The Core authorize URL removes a trailing slash from the complete URI.
+      const callback = new URL(
+        callbackHref.endsWith('/') ? callbackHref.slice(0, -1) : callbackHref,
       );
+      const callbackReaderKey =
+        callback.origin === window.location.origin
+          ? readerPosition(readerElement, callback.pathname)
+          : undefined;
+      await YouVersionAPIUsers.signIn(redirectUri, READER_SIGN_IN_SCOPES, undefined, (state) => {
+        if (
+          currentFlow.current !== redirect ||
+          !matchesDraftOwner(
+            redirect.draft.ownerId,
+            latest.current.account,
+            previousState,
+            latest.current.oauthFailedCallbackState,
+          ) ||
+          !latest.current.canAuthorize ||
+          (config.storedUserInfo?.id || null) !== redirect.draft.ownerId
+        ) {
+          throw new Error('The Reader account changed before authorization');
+        }
+        const stored = setStorageItem(
+          getSessionStorage(),
+          HANDOFF_KEY,
+          JSON.stringify({
+            draft: redirect.draft,
+            readerKey,
+            callbackReaderKey,
+            state,
+            expiresAt: Date.now() + HANDOFF_LIFETIME,
+          }),
+        );
+        if (!stored) throw new Error('The pending note could not be saved for authorization');
+        handoffState.current = state;
+        draftAuthorizationState.current = state;
+        latest.current.onAuthorizationCommitted();
+      });
     } catch {
       if (currentFlow.current !== redirect) return;
       draftAuthorizationState.current = previousState;

@@ -38,7 +38,7 @@ Run these commands from the repository root after installing Playwright Chromium
 ```bash
 pnpm build
 VITE_YVP_APP_KEY=notes-smoke VITE_YVP_API_HOST=notes-smoke.example.test \
-  VITE_YVP_AUTH_REDIRECT_URL=http://127.0.0.1:5176 VITE_YVP_LOCALE=en \
+  VITE_YVP_AUTH_REDIRECT_URL=http://127.0.0.1:5176/callback/ VITE_YVP_LOCALE=en \
   pnpm --filter vite-react dev --port 5176 --strictPort
 ```
 
