@@ -30,8 +30,10 @@ The configurable verse actions include the built-in IDs `'highlights'`, `'save'`
   `isAuthenticated` remains true. Sessions created by version 3.0.0 have no new
   account/scope binding and are treated as legacy. A normal token refresh in
   another tab invalidates the receiving tab's legacy token verification; its
-  fetched highlights disappear until that tab reloads, remounts its auth provider,
-  or signs in again. Same-instance SDK refreshes retain legacy verification.
+  fetched highlights are hidden until credentials can be verified again.
+  Reloading that tab, remounting its auth provider, or a new verified sign-in
+  (including in another tab) can restore them. Same-instance SDK refreshes retain
+  legacy verification.
 - Managed `useHighlights` reads are disabled, with data masked to `null`, until
   both the account and its verified access token are available. Host-controlled
   auth and highlights retain their existing behavior.
