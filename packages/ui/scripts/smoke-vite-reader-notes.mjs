@@ -194,6 +194,13 @@ try {
   await composer(page, 'John 1:2,4').waitFor();
   assert.equal(notes.length, 0);
   await editor(page).fill('Notes smoke');
+  await page.setViewportSize({ width: 390, height: 844 });
+  const bounds = await composer(page, 'John 1:2,4').boundingBox();
+  assert.ok(
+    bounds && bounds.x >= 12 && bounds.x + bounds.width <= 378,
+    `Expected the composer to fit with viewport margins at 390 px, got ${JSON.stringify(bounds)}`,
+  );
+  await page.setViewportSize({ width: 1280, height: 900 });
   await composer(page, 'John 1:2,4').getByRole('button', { name: 'Save', exact: true }).click();
   await composer(page, 'John 1:2,4').waitFor({ state: 'hidden' });
   assert.equal(notes.length, 1);

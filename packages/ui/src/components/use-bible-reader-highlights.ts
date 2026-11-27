@@ -262,17 +262,7 @@ export function useBibleReaderHighlights({
     actorRef.send({ type: 'SCOPE_CHANGED', scope });
   }, [actorRef, scope]);
 
-  // This parses the fetch result into `serverColors`.
-  // When `serverColors` changes, this code sends `serverColors` to the machine.
-  // The machine compares the optimistic overlay with `serverColors`.
-  //
-  // This `useMemo` depends on the `highlights` reference.
-  // `useApiData` uses TanStack Query.
-  // When a refetch returns the same content, TanStack Query keeps the same `highlights` object.
-  // As a result, that refetch does not create a new `serverColors`.
-  //
-  // If `serverColors` is a new object, `highlightedVerses` is also a new object.
-  // Then `verse.tsx` runs `useLayoutEffect` again for every verse.
+  // Keep the same paint and machine input when a refresh returns equivalent verse colors.
   const latestServerColors = useMemo(
     () => parseServerColors(highlights, versionId, chapterUsfm),
     [highlights, versionId, chapterUsfm],
@@ -283,15 +273,7 @@ export function useBibleReaderHighlights({
   }
   const serverColors = paintedServerColorsRef.current;
 
-  const lastSentServerColorsRef = useRef<ServerColors | null>(null);
   useEffect(() => {
-    if (
-      lastSentServerColorsRef.current !== null &&
-      serverColorsEqual(lastSentServerColorsRef.current, serverColors)
-    ) {
-      return;
-    }
-    lastSentServerColorsRef.current = serverColors;
     actorRef.send({ type: 'HIGHLIGHTS_UPDATED', serverColors });
   }, [actorRef, serverColors]);
 

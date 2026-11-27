@@ -89,6 +89,7 @@ describe('YouVersionAPIUsers', () => {
     mocks.localStorage.removeItem.mockImplementation((key: string) => {
       values.delete(key);
     });
+    return values;
   }
 
   function arriveWithAuthorizationCode(code: string) {
@@ -416,6 +417,38 @@ describe('YouVersionAPIUsers', () => {
       ).toBeNull();
     },
   );
+
+  it('clears a partially written refresh session when storage rejects the rotated refresh token', async () => {
+    const stored = persistBrowserWrites();
+    const config = YouVersionPlatformConfiguration;
+    config.saveAuthData('old-access', 'old-refresh', new Date(0));
+    config.saveUserInfo({ id: 'signed-in-user' });
+
+    const rotatedRefreshToken = 'a-longer-rotated-refresh-token';
+    mocks.localStorage.setItem.mockImplementation((key: string, value: string) => {
+      if (value === rotatedRefreshToken)
+        throw new DOMException('Storage quota', 'QuotaExceededError');
+      stored.set(key, value);
+    });
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        access_token: 'new-access',
+        refresh_token: rotatedRefreshToken,
+        expires_in: 3600,
+        scope: 'profile',
+        token_type: 'Bearer',
+      }),
+    );
+
+    await expect(YouVersionAPIUsers.refreshTokenIfNeeded()).resolves.toBe(false);
+    await expect(YouVersionAPIUsers.refreshTokenIfNeeded()).resolves.toBe(false);
+    expect(config.accessToken).toBeNull();
+    expect(config.refreshToken).toBeNull();
+    expect(config.tokenExpiryDate).toBeNull();
+    expect(YouVersionAPIUsers.getStoredUserInfo()).toBeNull();
+    expect(mocks.localStorage.setItem).toHaveBeenCalledWith('refreshToken', rotatedRefreshToken);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
 
   describe('signIn', () => {
     afterEach(() => {

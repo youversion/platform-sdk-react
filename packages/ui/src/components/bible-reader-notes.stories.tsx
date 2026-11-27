@@ -6,7 +6,7 @@ import {
 } from '@youversion/platform-core';
 import { http, HttpResponse } from 'msw';
 import { getWorker } from 'msw-storybook-addon';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, spyOn, userEvent, waitFor, within } from 'storybook/test';
 import { globalHandlers } from '@/test/mocks/handlers';
 import { getBackgroundColorChannels, waitForShadowRoot } from '@/test/storybook-dom';
 import { BibleReader } from './bible-reader';
@@ -373,6 +373,60 @@ export const WritePermissionChangesWhileEditing: Story = {
     await expect(await overlays.findByRole('textbox', { name: 'Add Note…' })).toHaveValue(
       'Retained thought',
     );
+
+    const signIn = stayOnAuthorizationHandoff();
+    try {
+      await userEvent.click(overlays.getByRole('button', { name: 'Save' }));
+      await userEvent.click(await overlays.findByRole('button', { name: 'Yes Please' }));
+      await waitFor(() =>
+        expect(overlays.queryByRole('button', { name: 'Yes Please' })).toBeNull(),
+      );
+      window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+      await expect(await overlays.findByRole('textbox', { name: 'Add Note…' })).toHaveValue(
+        'Retained thought',
+      );
+      await expect(creates).toBe(0);
+    } finally {
+      signIn.mockRestore();
+    }
+  },
+};
+
+function stayOnAuthorizationHandoff() {
+  // Intercept only the location change so this test can deliver a browser Back
+  // restoration to the same Reader. The SampleApp smoke exercises real redirects.
+  return spyOn(YouVersionAPIUsers, 'signIn').mockImplementation(
+    async (_url, _scopes, _permissions, beforeRedirect) => {
+      beforeRedirect?.(crypto.randomUUID());
+    },
+  );
+}
+
+export const BackCancelsPendingAuthorization: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  play: async ({ canvasElement }) => {
+    const signIn = stayOnAuthorizationHandoff();
+    try {
+      const root = await waitForShadowRoot(canvasElement);
+      await selectVerses(root, [1, 4]);
+      const overlays = await readerOverlays(root);
+      const actions = within(await overlays.findByRole('dialog', { name: 'Verse actions' }));
+      await userEvent.click(actions.getByRole('button', { name: 'Save' }));
+      await userEvent.click(await overlays.findByRole('button', { name: 'Yes Please' }));
+      await waitFor(() =>
+        expect(overlays.queryByRole('button', { name: 'Yes Please' })).toBeNull(),
+      );
+      await expect(overlays.queryByRole('dialog', { name: 'Verse actions' })).toBeNull();
+
+      window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+      const restored = within(await overlays.findByRole('dialog', { name: 'Verse actions' }));
+      await expect(await readerVerse(root, 1)).toHaveClass('yv-v-selected');
+      await expect(await readerVerse(root, 4)).toHaveClass('yv-v-selected');
+      await userEvent.click(restored.getByRole('button', { name: 'Save' }));
+      await expect(await overlays.findByRole('button', { name: 'Yes Please' })).toBeInTheDocument();
+    } finally {
+      signIn.mockRestore();
+    }
   },
 };
 

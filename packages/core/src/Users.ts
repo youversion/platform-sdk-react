@@ -640,6 +640,12 @@ export class YouVersionAPIUsers {
    * @throws An error if refresh fails or no refresh token is available
    */
   static async refreshTokens(): Promise<SignInWithYouVersionResult | null> {
+    return this.rotateTokens(false);
+  }
+
+  private static async rotateTokens(
+    clearOnPersistenceFailure: boolean,
+  ): Promise<SignInWithYouVersionResult | null> {
     const accessToken = YouVersionPlatformConfiguration.accessToken;
     const refreshToken = YouVersionPlatformConfiguration.refreshToken;
     const userId = YouVersionPlatformConfiguration.storedUserInfo?.id;
@@ -702,15 +708,28 @@ export class YouVersionAPIUsers {
 
       // Store updated tokens. The rotation already spent the old refresh token,
       // so an unpersisted result is a dead session, not a refreshed one.
+      const rotatedAccessToken = result.accessToken || null;
+      const rotatedRefreshToken = result.refreshToken || null;
       const persisted = YouVersionPlatformConfiguration.saveAuthData(
-        result.accessToken || null,
-        result.refreshToken || null,
+        rotatedAccessToken,
+        rotatedRefreshToken,
         result.expiryDate || null,
         oauthSession
           ? { scope: tokens.scope ?? oauthSession.scope, userId: oauthSession.userId }
           : undefined,
       );
       if (!persisted) {
+        // A partial write can change the token tuple and expiry, so the regular
+        // stale-result check cannot clean up this failure later.
+        const config = YouVersionPlatformConfiguration;
+        if (
+          clearOnPersistenceFailure &&
+          config.storedUserInfo?.id === userId &&
+          [accessToken, rotatedAccessToken].includes(config.accessToken) &&
+          [refreshToken, rotatedRefreshToken].includes(config.refreshToken)
+        ) {
+          config.clearAuthTokens();
+        }
         throw new Error('the rotated tokens could not be saved to browser storage');
       }
 
@@ -783,7 +802,7 @@ export class YouVersionAPIUsers {
     const userId = YouVersionPlatformConfiguration.storedUserInfo?.id;
     if (YouVersionPlatformConfiguration.readOAuthSession() === null) return false;
     try {
-      const result = await this.refreshTokens();
+      const result = await this.rotateTokens(true);
       return !!result;
     } catch {
       // Refresh failed, clear tokens

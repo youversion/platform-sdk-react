@@ -52,9 +52,9 @@ export function BibleReaderNotesComposer({
       <DialogContent
         theme={theme}
         aria-describedby={undefined}
-        className="yv:max-h-[calc(100dvh-2rem)] yv:max-w-md yv:overflow-y-auto"
+        className="yv:box-border yv:max-h-[calc(100dvh-2rem)] yv:max-w-md yv:overflow-y-auto"
       >
-        <DialogTitle className="yv:mb-4 yv:text-lg yv:font-semibold">
+        <DialogTitle className="yv:[margin-block-end:1rem] yv:text-lg yv:font-semibold">
           <bdi dir="auto">{draft.selection.reference}</bdi>
         </DialogTitle>
         <form
@@ -105,7 +105,7 @@ export function BibleReaderNotesComposer({
                   key={color}
                   color={color}
                   selected={selected}
-                  pressed={selected}
+                  toggle
                   label={`${t('applyHighlightAriaLabel')} #${color}`}
                   onClick={() => onChange({ color: selected ? null : color })}
                   theme={theme}

@@ -62,14 +62,20 @@ type UseBibleReaderNoteResult = {
   save: () => Promise<void>;
 };
 
-function consumeNoteHandoff() {
+function consumeNoteHandoff(match?: { state: string; requestId: string }) {
   const storage = getSessionStorage();
   const raw = storage?.getItem(HANDOFF_KEY);
   if (!raw) return null;
-  removeStorageItem(storage, HANDOFF_KEY);
+  if (!match) removeStorageItem(storage, HANDOFF_KEY);
   try {
     const parsed = handoffSchema.safeParse(JSON.parse(raw));
-    return parsed.success && parsed.data.expiresAt > Date.now() ? parsed.data : null;
+    if (!parsed.success) return null;
+    const handoff = parsed.data;
+    if (match) {
+      if (handoff.state !== match.state || handoff.draft.requestId !== match.requestId) return null;
+      removeStorageItem(storage, HANDOFF_KEY);
+    }
+    return handoff.expiresAt > Date.now() ? handoff : null;
   } catch {
     return null;
   }
@@ -111,13 +117,24 @@ export function useBibleReaderNote({
   const [authorizationFailed, setAuthorizationFailed] = useState(false);
   const retainedDraft = useRef<NoteDraft | null>(null);
   const currentFlow = useRef<Flow | null>(null);
+  const handoffState = useRef<string | null>(null);
   const checkedHandoff = useRef(false);
-  const latest = useRef({ account, authLoading, canAuthorize, onSaved, onInvalidated });
-  latest.current = { account, authLoading, canAuthorize, onSaved, onInvalidated };
+  const latest = useRef({ account, canAuthorize, onSaved, onInvalidated });
+  latest.current = { account, canAuthorize, onSaved, onInvalidated };
 
   function show(next: Flow | null) {
     currentFlow.current = next;
     setFlow(next);
+  }
+
+  function restoreAfterAuthorization(active: Flow, failed = false) {
+    if (active.editing) {
+      show({ ...active, phase: 'compose', failed: failed || active.failed });
+      return;
+    }
+    retainedDraft.current = active.draft;
+    if (failed) setAuthorizationFailed(true);
+    show(null);
   }
 
   useLayoutEffect(() => {
@@ -149,6 +166,29 @@ export function useBibleReaderNote({
     }
   }, [account, authLoading, canAuthorize, oauthCallbackState]);
 
+  useEffect(() => {
+    // Browser Back can restore this same document without remounting the Reader.
+    function onPageShow(event: PageTransitionEvent) {
+      const active = currentFlow.current;
+      const state = handoffState.current;
+      if (!event.persisted || active?.phase !== 'redirect' || !state) return;
+      handoffState.current = null;
+      const handoff = consumeNoteHandoff({ state, requestId: active.draft.requestId });
+      const ownerId = active.draft.ownerId;
+      if ((config.storedUserInfo?.id || null) !== ownerId || latest.current.account !== ownerId) {
+        show(null);
+        latest.current.onInvalidated(active.draft.selection);
+      } else if (handoff && latest.current.canAuthorize) {
+        restoreAfterAuthorization(active);
+      } else {
+        show(null);
+      }
+    }
+
+    globalThis.window?.addEventListener('pageshow', onPageShow);
+    return () => globalThis.window?.removeEventListener('pageshow', onPageShow);
+  }, []);
+
   function open(selection: NoteSelection) {
     if (authLoading || currentFlow.current || selection.verses.length === 0) return;
     const token = writerToken(account);
@@ -172,13 +212,7 @@ export function useBibleReaderNote({
 
   function cancelAuthorization() {
     const active = currentFlow.current;
-    if (active?.phase !== 'authorize') return;
-    if (active.editing) {
-      show({ ...active, phase: 'compose' });
-    } else {
-      retainedDraft.current = active.draft;
-      show(null);
-    }
+    if (active?.phase === 'authorize') restoreAfterAuthorization(active);
   }
 
   async function authorize() {
@@ -186,7 +220,6 @@ export function useBibleReaderNote({
     if (active?.phase !== 'authorize' || !canAuthorize) return;
     const redirect = { ...active, phase: 'redirect' } as const;
     show(redirect);
-    let stashed = false;
     try {
       await YouVersionAPIUsers.signIn(
         auth?.redirectUri ?? window.location.href,
@@ -211,19 +244,16 @@ export function useBibleReaderNote({
             }),
           );
           if (!stored) throw new Error('The pending note could not be saved for authorization');
-          stashed = true;
+          handoffState.current = state;
         },
       );
     } catch {
       if (currentFlow.current !== redirect) return;
-      if (stashed) removeStorageItem(getSessionStorage(), HANDOFF_KEY);
-      if (active.editing) {
-        show({ ...active, phase: 'compose', failed: true });
-      } else {
-        retainedDraft.current = active.draft;
-        setAuthorizationFailed(true);
-        show(null);
+      if (handoffState.current) {
+        consumeNoteHandoff({ state: handoffState.current, requestId: active.draft.requestId });
+        handoffState.current = null;
       }
+      restoreAfterAuthorization(active, true);
     }
   }
 

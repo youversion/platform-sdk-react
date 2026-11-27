@@ -237,6 +237,9 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   const versePointerEventsRef = useRef(new WeakSet<Event>());
   const retainOutsideFocusRef = useRef(false);
   const customActionActivatedRef = useRef(false);
+  const markOverlayAction = (): void => {
+    customActionActivatedRef.current = true;
+  };
   const allowPriorFocusRestoration = (): void => {
     retainOutsideFocusRef.current = false;
     customActionActivatedRef.current = false;
@@ -479,7 +482,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 const focusDocument = portal.container?.ownerDocument ?? anchor?.ownerDocument;
                 const activeElement = root?.activeElement ?? focusDocument?.activeElement;
                 const closingContent = event.currentTarget;
-                // A custom action can mount and focus host UI before Radix finishes closing.
+                // Save and custom actions can focus another overlay before Radix finishes closing.
                 const focusMovedOutside =
                   customActionActivatedRef.current &&
                   activeElement?.isConnected &&
@@ -586,9 +589,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                         icon={<BookOpenIcon className="yv:size-5" />}
                         label={t('notesSave')}
                         onClick={() => onSave?.()}
-                        onClickCapture={() => {
-                          customActionActivatedRef.current = true;
-                        }}
+                        onClickCapture={markOverlayAction}
                       />
                     );
                   }
@@ -615,9 +616,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                         icon={item.icon}
                         label={item.label}
                         onClick={item.onSelect}
-                        onClickCapture={() => {
-                          customActionActivatedRef.current = true;
-                        }}
+                        onClickCapture={markOverlayAction}
                       />
                     );
                   }

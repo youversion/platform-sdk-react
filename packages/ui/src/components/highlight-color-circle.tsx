@@ -7,7 +7,7 @@ import { isDarkHighlightHex } from './verse';
 type HighlightColorCircleProps = {
   color: string;
   selected: boolean;
-  pressed?: boolean;
+  toggle?: boolean;
   label: string;
   onClick: () => void;
   theme: 'light' | 'dark';
@@ -16,7 +16,7 @@ type HighlightColorCircleProps = {
 export function HighlightColorCircle({
   color,
   selected,
-  pressed,
+  toggle = false,
   label,
   onClick,
   theme,
@@ -36,7 +36,7 @@ export function HighlightColorCircle({
       )}
       style={{ backgroundColor, border }}
       aria-label={label}
-      aria-pressed={pressed}
+      aria-pressed={toggle ? selected : undefined}
     >
       {selected && (
         <CheckIcon
